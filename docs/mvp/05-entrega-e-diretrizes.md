@@ -178,6 +178,8 @@ Resultado esperado: suspeito principal `checkout-service`, score acima de 0,80 e
 
 45. O código deve priorizar clareza e manutenção. Não criar abstrações genéricas antes de existir pelo menos um segundo caso concreto que justifique sua reutilização.
 
+46. APIs e handlers devem permanecer stateless sempre que possível. Estado durável pertence ao banco de dados; estado efêmero que precise ser compartilhado entre instâncias pertence a um cache apropriado. O processo pode manter apenas recursos operacionais e imutáveis, como configuração carregada e pools de conexões.
+
 ## Definição final do MVP
 
 > Um monólito modular em Go, distribuído como binário único, capaz de ingerir telemetria OpenTelemetry, comparar uma janela de incidente com uma baseline, correlacionar sinais com deploys e operações PostgreSQL, construir um grafo de evidências e gerar um ranking determinístico, explicável e auditável dos principais suspeitos de uma falha.

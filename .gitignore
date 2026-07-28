@@ -1,0 +1,9 @@
+# Artefatos criados por faultmap init na máquina local.
+faultmap.db
+faultmap.db-shm
+faultmap.db-wal
+faultmap-out/
+faultmap.yaml
+
+# Saídas locais de ferramentas Go.
+coverage.out

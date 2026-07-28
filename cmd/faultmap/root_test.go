@@ -3,11 +3,38 @@ package main
 import (
 	"database/sql"
 	"io"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
 )
+
+// TestInitCommandGeraConfiguraçãoCompleta garante que init não omite seções do MVP.
+func TestInitCommandGeraConfiguraçãoCompleta(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	command := newRootCommand()
+	command.SetArgs([]string{"init", "--directory", projectDir})
+	command.SetOut(io.Discard)
+	command.SetErr(io.Discard)
+
+	if err := command.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(projectDir, "faultmap.yaml"))
+	if err != nil {
+		t.Fatalf("ler configuração criada: %v", err)
+	}
+	for _, section := range []string{"ranking:", "github:", "privacy:"} {
+		if !strings.Contains(string(content), section) {
+			t.Fatalf("configuração gerada não contém a seção %q", section)
+		}
+	}
+}
 
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
