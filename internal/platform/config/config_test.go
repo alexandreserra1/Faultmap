@@ -104,6 +104,91 @@ investigation:
 	}
 }
 
+// TestLoadRejeitaCampoDesconhecido evita erros de digitação silenciosos no YAML.
+func TestLoadRejeitaCampoDesconhecido(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `storage:
+  driver: "sqlite"
+  path: "./faultmap.db"
+  retention: "7d"
+  caminho: "./ignorado.db"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	_, err := Load(context.Background(), configPath)
+	if err == nil {
+		t.Fatal("Load() erro = nil, esperado erro para campo desconhecido")
+	}
+}
+
+// TestLoadRejeitaDuraçõesInválidas impede janelas e retenções impossíveis de usar.
+func TestLoadRejeitaDuraçõesInválidas(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		content string
+	}{
+		{
+			name: "retenção inválida",
+			content: `storage:
+  retention: "amanhã"
+`,
+		},
+		{
+			name: "janela de incidente inválida",
+			content: `investigation:
+  default_incident_window: "zero"
+`,
+		},
+		{
+			name: "janela de baseline inválida",
+			content: `investigation:
+  default_baseline_window: "0m"
+`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+			if err := os.WriteFile(configPath, []byte(testCase.content), 0o600); err != nil {
+				t.Fatalf("escrever configuração: %v", err)
+			}
+
+			_, err := Load(context.Background(), configPath)
+			if err == nil {
+				t.Fatal("Load() erro = nil, esperado erro para duração inválida")
+			}
+		})
+	}
+}
+
+// TestLoadRejeitaGitHubHabilitadoSemRepositório evita iniciar uma integração incompleta.
+func TestLoadRejeitaGitHubHabilitadoSemRepositório(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `github:
+  enabled: true
+  repository: "   "
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	_, err := Load(context.Background(), configPath)
+	if err == nil {
+		t.Fatal("Load() erro = nil, esperado erro para integração GitHub sem repositório")
+	}
+}
+
 // TestLoadRespeitaCancelamento garante que o carregamento não inicia I/O após cancelamento.
 func TestLoadRespeitaCancelamento(t *testing.T) {
 	t.Parallel()

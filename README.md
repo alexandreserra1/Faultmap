@@ -49,17 +49,52 @@ O motor de diagnóstico não depende de LLM. Integrações futuras com LLMs, age
 
 Interface web, Kubernetes, Neo4j, Kafka, SaaS e LLM obrigatória estão fora do primeiro MVP.
 
-## Por onde começamos
+## Desenvolvimento local
 
-O primeiro marco é a **fundação do repositório**:
+### Requisitos
 
-1. Inicializar o módulo Go e o binário `faultmap` com Cobra.
-2. Implementar `faultmap init` para criar a configuração, o SQLite e o diretório de saída.
-3. Criar migrations e os repositórios SQLite básicos.
-4. Adicionar a estrutura modular, testes e automação de qualidade.
-5. Em seguida, criar o `demo-shop` e iniciar a ingestão de telemetria.
+- Go `1.24.0` ou compatível com a versão declarada em [`go.mod`](go.mod);
+- `make`, para executar os atalhos de qualidade.
 
-Esse caminho cria uma base testável antes de introduzir detectores, GitHub ou PostgreSQL.
+Não é necessário instalar o binário globalmente para trabalhar no projeto. Os comandos abaixo usam o código local; o Go baixa as dependências declaradas em `go.mod` quando necessário.
+
+### Verificações de qualidade
+
+Execute estes comandos na raiz do repositório:
+
+```bash
+make fmt
+make test
+make test-race
+make vet
+```
+
+- `make fmt` aplica a formatação padrão do Go;
+- `make test` executa a suíte de testes;
+- `make test-race` executa a suíte com detecção de condições de corrida;
+- `make vet` executa as verificações estáticas padrão do Go.
+
+### Criar um workspace local
+
+Crie um diretório exclusivo para os arquivos gerados pelo Faultmap:
+
+```bash
+go run ./cmd/faultmap init --directory ./faultmap-local
+```
+
+O comando imprime `Faultmap initialized.` e cria os seguintes artefatos dentro de `./faultmap-local`:
+
+- `faultmap.yaml`: configuração inicial local, sem tokens ou credenciais;
+- `faultmap.db`: banco SQLite com o schema inicial migrado;
+- `faultmap-out/`: diretório reservado para relatórios e outras saídas futuras.
+
+O `init` não sobrescreve artefatos existentes. Para criar novamente o mesmo workspace, remova explicitamente apenas o diretório que você escolheu para ele:
+
+```bash
+rm -rf ./faultmap-local
+```
+
+Ainda não há uma demo executável (`demo-shop`) no repositório. Quando ela existir, sua limpeza será documentada junto ao Docker Compose correspondente; por enquanto, a remoção do workspace acima é toda a limpeza local necessária.
 
 ## Especificação
 
@@ -67,4 +102,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O projeto está na fase de especificação e fundação. Ainda não há binário funcional; a próxima implementação deve seguir o Marco 1 descrito na especificação.
+O Marco 1 está em andamento. A CLI já oferece `faultmap init`, com configuração YAML, SQLite e migrations iniciais. A próxima etapa é concluir o bootstrap e as verificações das migrations antes de criar o `demo-shop` e iniciar a ingestão de telemetria.
