@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/faultmap/faultmap/internal/application"
 	"github.com/faultmap/faultmap/internal/platform/config"
+	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
 	"github.com/spf13/cobra"
 )
@@ -19,6 +21,7 @@ func newRootCommand() *cobra.Command {
 	}
 	root.AddCommand(newInitCommand())
 	root.AddCommand(newIngestCommand())
+	root.AddCommand(newTelemetryCommand())
 	return root
 }
 
@@ -124,4 +127,75 @@ func resolveStoragePath(configPath string, storagePath string) string {
 		return filepath.Clean(storagePath)
 	}
 	return filepath.Join(filepath.Dir(configPath), storagePath)
+}
+
+// newTelemetryCommand agrupa consultas de sinais já persistidos no Faultmap.
+func newTelemetryCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "telemetry",
+		Short: "Consulta telemetria persistida",
+	}
+	command.AddCommand(newTelemetryListCommand())
+	return command
+}
+
+// newTelemetryListCommand apresenta sinais de um serviço em uma janela temporal limitada.
+func newTelemetryListCommand() *cobra.Command {
+	var configPath string
+	var serviceName string
+	var since string
+	var limit int
+
+	command := &cobra.Command{
+		Use:   "list",
+		Short: "Lista sinais de telemetria de um serviço",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(serviceName) == "" {
+				return fmt.Errorf("listar telemetria: --service é obrigatório")
+			}
+			windowDuration, err := time.ParseDuration(since)
+			if err != nil {
+				return fmt.Errorf("listar telemetria: --since deve ser uma duração positiva: %w", err)
+			}
+			if windowDuration <= 0 {
+				return fmt.Errorf("listar telemetria: --since deve ser uma duração positiva")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			end := time.Now().UTC()
+			signals, err := application.ListSignals(
+				command.Context(),
+				serviceName,
+				end.Add(-windowDuration),
+				end,
+				limit,
+				storage.NewSignalRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return terminal.RenderSignals(command.OutOrStdout(), serviceName, signals)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&serviceName, "service", "", "nome do serviço")
+	command.Flags().StringVar(&since, "since", "24h", "janela retroativa de consulta")
+	command.Flags().IntVar(&limit, "limit", 20, "quantidade máxima de sinais")
+	return command
 }

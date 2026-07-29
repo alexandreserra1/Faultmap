@@ -89,6 +89,66 @@ func TestIngestFileCommandPersisteFixtureOTLP(t *testing.T) {
 	}
 }
 
+// TestTelemetryListCommandExibeSinaisIngeridos garante que a consulta da CLI apresenta
+// evidências compreensíveis do serviço, incluindo sucesso, erro e operação de banco.
+func TestTelemetryListCommandExibeSinaisIngeridos(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	for _, fixtureName := range []string{"checkout-normal.json", "checkout-error-latency.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver caminho da fixture %q: %v", fixtureName, err)
+		}
+
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir fixture %q: %v", fixtureName, err)
+		}
+	}
+
+	var output bytes.Buffer
+	list := newRootCommand()
+	list.SetArgs([]string{
+		"telemetry", "list",
+		"--config", configPath,
+		"--service", "checkout-service",
+		"--since", "8760h",
+		"--limit", "10",
+	})
+	list.SetOut(&output)
+	list.SetErr(io.Discard)
+	if err := list.Execute(); err != nil {
+		t.Fatalf("telemetry list erro = %v", err)
+	}
+
+	for _, expected := range []string{
+		"checkout-service",
+		"POST /checkout",
+		"INSERT orders",
+		"HTTP 201",
+		"HTTP 500",
+		"PostgreSQL",
+		"timeout",
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, output.String())
+		}
+	}
+}
+
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	t.Parallel()

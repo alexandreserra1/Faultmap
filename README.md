@@ -114,6 +114,20 @@ Ingeridos 2 sinais; 2 novos.
 
 Executar o mesmo comando outra vez é seguro: os dois spans são identificados pelos IDs de trace e span, portanto o resultado terá `0 novos`.
 
+### Consultar sinais no terminal
+
+Liste a telemetria persistida de um serviço em uma janela temporal limitada:
+
+```bash
+go run ./cmd/faultmap telemetry list \
+  --config ./faultmap-local/faultmap.yaml \
+  --service checkout-service \
+  --since 8760h \
+  --limit 10
+```
+
+A saída mostra somente campos seguros e úteis para investigação: horário, severidade, nome do span, status HTTP, operação de banco, duração, tipo de erro e trace ID. Ela ainda não calcula causa raiz; essa visualização será a entrada dos detectores de erro, latência e timeout.
+
 ## Especificação
 
 A especificação é modular e sua leitura completa é obrigatória antes de implementar ou revisar o projeto. Comece por [FAULTMAP_MVP.md](FAULTMAP_MVP.md), que direciona para todos os documentos normativos em [`docs/mvp/`](docs/mvp/).
