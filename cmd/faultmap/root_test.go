@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"io"
 	"os"
@@ -36,6 +37,58 @@ func TestInitCommandGeraConfiguraçãoCompleta(t *testing.T) {
 	}
 }
 
+// TestIngestFileCommandPersisteFixtureOTLP verifica a primeira fatia completa da CLI de ingestão.
+func TestIngestFileCommandPersisteFixtureOTLP(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "checkout-normal.json"))
+	if err != nil {
+		t.Fatalf("resolver caminho da fixture: %v", err)
+	}
+	var output bytes.Buffer
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{
+		"ingest", "file",
+		"--input", fixturePath,
+		"--config", filepath.Join(projectDir, "faultmap.yaml"),
+	})
+	ingest.SetOut(&output)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingest file erro = %v", err)
+	}
+	if got := output.String(); got != "Ingeridos 2 sinais; 2 novos.\n" {
+		t.Fatalf("saída = %q, esperado resumo de ingestão", got)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
+
+	var signalCount int
+	if err := database.QueryRow("SELECT COUNT(*) FROM signals").Scan(&signalCount); err != nil {
+		t.Fatalf("contar sinais: %v", err)
+	}
+	if signalCount != 2 {
+		t.Fatalf("quantidade de sinais = %d, esperado 2", signalCount)
+	}
+}
+
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	t.Parallel()
@@ -54,7 +107,11 @@ func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open database: %v", err)
 	}
-	t.Cleanup(func() { _ = database.Close() })
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
 
 	var tableCount int
 	if err := database.QueryRow(`

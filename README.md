@@ -82,7 +82,7 @@ Crie um diretório exclusivo para os arquivos gerados pelo Faultmap:
 go run ./cmd/faultmap init --directory ./faultmap-local
 ```
 
-O comando imprime `Faultmap initialized.` e cria os seguintes artefatos dentro de `./faultmap-local`:
+O comando imprime `Faultmap inicializado.` e cria os seguintes artefatos dentro de `./faultmap-local`:
 
 - `faultmap.yaml`: configuração inicial local, sem tokens ou credenciais;
 - `faultmap.db`: banco SQLite com o schema inicial migrado;
@@ -95,6 +95,24 @@ rm -rf ./faultmap-local
 ```
 
 Ainda não há uma demo executável (`demo-shop`) no repositório. Quando ela existir, sua limpeza será documentada junto ao Docker Compose correspondente; por enquanto, a remoção do workspace acima é toda a limpeza local necessária.
+
+### Importar uma fixture OTLP
+
+Depois de criar o workspace, importe uma fixture de trace OpenTelemetry:
+
+```bash
+go run ./cmd/faultmap ingest file \
+  --config ./faultmap-local/faultmap.yaml \
+  --input ./fixtures/otel/checkout-normal.json
+```
+
+O comando normaliza os spans do arquivo, aplica as migrations necessárias e persiste apenas sinais ainda não existentes. A fixture normal imprime:
+
+```text
+Ingeridos 2 sinais; 2 novos.
+```
+
+Executar o mesmo comando outra vez é seguro: os dois spans são identificados pelos IDs de trace e span, portanto o resultado terá `0 novos`.
 
 ## Especificação
 

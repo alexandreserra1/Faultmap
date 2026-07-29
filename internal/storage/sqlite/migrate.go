@@ -8,9 +8,19 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const initialSchemaVersion = 1
+const (
+	initialSchemaVersion                  = 1
+	signalsByServiceTimestampIndexVersion = 2
+)
 
-// Migrate aplica o schema SQLite exigido pelo primeiro MVP do Faultmap.
+type migration struct {
+	version    int
+	statements []string
+}
+
+// Migrate aplica, em ordem, as migrations versionadas exigidas pelo Faultmap.
+// Cada migration é uma transação curta para impedir que o banco registre uma
+// versão cujo schema não tenha sido criado integralmente.
 func Migrate(ctx context.Context, database *sql.DB) error {
 	if _, err := database.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -21,36 +31,74 @@ func Migrate(ctx context.Context, database *sql.DB) error {
 		return fmt.Errorf("create migration table: %w", err)
 	}
 
-	var applied bool
-	if err := database.QueryRowContext(ctx,
-		`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)`,
-		initialSchemaVersion,
-	).Scan(&applied); err != nil {
-		return fmt.Errorf("check migration version: %w", err)
-	}
-	if applied {
-		return nil
-	}
-
-	transaction, err := database.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin initial migration: %w", err)
-	}
-	defer func() { _ = transaction.Rollback() }()
-
-	for _, statement := range initialSchemaStatements {
-		if _, err := transaction.ExecContext(ctx, statement); err != nil {
-			return fmt.Errorf("apply initial migration: %w", err)
+	for _, migration := range migrations {
+		applied, err := isMigrationApplied(ctx, database, migration.version)
+		if err != nil {
+			return err
 		}
-	}
-	if _, err := transaction.ExecContext(ctx, `INSERT INTO schema_migrations (version) VALUES (?)`, initialSchemaVersion); err != nil {
-		return fmt.Errorf("record initial migration: %w", err)
-	}
-	if err := transaction.Commit(); err != nil {
-		return fmt.Errorf("commit initial migration: %w", err)
+		if applied {
+			continue
+		}
+		if err := applyMigration(ctx, database, migration); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+// isMigrationApplied verifica se a migration já foi concluída sem inferir o
+// estado a partir do schema, que pode estar incompleto após uma falha externa.
+func isMigrationApplied(ctx context.Context, database *sql.DB, version int) (bool, error) {
+	var applied bool
+	if err := database.QueryRowContext(ctx,
+		`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = ?)`,
+		version,
+	).Scan(&applied); err != nil {
+		return false, fmt.Errorf("check migration version %d: %w", version, err)
+	}
+	return applied, nil
+}
+
+// applyMigration executa uma única migration e só registra sua versão depois
+// que todos os DDLs obrigatórios foram aceitos pelo SQLite.
+func applyMigration(ctx context.Context, database *sql.DB, migration migration) error {
+	transaction, err := database.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin migration %d: %w", migration.version, err)
+	}
+
+	for _, statement := range migration.statements {
+		if _, err := transaction.ExecContext(ctx, statement); err != nil {
+			return rollbackMigration(transaction, migration.version, fmt.Errorf("apply migration: %w", err))
+		}
+	}
+	if _, err := transaction.ExecContext(ctx, `INSERT INTO schema_migrations (version) VALUES (?)`, migration.version); err != nil {
+		return rollbackMigration(transaction, migration.version, fmt.Errorf("record migration: %w", err))
+	}
+	if err := transaction.Commit(); err != nil {
+		return fmt.Errorf("commit migration %d: %w", migration.version, err)
+	}
+	return nil
+}
+
+// rollbackMigration preserva a causa da falha e relata um rollback inesperado.
+func rollbackMigration(transaction *sql.Tx, version int, cause error) error {
+	if rollbackErr := transaction.Rollback(); rollbackErr != nil {
+		return fmt.Errorf("migration %d failed: %w; rollback migration: %v", version, cause, rollbackErr)
+	}
+	return fmt.Errorf("migration %d failed: %w", version, cause)
+}
+
+var migrations = []migration{
+	{version: initialSchemaVersion, statements: initialSchemaStatements},
+	{
+		version: signalsByServiceTimestampIndexVersion,
+		statements: []string{
+			`CREATE INDEX IF NOT EXISTS idx_signals_service_name_timestamp_id
+				ON signals (service_name, timestamp, id)`,
+		},
+	},
 }
 
 var initialSchemaStatements = []string{

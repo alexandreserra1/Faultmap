@@ -17,6 +17,7 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	}
 
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
+	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	for _, table := range []string{
 		"signals",
 		"incidents",
@@ -31,7 +32,27 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	}
 }
 
-// TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied garante que reiniciar o processo não reaplica a migration inicial.
+// TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex garante que bancos já
+// instalados recebem o índice da consulta de sinais sem recriar sua estrutura.
+func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
+	t.Parallel()
+
+	database := openMigrationTestDatabase(t)
+	ctx := context.Background()
+	if err := createVersionOneSchema(ctx, database); err != nil {
+		t.Fatalf("create version one schema: %v", err)
+	}
+
+	if err := Migrate(ctx, database); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	assertMigrationVersion(t, database, initialSchemaVersion, 1)
+	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
+	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
+}
+
+// TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied garante que reiniciar o processo não reaplica migrations concluídas.
 func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	t.Parallel()
 
@@ -45,6 +66,7 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	}
 
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
+	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertTableExists(t, database, "signals")
 }
 
@@ -93,5 +115,41 @@ func assertTableExists(t *testing.T, database *sql.DB, table string) {
 	}
 	if err != nil {
 		t.Fatalf("query table %q: %v", table, err)
+	}
+}
+
+func createVersionOneSchema(ctx context.Context, database *sql.DB) error {
+	if _, err := database.ExecContext(ctx, `
+		CREATE TABLE schema_migrations (
+			version INTEGER PRIMARY KEY,
+			applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)
+	`); err != nil {
+		return err
+	}
+
+	for _, statement := range initialSchemaStatements {
+		if _, err := database.ExecContext(ctx, statement); err != nil {
+			return err
+		}
+	}
+	_, err := database.ExecContext(ctx, `INSERT INTO schema_migrations (version) VALUES (?)`, initialSchemaVersion)
+	return err
+}
+
+func assertIndexExists(t *testing.T, database *sql.DB, index string) {
+	t.Helper()
+
+	var name string
+	err := database.QueryRowContext(
+		context.Background(),
+		"SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+		index,
+	).Scan(&name)
+	if err == sql.ErrNoRows {
+		t.Fatalf("index %q does not exist", index)
+	}
+	if err != nil {
+		t.Fatalf("query index %q: %v", index, err)
 	}
 }
