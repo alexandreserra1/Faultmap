@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/faultmap/faultmap/internal/application"
+	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
@@ -22,6 +23,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newInitCommand())
 	root.AddCommand(newIngestCommand())
 	root.AddCommand(newTelemetryCommand())
+	root.AddCommand(newDiagnoseCommand())
 	return root
 }
 
@@ -198,4 +200,115 @@ func newTelemetryListCommand() *cobra.Command {
 	command.Flags().StringVar(&since, "since", "24h", "janela retroativa de consulta")
 	command.Flags().IntVar(&limit, "limit", 20, "quantidade máxima de sinais")
 	return command
+}
+
+// newDiagnoseCommand agrupa os comandos que comparam períodos e explicam hipóteses de incidente.
+func newDiagnoseCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "diagnose",
+		Short: "Diagnostica um incidente a partir de telemetria persistida",
+	}
+	command.AddCommand(newDiagnoseIncidentCommand())
+	return command
+}
+
+// newDiagnoseIncidentCommand compara baseline e incidente e apresenta findings determinísticos.
+func newDiagnoseIncidentCommand() *cobra.Command {
+	var baseline string
+	var configPath string
+	var incidentDuration string
+	var limit int
+	var serviceName string
+	var until string
+
+	command := &cobra.Command{
+		Use:   "incident",
+		Short: "Diagnostica um incidente de um serviço",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(serviceName) == "" {
+				return fmt.Errorf("diagnosticar incidente: --service é obrigatório")
+			}
+			incidentWindowDuration, err := time.ParseDuration(incidentDuration)
+			if err != nil {
+				return fmt.Errorf("diagnosticar incidente: --since deve ser uma duração positiva: %w", err)
+			}
+			if incidentWindowDuration <= 0 {
+				return fmt.Errorf("diagnosticar incidente: --since deve ser uma duração positiva")
+			}
+			baselineDuration, err := time.ParseDuration(baseline)
+			if err != nil {
+				return fmt.Errorf("diagnosticar incidente: --baseline deve ser uma duração positiva: %w", err)
+			}
+			if baselineDuration <= 0 {
+				return fmt.Errorf("diagnosticar incidente: --baseline deve ser uma duração positiva")
+			}
+
+			incidentEnd, err := diagnosisEnd(until)
+			if err != nil {
+				return err
+			}
+			windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+				incidentEnd.Add(-incidentWindowDuration),
+				incidentEnd,
+				baselineDuration,
+			)
+			if err != nil {
+				return fmt.Errorf("diagnosticar incidente: calcular janelas: %w", err)
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.DiagnoseIncident(
+				command.Context(),
+				serviceName,
+				windows,
+				limit,
+				storage.NewSignalRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return terminal.RenderDiagnosis(
+				command.OutOrStdout(),
+				diagnosis.ServiceName,
+				diagnosis.BaselineSignalCount,
+				diagnosis.IncidentSignalCount,
+				diagnosis.Findings,
+			)
+		},
+	}
+	command.Flags().StringVar(&baseline, "baseline", "60m", "duração da janela baseline")
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&incidentDuration, "since", "30m", "duração da janela de incidente")
+	command.Flags().IntVar(&limit, "limit", 1_000, "quantidade máxima de sinais por janela")
+	command.Flags().StringVar(&serviceName, "service", "", "nome do serviço")
+	command.Flags().StringVar(&until, "until", "", "fim da janela de incidente em RFC 3339")
+	return command
+}
+
+// diagnosisEnd interpreta o instante de referência opcional para reproduzir investigações históricas.
+func diagnosisEnd(until string) (time.Time, error) {
+	if strings.TrimSpace(until) == "" {
+		return time.Now().UTC(), nil
+	}
+	parsed, err := time.Parse(time.RFC3339, until)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("diagnosticar incidente: --until deve usar RFC 3339: %w", err)
+	}
+	return parsed.UTC(), nil
 }

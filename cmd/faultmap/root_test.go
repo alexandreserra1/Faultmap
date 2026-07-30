@@ -149,6 +149,69 @@ func TestTelemetryListCommandExibeSinaisIngeridos(t *testing.T) {
 	}
 }
 
+// TestDiagnoseIncidentCommandExplicaEvidências garante que o diagnóstico correlaciona
+// o erro HTTP, a degradação de duração e o timeout PostgreSQL, sem omitir a limitação
+// de confiança causada pela amostra mínima das fixtures.
+func TestDiagnoseIncidentCommandExplicaEvidências(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	for _, fixtureName := range []string{"checkout-normal.json", "checkout-error-latency.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver caminho da fixture %q: %v", fixtureName, err)
+		}
+
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir fixture %q: %v", fixtureName, err)
+		}
+	}
+
+	var output bytes.Buffer
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident",
+		"--config", configPath,
+		"--service", "checkout-service",
+		"--since", "1m",
+		"--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z",
+		"--limit", "100",
+	})
+	diagnose.SetOut(&output)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnose incident erro = %v", err)
+	}
+
+	for _, expected := range []string{
+		"checkout-service",
+		"HTTP 500",
+		"duração",
+		"PostgreSQL",
+		"timeout",
+		"Confiança: baixa",
+		"Limitação",
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, output.String())
+		}
+	}
+}
+
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	t.Parallel()

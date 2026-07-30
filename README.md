@@ -128,6 +128,22 @@ go run ./cmd/faultmap telemetry list \
 
 A saída mostra somente campos seguros e úteis para investigação: horário, severidade, nome do span, status HTTP, operação de banco, duração, tipo de erro e trace ID. Ela ainda não calcula causa raiz; essa visualização será a entrada dos detectores de erro, latência e timeout.
 
+### Diagnosticar um incidente
+
+Compare uma janela de incidente com a baseline imediatamente anterior:
+
+```bash
+go run ./cmd/faultmap diagnose incident \
+  --config ./faultmap-local/faultmap.yaml \
+  --service checkout-service \
+  --since 1m \
+  --baseline 1m \
+  --until 2025-12-01T10:02:00Z \
+  --limit 100
+```
+
+`--until` é opcional e existe para reproduzir telemetria histórica; sem ele, o Faultmap usa o horário atual. O diagnóstico inicial compara taxa de erro HTTP, duração p95 e timeout de banco. Cada hipótese mostra score, evidências, confiança e limitações. Com as fixtures fornecidas, a confiança é baixa porque há somente um trace por janela — correlação não é apresentada como causalidade.
+
 ## Especificação
 
 A especificação é modular e sua leitura completa é obrigatória antes de implementar ou revisar o projeto. Comece por [FAULTMAP_MVP.md](FAULTMAP_MVP.md), que direciona para todos os documentos normativos em [`docs/mvp/`](docs/mvp/).
