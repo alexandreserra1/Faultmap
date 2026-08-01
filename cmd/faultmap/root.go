@@ -9,6 +9,7 @@ import (
 	"github.com/faultmap/faultmap/internal/application"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/platform/config"
+	"github.com/faultmap/faultmap/internal/ranking"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
 	"github.com/spf13/cobra"
@@ -278,6 +279,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 				serviceName,
 				windows,
 				limit,
+				rankingConfig(loadedConfig),
 				storage.NewSignalRepository(database),
 			)
 			if err != nil {
@@ -289,6 +291,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 				diagnosis.BaselineSignalCount,
 				diagnosis.IncidentSignalCount,
 				diagnosis.Findings,
+				diagnosis.Suspects,
 			)
 		},
 	}
@@ -299,6 +302,20 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 	command.Flags().StringVar(&serviceName, "service", "", "nome do serviço")
 	command.Flags().StringVar(&until, "until", "", "fim da janela de incidente em RFC 3339")
 	return command
+}
+
+// rankingConfig traduz somente opções validadas do bootstrap para o contrato
+// puro do motor, evitando que o pacote de ranking dependa do formato YAML.
+func rankingConfig(configuration config.Config) ranking.Config {
+	return ranking.Config{
+		Weights: ranking.Weights{
+			ErrorRateDelta:   configuration.Ranking.Weights.ErrorRateDelta,
+			DatabaseEvidence: configuration.Ranking.Weights.DatabaseEvidence,
+			GraphProximity:   configuration.Ranking.Weights.GraphProximity,
+			LatencyDelta:     configuration.Ranking.Weights.LatencyDelta,
+		},
+		TopN: configuration.Investigation.TopSuspects,
+	}
 }
 
 // diagnosisEnd interpreta o instante de referência opcional para reproduzir investigações históricas.

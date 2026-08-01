@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -159,11 +160,43 @@ func (config Config) Validate() error {
 	if config.Investigation.TopSuspects < 1 {
 		return fmt.Errorf("configuração inválida: investigation.top_suspects deve ser maior que zero")
 	}
+	if err := validateRankingWeights(config.Ranking.Weights); err != nil {
+		return err
+	}
 	if config.Privacy.MaxAttributeLength < 1 {
 		return fmt.Errorf("configuração inválida: privacy.max_attribute_length deve ser maior que zero")
 	}
 	if config.GitHub.Enabled && strings.TrimSpace(config.GitHub.Repository) == "" {
 		return fmt.Errorf("configuração inválida: github.repository é obrigatório quando github.enabled é true")
+	}
+	return nil
+}
+
+// validateRankingWeights garante que cada contribuição e sua soma preservem o
+// contrato normalizado do score, sem corrigir silenciosamente o YAML do usuário.
+func validateRankingWeights(weights RankingWeights) error {
+	values := []struct {
+		name  string
+		value float64
+	}{
+		{name: "error_rate_delta", value: weights.ErrorRateDelta},
+		{name: "deployment_proximity", value: weights.DeploymentProximity},
+		{name: "database_evidence", value: weights.DatabaseEvidence},
+		{name: "graph_proximity", value: weights.GraphProximity},
+		{name: "latency_delta", value: weights.LatencyDelta},
+		{name: "log_correlation", value: weights.LogCorrelation},
+	}
+
+	total := 0.0
+	for _, weight := range values {
+		if math.IsNaN(weight.value) || math.IsInf(weight.value, 0) || weight.value < 0 || weight.value > 1 {
+			return fmt.Errorf("configuração inválida: ranking.weights.%s deve estar entre 0 e 1", weight.name)
+		}
+		total += weight.value
+	}
+	const floatingPointTolerance = 1e-9
+	if total <= floatingPointTolerance || total > 1+floatingPointTolerance {
+		return fmt.Errorf("configuração inválida: soma de ranking.weights deve ser maior que 0 e no máximo 1")
 	}
 	return nil
 }

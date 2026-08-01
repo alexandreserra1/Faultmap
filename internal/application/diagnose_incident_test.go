@@ -8,6 +8,7 @@ import (
 
 	"github.com/faultmap/faultmap/internal/detection"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
+	"github.com/faultmap/faultmap/internal/ranking"
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 )
 
@@ -31,7 +32,7 @@ func TestDiagnoseIncidentComparaJanelasEDetectaEvidências(t *testing.T) {
 		},
 	}
 
-	diagnosis, err := DiagnoseIncident(context.Background(), "checkout-service", windows, 100, reader)
+	diagnosis, err := DiagnoseIncident(context.Background(), "checkout-service", windows, 100, testRankingConfig(), reader)
 	if err != nil {
 		t.Fatalf("DiagnoseIncident() erro = %v", err)
 	}
@@ -46,6 +47,12 @@ func TestDiagnoseIncidentComparaJanelasEDetectaEvidências(t *testing.T) {
 	if len(reader.windows) != 2 {
 		t.Fatalf("consultas ao repositório = %d, esperado 2", len(reader.windows))
 	}
+	if len(diagnosis.Suspects) != 1 || diagnosis.Suspects[0].ID != "checkout-service" {
+		t.Fatalf("ranking = %#v, esperado checkout-service como suspeito", diagnosis.Suspects)
+	}
+	if len(diagnosis.Suspects[0].Contributions) != 3 {
+		t.Fatalf("contribuições = %#v, esperado uma por finding conhecido", diagnosis.Suspects[0].Contributions)
+	}
 }
 
 // TestDiagnoseIncidentRejeitaLimiteInválido impede consultas ilimitadas ao repositório.
@@ -59,12 +66,45 @@ func TestDiagnoseIncidentRejeitaLimiteInválido(t *testing.T) {
 	}
 	reader := &diagnosisReaderFake{}
 
-	_, err = DiagnoseIncident(context.Background(), "checkout-service", windows, 0, reader)
+	_, err = DiagnoseIncident(context.Background(), "checkout-service", windows, 0, testRankingConfig(), reader)
 	if err == nil {
 		t.Fatal("DiagnoseIncident() erro = nil, esperado limite inválido")
 	}
 	if len(reader.windows) != 0 {
 		t.Fatalf("consultas ao repositório = %d, esperado 0", len(reader.windows))
+	}
+}
+
+// TestDiagnoseIncidentRejeitaRankingInválidoAntesDasConsultas garante que uma
+// falha de configuração não abre trabalho desnecessário no banco.
+func TestDiagnoseIncidentRejeitaRankingInválidoAntesDasConsultas(t *testing.T) {
+	t.Parallel()
+
+	start := time.Date(2025, time.December, 1, 10, 1, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(start, start.Add(time.Minute), time.Minute)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+	reader := &diagnosisReaderFake{}
+
+	_, err = DiagnoseIncident(context.Background(), "checkout-service", windows, 100, ranking.Config{}, reader)
+	if err == nil {
+		t.Fatal("DiagnoseIncident() erro = nil, esperado ranking inválido")
+	}
+	if len(reader.windows) != 0 {
+		t.Fatalf("consultas ao repositório = %d, esperado 0", len(reader.windows))
+	}
+}
+
+func testRankingConfig() ranking.Config {
+	return ranking.Config{
+		Weights: ranking.Weights{
+			ErrorRateDelta:   0.25,
+			DatabaseEvidence: 0.20,
+			GraphProximity:   0.15,
+			LatencyDelta:     0.10,
+		},
+		TopN: 3,
 	}
 }
 

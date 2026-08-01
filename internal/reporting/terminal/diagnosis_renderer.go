@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/faultmap/faultmap/internal/detection"
+	"github.com/faultmap/faultmap/internal/ranking"
 )
 
 // RenderDiagnosis escreve hipóteses, evidências e limitações de um incidente de forma auditável.
@@ -16,6 +17,7 @@ func RenderDiagnosis(
 	baselineSignalCount int,
 	incidentSignalCount int,
 	findings []detection.Finding,
+	suspects []ranking.Suspect,
 ) error {
 	var output strings.Builder
 	fmt.Fprintf(&output, "Diagnóstico do incidente — %s\n\n", serviceName)
@@ -28,6 +30,8 @@ func RenderDiagnosis(
 		}
 		return nil
 	}
+
+	renderSuspectRanking(&output, suspects)
 
 	orderedFindings := append([]detection.Finding(nil), findings...)
 	sort.Slice(orderedFindings, func(firstIndex, secondIndex int) bool {
@@ -69,6 +73,24 @@ func RenderDiagnosis(
 		return fmt.Errorf("escrever diagnóstico no terminal: %w", err)
 	}
 	return nil
+}
+
+// renderSuspectRanking apresenta o cálculo agregado antes das evidências para
+// deixar explícito por que cada serviço recebeu sua posição.
+func renderSuspectRanking(output *strings.Builder, suspects []ranking.Suspect) {
+	if len(suspects) == 0 {
+		return
+	}
+	output.WriteString("\nRanking de suspeitos:\n")
+	for index, suspect := range suspects {
+		fmt.Fprintf(output, "%d. %s\n", index+1, suspect.Label)
+		fmt.Fprintf(output, "   Score agregado: %.2f\n", suspect.Score)
+		fmt.Fprintf(output, "   Confiança: %s\n", suspect.Confidence)
+		output.WriteString("   Contribuições:\n")
+		for _, contribution := range suspect.Contributions {
+			fmt.Fprintf(output, "   - %s: %s\n", contribution.RuleID, contribution.Reason)
+		}
+	}
 }
 
 func ruleLabel(rule string) string {

@@ -213,7 +213,8 @@ func TestDiagnoseIncidentCommandExplicaEvidências(t *testing.T) {
 }
 
 // TestDiagnoseIncidentCommandExplicaAmostraRepresentativa cobre o fluxo completo
-// de ingestão e diagnóstico com volume suficiente para sustentar confiança alta.
+// de ingestão e diagnóstico com volume suficiente para sustentar confiança alta,
+// ranking agregado e contribuições auditáveis sem ocultar as evidências originais.
 func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	t.Parallel()
 
@@ -261,6 +262,14 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 
 	diagnosisOutput := output.String()
 	for _, expected := range []string{
+		"Ranking de suspeitos:",
+		"1. checkout-service",
+		"Score agregado: 0.40",
+		"Contribuições:",
+		"error_rate_delta: score 0.40 × peso 0.25 = 0.10",
+		"latency_delta: score 0.94 × peso 0.10 = 0.09",
+		"database_timeout: score 0.30 × peso 0.20 = 0.06",
+		"database_http_trace_correlation: score 1.00 × peso 0.15 = 0.15",
 		"Aumento da taxa de erros HTTP",
 		"Aumento da latência HTTP",
 		"Timeout no PostgreSQL",

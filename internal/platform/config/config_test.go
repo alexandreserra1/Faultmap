@@ -50,6 +50,11 @@ investigation:
 ranking:
   weights:
     error_rate_delta: 0.30
+    deployment_proximity: 0.15
+    database_evidence: 0.20
+    graph_proximity: 0.15
+    latency_delta: 0.10
+    log_correlation: 0.10
 github:
   enabled: true
   repository: "acme/checkout"
@@ -186,6 +191,44 @@ func TestLoadRejeitaGitHubHabilitadoSemRepositório(t *testing.T) {
 	_, err := Load(context.Background(), configPath)
 	if err == nil {
 		t.Fatal("Load() erro = nil, esperado erro para integração GitHub sem repositório")
+	}
+}
+
+// TestValidateRejeitaPesosDeRankingInválidos impede scores negativos,
+// contribuições acima do contrato e configurações sem qualquer contribuição.
+func TestValidateRejeitaPesosDeRankingInválidos(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		weights RankingWeights
+	}{
+		{name: "peso negativo", weights: RankingWeights{ErrorRateDelta: -0.1}},
+		{name: "peso acima de um", weights: RankingWeights{ErrorRateDelta: 1.1}},
+		{name: "soma zero", weights: RankingWeights{}},
+		{name: "soma acima de um", weights: RankingWeights{ErrorRateDelta: 0.6, LatencyDelta: 0.5}},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			configuration := Default()
+			configuration.Ranking.Weights = testCase.weights
+			if err := configuration.Validate(); err == nil {
+				t.Fatalf("Validate() erro = nil para %#v", testCase.weights)
+			}
+		})
+	}
+}
+
+// TestValidateAceitaPesosDefault confirma que a configuração distribuída pode
+// alimentar o ranking sem normalização implícita.
+func TestValidateAceitaPesosDefault(t *testing.T) {
+	t.Parallel()
+
+	if err := Default().Validate(); err != nil {
+		t.Fatalf("Default().Validate() erro = %v", err)
 	}
 }
 

@@ -32,6 +32,8 @@ ranking:
 
 O score final fica entre 0 e 1; toda contribuição é armazenada; os pesos são configuráveis; findings com pouco volume têm peso reduzido; evidências contraditórias diminuem confiança; ausência de dados vira limitação, não conclusão inventada. Retornar top 3 por padrão, com limite configurável pelo usuário.
 
+Na implementação inicial, `error_rate_delta` usa `error_rate_delta`, `latency_delta` usa `latency_delta`, `database_timeout` usa `database_evidence` e `database_http_trace_correlation` usa `graph_proximity`, pois representa a ligação entre sinais no mesmo trace. Cada contribuição é calculada como `score do finding × peso`. O total indica prioridade de investigação e não deve ser descrito como probabilidade causal. Pesos do YAML ficam entre 0 e 1, com soma maior que zero e no máximo 1.
+
 ## Integração GitHub
 
 ```bash

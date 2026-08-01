@@ -140,7 +140,7 @@ func renderDiagnosisForTest(t *testing.T, findings []detection.Finding) string {
 	t.Helper()
 
 	var output bytes.Buffer
-	if err := RenderDiagnosis(&output, "checkout-service", 20, 20, findings); err != nil {
+	if err := RenderDiagnosis(&output, "checkout-service", 20, 20, findings, nil); err != nil {
 		t.Fatalf("RenderDiagnosis() erro = %v", err)
 	}
 	return output.String()

@@ -7,6 +7,7 @@ import (
 
 	"github.com/faultmap/faultmap/internal/detection"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
+	"github.com/faultmap/faultmap/internal/ranking"
 )
 
 // Diagnosis reúne as janelas, contagens e hipóteses produzidas para uma investigação de incidente.
@@ -16,6 +17,7 @@ type Diagnosis struct {
 	BaselineSignalCount int
 	IncidentSignalCount int
 	Findings            []detection.Finding
+	Suspects            []ranking.Suspect
 }
 
 // DiagnoseIncident compara sinais das janelas baseline e incidente sem acessar infraestrutura diretamente.
@@ -24,6 +26,7 @@ func DiagnoseIncident(
 	serviceName string,
 	windows incidentdomain.InvestigationWindow,
 	limit int,
+	rankingConfig ranking.Config,
 	reader SignalReader,
 ) (Diagnosis, error) {
 	if strings.TrimSpace(serviceName) == "" {
@@ -31,6 +34,9 @@ func DiagnoseIncident(
 	}
 	if err := windows.Validate(); err != nil {
 		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: janelas inválidas: %w", err)
+	}
+	if err := rankingConfig.Validate(); err != nil {
+		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: ranking inválido: %w", err)
 	}
 
 	baseline, err := ListSignals(ctx, serviceName, windows.Baseline.Start, windows.Baseline.End, limit, reader)
@@ -47,11 +53,16 @@ func DiagnoseIncident(
 		Baseline:    baseline,
 		Incident:    incident,
 	})
+	suspects, err := ranking.Rank(findings, rankingConfig)
+	if err != nil {
+		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: ranquear suspeitos: %w", err)
+	}
 	return Diagnosis{
 		ServiceName:         serviceName,
 		Windows:             windows,
 		BaselineSignalCount: len(baseline),
 		IncidentSignalCount: len(incident),
 		Findings:            findings,
+		Suspects:            suspects,
 	}, nil
 }

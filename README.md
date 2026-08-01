@@ -166,7 +166,9 @@ go run ./cmd/faultmap diagnose incident \
   --limit 100
 ```
 
-Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de erro HTTP de 0% para 40%, duração p95 de 160 ms para 2.500 ms, 6 timeouts em 20 operações PostgreSQL e confiança alta. Os 6 traces com timeout também apresentam impacto HTTP no mesmo fluxo distribuído, fortalecendo a hipótese sem transformá-la em prova causal. Limitações repetidas são consolidadas ao final do relatório.
+Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de erro HTTP de 0% para 40%, duração p95 de 160 ms para 2.500 ms, 6 timeouts em 20 operações PostgreSQL e confiança alta. Os 6 traces com timeout também apresentam impacto HTTP no mesmo fluxo distribuído, fortalecendo a hipótese sem transformá-la em prova causal.
+
+O terminal agrega essas evidências no ranking do `checkout-service`. Com os pesos padrão, o score é `0.40`: erros HTTP contribuem `0.10`, latência `0.09`, timeout de banco `0.06` e correlação pelo trace `0.15`. Esse número representa prioridade determinística de investigação, não probabilidade de causa. Cada parcela permanece visível e limitações repetidas são consolidadas ao final do relatório.
 
 ## Especificação
 
@@ -174,4 +176,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria e diagnostica incidentes por comparação de janelas. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. As próximas entregas ampliarão o ranking e as fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria e diagnostica incidentes por comparação de janelas. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas ampliarão as fontes de evidência antes da criação do `demo-shop`.
