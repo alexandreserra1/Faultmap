@@ -8,6 +8,7 @@ Este documento é parte obrigatória da especificação do MVP. Leia também o [
 - `latency_delta`: detecta aumento de p95 e p99; não produz finding com volume insuficiente.
 - `deployment_proximity`: eleva o score de serviços com deploy próximo ao incidente, versão modificada ou commits que tocaram arquivos relacionados. Nunca infere causalidade apenas pela proximidade.
 - `database_timeout`: identifica spans de banco com timeout, duração acima do limite, erros de contexto/status e aumento frente à baseline.
+- `database_http_trace_correlation`: relaciona, como hipótese, timeout PostgreSQL a erro HTTP 5xx ou latência HTTP acima do p95 da baseline quando os sinais compartilham o mesmo `trace_id`. Conta traces distintos, ignora identificadores vazios e nunca apresenta correlação como prova causal.
 - `database_error`: identifica crescimento de falhas de conexão, erros de query, respostas inválidas e transações abortadas.
 - `retry_storm`: identifica repetição anormal de chamadas semelhantes no mesmo trace ou janela.
 - `dependency_failure`: identifica downstream que falha antes de upstream, traces conectando os serviços e aumento correlacionado de erros.

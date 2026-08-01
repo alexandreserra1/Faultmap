@@ -129,6 +129,103 @@ func TestDatabaseTimeoutIgnoraErroGenerico(t *testing.T) {
 	}
 }
 
+// TestTraceCorrelationRelacionaTimeoutEImpactoHTTPNoMesmoTrace protege a hipótese contra correlações apenas temporais.
+func TestTraceCorrelationRelacionaTimeoutEImpactoHTTPNoMesmoTrace(t *testing.T) {
+	t.Parallel()
+
+	baseline := tracePairs("baseline", 5, false, false, 120)
+	incident := tracePairs("incident", 5, true, true, 2_000)
+
+	finding, found := DetectTraceCorrelation(Input{
+		ServiceName: "checkout-service",
+		Baseline:    baseline,
+		Incident:    incident,
+	})
+	if !found {
+		t.Fatal("DetectTraceCorrelation() não relacionou timeout e erro HTTP pertencentes ao mesmo trace")
+	}
+	if finding.Rule != RuleTraceCorrelation {
+		t.Fatalf("regra = %q, esperava %q", finding.Rule, RuleTraceCorrelation)
+	}
+	if finding.Confidence != ConfidenceHigh {
+		t.Fatalf("confiança = %q, esperava %q para cinco traces correlacionados", finding.Confidence, ConfidenceHigh)
+	}
+	if len(finding.Evidence) != 1 {
+		t.Fatalf("evidências = %d, esperava uma evidência quantitativa consolidada", len(finding.Evidence))
+	}
+	evidence := finding.Evidence[0]
+	if !contains([]string{evidence.Summary}, "5 de 5") {
+		t.Fatalf("evidência não quantifica os traces correlacionados: %q", evidence.Summary)
+	}
+	if !contains([]string{evidence.Summary}, "mesmo trace") {
+		t.Fatalf("evidência não explicita a correlação pelo mesmo trace_id: %q", evidence.Summary)
+	}
+	if !contains([]string{evidence.Summary}, "hipótese") {
+		t.Fatalf("evidência deveria apresentar hipótese, sem afirmar causa: %q", evidence.Summary)
+	}
+	if !contains(finding.Limitations, "não comprova causalidade") {
+		t.Fatalf("finding deveria preservar a limitação causal: %#v", finding.Limitations)
+	}
+}
+
+// TestTraceCorrelationNaoRelacionaSinaisDeTracesDiferentes evita atribuir um erro HTTP a outro fluxo distribuído.
+func TestTraceCorrelationNaoRelacionaSinaisDeTracesDiferentes(t *testing.T) {
+	t.Parallel()
+
+	incident := tracePairs("incident", 5, true, true, 2_000)
+	for index := range incident {
+		if incident[index].Attributes["db.system.name"] != "" {
+			incident[index].TraceID = "database-" + incident[index].TraceID
+		}
+	}
+
+	_, found := DetectTraceCorrelation(Input{
+		ServiceName: "checkout-service",
+		Baseline:    tracePairs("baseline", 5, false, false, 120),
+		Incident:    incident,
+	})
+	if found {
+		t.Fatal("DetectTraceCorrelation() correlacionou timeout e erro HTTP de trace_ids diferentes")
+	}
+}
+
+// TestTraceCorrelationAceitaLatenciaAltaSemErroHTTP cobre impacto percebido mesmo quando a resposta termina com sucesso.
+func TestTraceCorrelationAceitaLatenciaAltaSemErroHTTP(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectTraceCorrelation(Input{
+		ServiceName: "checkout-service",
+		Baseline:    tracePairs("baseline", 5, false, false, 100),
+		Incident:    tracePairs("incident", 5, true, false, 2_000),
+	})
+	if !found {
+		t.Fatal("DetectTraceCorrelation() não relacionou timeout e alta latência HTTP no mesmo trace")
+	}
+	if finding.Rule != RuleTraceCorrelation {
+		t.Fatalf("regra = %q, esperava %q", finding.Rule, RuleTraceCorrelation)
+	}
+}
+
+// TestTraceCorrelationReduzConfiancaParaAmostraPequena deixa explícita a cautela estatística da hipótese.
+func TestTraceCorrelationReduzConfiancaParaAmostraPequena(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectTraceCorrelation(Input{
+		ServiceName: "checkout-service",
+		Baseline:    tracePairs("baseline", 1, false, false, 100),
+		Incident:    tracePairs("incident", 1, true, true, 2_000),
+	})
+	if !found {
+		t.Fatal("DetectTraceCorrelation() deveria produzir hipótese para um trace correlacionado")
+	}
+	if finding.Confidence != ConfidenceLow {
+		t.Fatalf("confiança = %q, esperava %q para um trace correlacionado", finding.Confidence, ConfidenceLow)
+	}
+	if !contains(finding.Limitations, "amostra pequena") {
+		t.Fatalf("finding deveria declarar amostra pequena: %#v", finding.Limitations)
+	}
+}
+
 func assertFinding(t *testing.T, findings []Finding, rule string, confidence Confidence) Finding {
 	t.Helper()
 	for _, finding := range findings {
@@ -185,6 +282,48 @@ func databaseTimeoutSignals(prefix string, count, timeoutCount int, durationMS f
 			Attributes:   attributes,
 			Measurements: map[string]float64{"duration_ms": durationMS},
 		})
+	}
+	return signals
+}
+
+// tracePairs cria pares HTTP/PostgreSQL com trace_id compartilhado para exercitar a correlação sem depender da ordem dos spans.
+func tracePairs(prefix string, count int, databaseTimeout, httpError bool, httpDurationMS float64) []domain.Signal {
+	signals := make([]domain.Signal, 0, count*2)
+	for index := range count {
+		traceID := fmt.Sprintf("%s-trace-%d", prefix, index)
+		statusCode := "201"
+		httpSeverity := "INFO"
+		if httpError {
+			statusCode = "500"
+			httpSeverity = "ERROR"
+		}
+		databaseAttributes := map[string]string{
+			"db.system.name":    "postgresql",
+			"db.operation.name": "INSERT",
+		}
+		databaseSeverity := "INFO"
+		if databaseTimeout {
+			databaseAttributes["error.type"] = "timeout"
+			databaseSeverity = "ERROR"
+		}
+		signals = append(signals,
+			domain.Signal{
+				ID:           fmt.Sprintf("%s-http-%d", prefix, index),
+				ServiceName:  "checkout-service",
+				TraceID:      traceID,
+				Severity:     httpSeverity,
+				Attributes:   map[string]string{"http.response.status_code": statusCode},
+				Measurements: map[string]float64{"duration_ms": httpDurationMS},
+			},
+			domain.Signal{
+				ID:           fmt.Sprintf("%s-database-%d", prefix, index),
+				ServiceName:  "checkout-service",
+				TraceID:      traceID,
+				Severity:     databaseSeverity,
+				Attributes:   databaseAttributes,
+				Measurements: map[string]float64{"duration_ms": httpDurationMS - 20},
+			},
+		)
 	}
 	return signals
 }

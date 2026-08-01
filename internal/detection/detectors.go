@@ -18,6 +18,8 @@ const (
 	RuleLatencyDelta = "latency_delta"
 	// RuleDatabaseTimeout identifica timeouts ou erros em spans de banco de dados.
 	RuleDatabaseTimeout = "database_timeout"
+	// RuleTraceCorrelation relaciona impacto HTTP e timeout PostgreSQL observados no mesmo trace.
+	RuleTraceCorrelation = "database_http_trace_correlation"
 
 	minimumSampleSize = 5
 )
@@ -62,7 +64,7 @@ func Run(input Input) []Finding {
 	input.Baseline = signalsForService(input.ServiceName, input.Baseline)
 	input.Incident = signalsForService(input.ServiceName, input.Incident)
 
-	findings := make([]Finding, 0, 3)
+	findings := make([]Finding, 0, 4)
 	if finding, found := DetectErrorRateDelta(input); found {
 		findings = append(findings, finding)
 	}
@@ -70,6 +72,9 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectDatabaseTimeout(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectTraceCorrelation(input); found {
 		findings = append(findings, finding)
 	}
 	return findings
@@ -170,6 +175,61 @@ func DetectDatabaseTimeout(input Input) (Finding, bool) {
 	), true
 }
 
+// DetectTraceCorrelation produz uma hipótese quando um timeout PostgreSQL e um
+// impacto HTTP aparecem no mesmo trace. A associação fortalece a investigação,
+// mas não determina qual sinal causou o outro.
+func DetectTraceCorrelation(input Input) (Finding, bool) {
+	baselineHTTP := filterHTTPSignals(input.Baseline)
+	baselineP95, baselineOK := percentile95(baselineHTTP)
+	if !baselineOK {
+		return Finding{}, false
+	}
+
+	timeoutByTrace := signalsByTrace(databaseTimeouts(filterDatabaseSignals(input.Incident)))
+	httpByTrace := signalsByTrace(filterHTTPSignals(input.Incident))
+	if len(timeoutByTrace) == 0 || len(httpByTrace) == 0 {
+		return Finding{}, false
+	}
+
+	correlatedTraceIDs := make([]string, 0, len(timeoutByTrace))
+	correlatedSignals := make([]domain.Signal, 0, len(timeoutByTrace)*2)
+	for traceID, timeoutSignals := range timeoutByTrace {
+		httpSignals := httpByTrace[traceID]
+		impactSignals := filterHTTPImpact(httpSignals, baselineP95)
+		if len(impactSignals) == 0 {
+			continue
+		}
+		correlatedTraceIDs = append(correlatedTraceIDs, traceID)
+		correlatedSignals = append(correlatedSignals, timeoutSignals...)
+		correlatedSignals = append(correlatedSignals, impactSignals...)
+	}
+	if len(correlatedTraceIDs) == 0 {
+		return Finding{}, false
+	}
+	sort.Strings(correlatedTraceIDs)
+
+	timeoutTraceCount := len(timeoutByTrace)
+	correlatedCount := len(correlatedTraceIDs)
+	return newFinding(
+		RuleTraceCorrelation,
+		input.ServiceName,
+		fraction(correlatedCount, timeoutTraceCount),
+		sampleConfidence(uniqueTraceCount(baselineHTTP), timeoutTraceCount),
+		[]Evidence{{
+			Summary: fmt.Sprintf(
+				"%d de %d traces com timeout PostgreSQL também apresentaram erro HTTP 5xx ou latência HTTP acima do p95 da baseline. Esta é uma hipótese baseada em sinais do mesmo trace.",
+				correlatedCount,
+				timeoutTraceCount,
+			),
+			SignalIDs:     signalIDs(correlatedSignals),
+			BaselineValue: baselineP95,
+			IncidentValue: fraction(correlatedCount, timeoutTraceCount),
+		}},
+		uniqueTraceCount(baselineHTTP),
+		timeoutTraceCount,
+	), true
+}
+
 // newFinding centraliza as garantias comuns de score, cautela estatística e ausência de afirmação causal.
 func newFinding(rule, serviceName string, score float64, confidence Confidence, evidence []Evidence, baselineCount, incidentCount int) Finding {
 	limitations := []string{"Correlação entre sinais não comprova causalidade."}
@@ -233,6 +293,38 @@ func databaseTimeouts(signals []domain.Signal) []domain.Signal {
 		}
 	}
 	return timeouts
+}
+
+// signalsByTrace ignora trace_ids vazios para impedir que sinais sem contexto de
+// propagação sejam associados apenas por compartilharem a ausência do identificador.
+func signalsByTrace(signals []domain.Signal) map[string][]domain.Signal {
+	grouped := make(map[string][]domain.Signal)
+	for _, signal := range signals {
+		traceID := strings.TrimSpace(signal.TraceID)
+		if traceID == "" {
+			continue
+		}
+		grouped[traceID] = append(grouped[traceID], signal)
+	}
+	return grouped
+}
+
+// filterHTTPImpact mantém respostas 5xx e requisições cuja duração ultrapassou
+// o p95 da baseline, cobrindo falhas explícitas e degradação percebida.
+func filterHTTPImpact(signals []domain.Signal, baselineP95 float64) []domain.Signal {
+	impacts := make([]domain.Signal, 0, len(signals))
+	for _, signal := range signals {
+		statusCode, statusErr := strconv.Atoi(signal.Attributes["http.response.status_code"])
+		duration, hasDuration := signal.Measurements["duration_ms"]
+		if (statusErr == nil && statusCode >= 500 && statusCode <= 599) || (hasDuration && duration > baselineP95) {
+			impacts = append(impacts, signal)
+		}
+	}
+	return impacts
+}
+
+func uniqueTraceCount(signals []domain.Signal) int {
+	return len(signalsByTrace(signals))
 }
 
 func databaseTimeoutSummary(baselineTimeouts, baselineCount, incidentTimeouts, incidentCount int, system string) string {

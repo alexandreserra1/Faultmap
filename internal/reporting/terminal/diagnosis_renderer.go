@@ -79,6 +79,8 @@ func ruleLabel(rule string) string {
 		return "Aumento da latência HTTP"
 	case detection.RuleDatabaseTimeout:
 		return "Timeout no PostgreSQL"
+	case detection.RuleTraceCorrelation:
+		return "Timeout PostgreSQL correlacionado a impacto HTTP"
 	default:
 		return "Hipótese detectada"
 	}

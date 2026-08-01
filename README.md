@@ -142,7 +142,7 @@ go run ./cmd/faultmap diagnose incident \
   --limit 100
 ```
 
-`--until` é opcional e existe para reproduzir telemetria histórica; sem ele, o Faultmap usa o horário atual. O diagnóstico inicial compara taxa de erro HTTP, duração p95 e timeout de banco. Cada hipótese mostra score, evidências, confiança e limitações. Com as fixtures mínimas `checkout-normal.json` e `checkout-error-latency.json`, a confiança é baixa porque há somente um trace por janela — correlação não é apresentada como causalidade.
+`--until` é opcional e existe para reproduzir telemetria histórica; sem ele, o Faultmap usa o horário atual. O diagnóstico inicial compara taxa de erro HTTP, duração p95 e timeout de banco. Ele também relaciona timeout PostgreSQL a erro ou alta latência HTTP quando os sinais possuem o mesmo `trace_id`. Cada hipótese mostra score, evidências, confiança e limitações. Com as fixtures mínimas `checkout-normal.json` e `checkout-error-latency.json`, a confiança é baixa porque há somente um trace por janela — correlação não é apresentada como causalidade.
 
 Para validar o diagnóstico com uma amostra maior e resultados determinísticos, use um workspace separado:
 
@@ -166,7 +166,7 @@ go run ./cmd/faultmap diagnose incident \
   --limit 100
 ```
 
-Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de erro HTTP de 0% para 40%, duração p95 de 160 ms para 2.500 ms, 6 timeouts em 20 operações PostgreSQL e confiança alta. Limitações repetidas são consolidadas ao final do relatório.
+Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de erro HTTP de 0% para 40%, duração p95 de 160 ms para 2.500 ms, 6 timeouts em 20 operações PostgreSQL e confiança alta. Os 6 traces com timeout também apresentam impacto HTTP no mesmo fluxo distribuído, fortalecendo a hipótese sem transformá-la em prova causal. Limitações repetidas são consolidadas ao final do relatório.
 
 ## Especificação
 
@@ -174,4 +174,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já oferece `faultmap init`, com configuração YAML, SQLite e migrations iniciais. A próxima etapa é concluir o bootstrap e as verificações das migrations antes de criar o `demo-shop` e iniciar a ingestão de telemetria.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria e diagnostica incidentes por comparação de janelas. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. As próximas entregas ampliarão o ranking e as fontes de evidência antes da criação do `demo-shop`.
