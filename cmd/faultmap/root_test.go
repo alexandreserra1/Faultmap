@@ -204,11 +204,80 @@ func TestDiagnoseIncidentCommandExplicaEvidências(t *testing.T) {
 		"PostgreSQL",
 		"timeout",
 		"Confiança: baixa",
-		"Limitação",
+		"Limitações gerais:",
 	} {
 		if !strings.Contains(output.String(), expected) {
 			t.Errorf("saída não contém %q:\n%s", expected, output.String())
 		}
+	}
+}
+
+// TestDiagnoseIncidentCommandExplicaAmostraRepresentativa cobre o fluxo completo
+// de ingestão e diagnóstico com volume suficiente para sustentar confiança alta.
+func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	for _, fixtureName := range []string{"checkout-baseline-sample.json", "checkout-incident-sample.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver caminho da fixture %q: %v", fixtureName, err)
+		}
+
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir fixture %q: %v", fixtureName, err)
+		}
+	}
+
+	var output bytes.Buffer
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident",
+		"--config", configPath,
+		"--service", "checkout-service",
+		"--since", "1m",
+		"--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z",
+		"--limit", "100",
+	})
+	diagnose.SetOut(&output)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnose incident erro = %v", err)
+	}
+
+	diagnosisOutput := output.String()
+	for _, expected := range []string{
+		"Aumento da taxa de erros HTTP",
+		"Aumento da latência HTTP",
+		"Timeout no PostgreSQL",
+		"Confiança: alta",
+		"taxa de erro aumentou de 0.00% para 40.00%",
+		"duração p95 (latência) HTTP aumentou",
+		"6 de 20 operações PostgreSQL tiveram timeout",
+		"Limitações gerais:",
+	} {
+		if !strings.Contains(diagnosisOutput, expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, diagnosisOutput)
+		}
+	}
+
+	const causalLimitation = "Correlação entre sinais não comprova causalidade."
+	if occurrences := strings.Count(diagnosisOutput, causalLimitation); occurrences != 1 {
+		t.Errorf("limitação geral aparece %d vezes, esperado 1:\n%s", occurrences, diagnosisOutput)
 	}
 }
 

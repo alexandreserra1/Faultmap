@@ -145,22 +145,23 @@ func DetectDatabaseTimeout(input Input) (Finding, bool) {
 		return Finding{}, false
 	}
 
-	baselineFailures := databaseFailures(baseline)
-	incidentFailures := databaseFailures(incident)
-	if len(incidentFailures) == 0 {
+	baselineTimeouts := databaseTimeouts(baseline)
+	incidentTimeouts := databaseTimeouts(incident)
+	if len(incidentTimeouts) == 0 {
 		return Finding{}, false
 	}
 
-	baselineRate := fraction(len(baselineFailures), len(baseline))
-	incidentRate := fraction(len(incidentFailures), len(incident))
+	baselineRate := fraction(len(baselineTimeouts), len(baseline))
+	incidentRate := fraction(len(incidentTimeouts), len(incident))
+	systems := strings.Join(databaseSystems(incidentTimeouts), ", ")
 	return newFinding(
 		RuleDatabaseTimeout,
 		input.ServiceName,
 		incidentRate,
 		sampleConfidence(len(baseline), len(incident)),
 		[]Evidence{{
-			Summary:       fmt.Sprintf("Foram observados %d timeout(s) ou erro(s) no banco %s; taxa de falha de %.2f%% para %.2f%%.", len(incidentFailures), strings.Join(databaseSystems(incidentFailures), ", "), baselineRate*100, incidentRate*100),
-			SignalIDs:     signalIDs(incidentFailures),
+			Summary:       databaseTimeoutSummary(len(baselineTimeouts), len(baseline), len(incidentTimeouts), len(incident), systems),
+			SignalIDs:     signalIDs(incidentTimeouts),
 			BaselineValue: baselineRate,
 			IncidentValue: incidentRate,
 		}},
@@ -221,17 +222,24 @@ func filterDatabaseSignals(signals []domain.Signal) []domain.Signal {
 	return filtered
 }
 
-// databaseFailures trata timeout e erros explicitamente sinalizados pelo exportador como evidência, sem inspecionar SQL bruto.
-func databaseFailures(signals []domain.Signal) []domain.Signal {
-	failed := make([]domain.Signal, 0, len(signals))
+// databaseTimeouts seleciona somente timeouts explicitamente sinalizados, sem inspecionar SQL bruto.
+func databaseTimeouts(signals []domain.Signal) []domain.Signal {
+	timeouts := make([]domain.Signal, 0, len(signals))
 	for _, signal := range signals {
 		errorType := strings.ToLower(signal.Attributes["error.type"])
 		statusMessage := strings.ToLower(signal.Attributes["status.message"])
-		if strings.EqualFold(signal.Severity, "ERROR") || errorType != "" || strings.Contains(errorType, "timeout") || strings.Contains(statusMessage, "timeout") {
-			failed = append(failed, signal)
+		if strings.Contains(errorType, "timeout") || strings.Contains(statusMessage, "timeout") {
+			timeouts = append(timeouts, signal)
 		}
 	}
-	return failed
+	return timeouts
+}
+
+func databaseTimeoutSummary(baselineTimeouts, baselineCount, incidentTimeouts, incidentCount int, system string) string {
+	if incidentTimeouts == 1 {
+		return fmt.Sprintf("1 timeout observado entre %d operações %s; baseline tinha %d de %d operações.", incidentCount, system, baselineTimeouts, baselineCount)
+	}
+	return fmt.Sprintf("%d de %d operações %s tiveram timeout; baseline tinha %d de %d operações.", incidentTimeouts, incidentCount, system, baselineTimeouts, baselineCount)
 }
 
 // errorRate calcula somente respostas 5xx, pois outros códigos HTTP não representam falha de servidor para esta regra inicial.

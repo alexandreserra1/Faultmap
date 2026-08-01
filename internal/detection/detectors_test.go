@@ -105,6 +105,28 @@ func TestRunExplicaProtocolosEStatus(t *testing.T) {
 	if !contains([]string{database.Evidence[0].Summary}, "PostgreSQL") {
 		t.Fatalf("evidência de banco não informa PostgreSQL: %q", database.Evidence[0].Summary)
 	}
+	if !contains([]string{database.Evidence[0].Summary}, "1 timeout observado") {
+		t.Fatalf("evidência de banco não usa singular natural: %q", database.Evidence[0].Summary)
+	}
+}
+
+// TestDatabaseTimeoutIgnoraErroGenerico impede que o detector confunda falhas sem timeout.
+func TestDatabaseTimeoutIgnoraErroGenerico(t *testing.T) {
+	t.Parallel()
+
+	baseline := databaseTimeoutSignals("baseline", 5, 0, 50)
+	incident := databaseTimeoutSignals("incident", 5, 0, 100)
+	incident[0].Severity = "ERROR"
+	incident[0].Attributes["error.type"] = "constraint_violation"
+
+	_, found := DetectDatabaseTimeout(Input{
+		ServiceName: "checkout-service",
+		Baseline:    baseline,
+		Incident:    incident,
+	})
+	if found {
+		t.Fatal("DetectDatabaseTimeout() encontrou timeout em erro genérico")
+	}
 }
 
 func assertFinding(t *testing.T, findings []Finding, rule string, confidence Confidence) Finding {

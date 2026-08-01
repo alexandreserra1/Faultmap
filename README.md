@@ -142,7 +142,31 @@ go run ./cmd/faultmap diagnose incident \
   --limit 100
 ```
 
-`--until` é opcional e existe para reproduzir telemetria histórica; sem ele, o Faultmap usa o horário atual. O diagnóstico inicial compara taxa de erro HTTP, duração p95 e timeout de banco. Cada hipótese mostra score, evidências, confiança e limitações. Com as fixtures fornecidas, a confiança é baixa porque há somente um trace por janela — correlação não é apresentada como causalidade.
+`--until` é opcional e existe para reproduzir telemetria histórica; sem ele, o Faultmap usa o horário atual. O diagnóstico inicial compara taxa de erro HTTP, duração p95 e timeout de banco. Cada hipótese mostra score, evidências, confiança e limitações. Com as fixtures mínimas `checkout-normal.json` e `checkout-error-latency.json`, a confiança é baixa porque há somente um trace por janela — correlação não é apresentada como causalidade.
+
+Para validar o diagnóstico com uma amostra maior e resultados determinísticos, use um workspace separado:
+
+```bash
+go run ./cmd/faultmap init --directory ./faultmap-volume
+
+go run ./cmd/faultmap ingest file \
+  --config ./faultmap-volume/faultmap.yaml \
+  --input ./fixtures/otel/checkout-baseline-sample.json
+
+go run ./cmd/faultmap ingest file \
+  --config ./faultmap-volume/faultmap.yaml \
+  --input ./fixtures/otel/checkout-incident-sample.json
+
+go run ./cmd/faultmap diagnose incident \
+  --config ./faultmap-volume/faultmap.yaml \
+  --service checkout-service \
+  --since 1m \
+  --baseline 1m \
+  --until 2025-12-01T10:02:00Z \
+  --limit 100
+```
+
+Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de erro HTTP de 0% para 40%, duração p95 de 160 ms para 2.500 ms, 6 timeouts em 20 operações PostgreSQL e confiança alta. Limitações repetidas são consolidadas ao final do relatório.
 
 ## Especificação
 
