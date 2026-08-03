@@ -2,7 +2,9 @@ package sqlite
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -76,6 +78,92 @@ func TestSignalRepositoryListByServiceAndWindowUsesStableOrderAndLimit(t *testin
 	}
 	if got := signals[0].Measurements["duration_ms"]; got != 250 {
 		t.Fatalf("ListByServiceAndWindow() measurements duration_ms = %v, want 250", got)
+	}
+}
+
+// TestSignalRepositoryListByTraceIDFiltersOrdersAndLimits garante que a busca
+// usa o trace exato, devolve o domínio completo e aplica uma ordem estável.
+func TestSignalRepositoryListByTraceIDFiltersOrdersAndLimits(t *testing.T) {
+	t.Parallel()
+
+	repository := openSignalRepository(t)
+	base := time.Date(2026, time.August, 1, 12, 0, 0, 0, time.UTC)
+	requestedTraceID := "trace-' OR 1=1 --"
+	first := testSignal("signal-a", "checkout", base.Add(time.Minute))
+	first.TraceID = requestedTraceID
+	first.SpanID = "span-a"
+	first.Severity = "info"
+	first.Attributes = map[string]string{"http.method": "POST", "http.route": "/checkout"}
+	first.Measurements = map[string]float64{"duration_ms": 120, "http.status_code": 201}
+	second := testSignal("signal-b", "checkout", base.Add(time.Minute))
+	second.TraceID = requestedTraceID
+	second.SpanID = "span-b"
+	third := testSignal("signal-c", "checkout", base.Add(2*time.Minute))
+	third.TraceID = requestedTraceID
+	other := testSignal("signal-other-trace", "checkout", base)
+	other.TraceID = "trace-other"
+
+	inserted, err := repository.Save(context.Background(), []domain.Signal{third, second, other, first})
+	if err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	if inserted != 4 {
+		t.Fatalf("Save() inserted = %d, want 4", inserted)
+	}
+
+	signals, err := repository.ListByTraceID(context.Background(), requestedTraceID, 2)
+	if err != nil {
+		t.Fatalf("ListByTraceID() error = %v", err)
+	}
+	if len(signals) != 2 {
+		t.Fatalf("ListByTraceID() returned %d signals, want 2", len(signals))
+	}
+	if !reflect.DeepEqual(signals[0], first) {
+		t.Fatalf("ListByTraceID() first signal = %#v, want %#v", signals[0], first)
+	}
+	if !reflect.DeepEqual(signals[1], second) {
+		t.Fatalf("ListByTraceID() second signal = %#v, want %#v", signals[1], second)
+	}
+}
+
+// TestSignalRepositoryListByTraceIDRejectsInvalidInputBeforeDatabaseAccess
+// garante que entradas sem trace ou sem limite não chegam ao pool compartilhado.
+func TestSignalRepositoryListByTraceIDRejectsInvalidInputBeforeDatabaseAccess(t *testing.T) {
+	t.Parallel()
+
+	repository := NewSignalRepository(nil)
+	testCases := []struct {
+		name    string
+		traceID string
+		limit   int
+	}{
+		{name: "trace vazio", traceID: "", limit: 10},
+		{name: "limite zero", traceID: "trace-1", limit: 0},
+		{name: "limite negativo", traceID: "trace-1", limit: -1},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			_, err := repository.ListByTraceID(context.Background(), testCase.traceID, testCase.limit)
+			if err == nil {
+				t.Fatal("ListByTraceID() error = nil, want validation error")
+			}
+		})
+	}
+}
+
+// TestSignalRepositoryListByTraceIDRespectsCanceledContext garante que a
+// consulta interrompida preserva context.Canceled para o caso de uso.
+func TestSignalRepositoryListByTraceIDRespectsCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	repository := openSignalRepository(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := repository.ListByTraceID(ctx, "trace-1", 10)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("ListByTraceID() error = %v, want context.Canceled", err)
 	}
 }
 
