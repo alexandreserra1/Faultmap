@@ -25,7 +25,75 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newIngestCommand())
 	root.AddCommand(newTelemetryCommand())
 	root.AddCommand(newDiagnoseCommand())
+	root.AddCommand(newBlameCommand())
 	return root
+}
+
+// newBlameCommand agrupa investigações focadas em uma evidência identificável.
+func newBlameCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "blame",
+		Short: "Investiga evidências relacionadas a um sinal",
+	}
+	command.AddCommand(newBlameTraceCommand())
+	return command
+}
+
+// newBlameTraceCommand reconstrói o fluxo seguro e limitado de um trace persistido.
+func newBlameTraceCommand() *cobra.Command {
+	var configPath string
+	var traceID string
+	var limit int
+
+	command := &cobra.Command{
+		Use:   "trace",
+		Short: "Explica os spans e relações de um trace",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(traceID) == "" {
+				return fmt.Errorf("investigar trace: --trace é obrigatório")
+			}
+			if limit <= 0 {
+				return fmt.Errorf("investigar trace: --limit deve ser maior que zero")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			investigation, err := application.BlameTrace(
+				command.Context(),
+				traceID,
+				limit,
+				storage.NewSignalRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return terminal.RenderTraceInvestigation(
+				command.OutOrStdout(),
+				investigation.TraceID,
+				investigation.Signals,
+				investigation.Graph,
+			)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&traceID, "trace", "", "identificador do trace")
+	command.Flags().IntVar(&limit, "limit", 1_000, "quantidade máxima de sinais do trace")
+	return command
 }
 
 // newInitCommand cria um workspace local do Faultmap e aplica seu schema inicial.

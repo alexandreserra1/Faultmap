@@ -73,6 +73,7 @@ type scopeSpan struct {
 type span struct {
 	TraceID           string          `json:"traceId"`
 	SpanID            string          `json:"spanId"`
+	ParentSpanID      string          `json:"parentSpanId"`
 	Name              string          `json:"name"`
 	Kind              string          `json:"kind"`
 	StartTimeUnixNano json.RawMessage `json:"startTimeUnixNano"`
@@ -127,6 +128,9 @@ func normalizeSpan(serviceName string, source span) (domain.Signal, error) {
 	}
 	if source.Kind != "" {
 		attributes["span.kind"] = source.Kind
+	}
+	if source.ParentSpanID != "" {
+		attributes["span.parent_id"] = source.ParentSpanID
 	}
 	if source.Status.Message != "" {
 		attributes["status.message"] = source.Status.Message

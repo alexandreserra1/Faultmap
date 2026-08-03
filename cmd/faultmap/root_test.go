@@ -293,6 +293,71 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	}
 }
 
+// TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL garante que um trace
+// correlacionado possa ser investigado sem expor SQL bruto ou atributos livres.
+func TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "checkout-incident-sample.json"))
+	if err != nil {
+		t.Fatalf("resolver caminho da fixture: %v", err)
+	}
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+	ingest.SetOut(io.Discard)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingerir fixture: %v", err)
+	}
+
+	const traceID = "30000000000000000000000000000001"
+	var output bytes.Buffer
+	blame := newRootCommand()
+	blame.SetArgs([]string{
+		"blame", "trace",
+		"--config", configPath,
+		"--trace", traceID,
+		"--limit", "20",
+	})
+	blame.SetOut(&output)
+	blame.SetErr(io.Discard)
+	if err := blame.Execute(); err != nil {
+		t.Fatalf("blame trace erro = %v", err)
+	}
+
+	traceOutput := output.String()
+	for _, expected := range []string{
+		"Investigação do trace — " + traceID,
+		"Serviço: checkout-service",
+		"Grafo de evidências:",
+		"POST /checkout",
+		"HTTP 500",
+		"duração 800 ms",
+		"consulta",
+		"INSERT orders",
+		"PostgreSQL",
+		"erro timeout",
+		"duração 650 ms",
+	} {
+		if !strings.Contains(traceOutput, expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, traceOutput)
+		}
+	}
+	if strings.Contains(strings.ToUpper(traceOutput), "INSERT INTO") {
+		t.Errorf("saída expôs SQL bruto:\n%s", traceOutput)
+	}
+}
+
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	t.Parallel()

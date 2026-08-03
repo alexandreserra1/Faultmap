@@ -45,6 +45,8 @@ Relações iniciais: `calls`, `queries`, `belongs_to`, `depends_on`, `affected`,
 
 Toda aresta deve conter origem, destino, relação, confiança, evidências e proveniência.
 
+A primeira fatia funcional do grafo reconstrói um trace sob demanda, com nós de serviço, trace e span. Relações `contains` preservam a hierarquia e `queries` liga o span chamador à operação de banco. O parentesco usa `span.parent_id`, normalizado de `parentSpanId`; o fallback sem parentesco só é permitido quando há exatamente um span HTTP e um span de banco, evitando associações ambíguas.
+
 ## Persistência SQLite
 
 Todos os acessos ocorrem por repositórios. O esquema inicial contém:
@@ -101,6 +103,8 @@ faultmap ingest file --input ./fixtures/otel-sample.json
 ```
 
 A ingestão deve validar o payload; extrair resource attributes, `service.name`, `service.version`, ambiente, trace/span IDs, status, duração, atributos HTTP e de banco; normalizar e persistir; e ignorar duplicidades pelo ID.
+
+Consultas por trace usam um índice composto em `(trace_id, timestamp, id)`, limite obrigatório e ordenação determinística. O grafo é derivado dos sinais persistidos por uma única consulta; nenhuma leitura N+1 é necessária.
 
 ## Atributos OpenTelemetry prioritários
 

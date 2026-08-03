@@ -60,6 +60,8 @@ faultmap export report --incident inc_001 --format markdown
 faultmap export graph --incident inc_001 --format mermaid
 ```
 
+`blame trace` consulta somente o `trace_id` solicitado, com limite obrigatório, e apresenta o fluxo cronológico e suas relações usando uma allowlist de campos. SQL bruto, credenciais e atributos arbitrários não são exibidos.
+
 `faultmap init` cria `faultmap.yaml`, `faultmap.db` e `faultmap-out/`.
 
 ## Artefatos gerados

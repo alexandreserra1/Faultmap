@@ -11,6 +11,7 @@ import (
 const (
 	initialSchemaVersion                  = 1
 	signalsByServiceTimestampIndexVersion = 2
+	signalsByTraceTimestampIndexVersion   = 3
 )
 
 type migration struct {
@@ -97,6 +98,13 @@ var migrations = []migration{
 		statements: []string{
 			`CREATE INDEX IF NOT EXISTS idx_signals_service_name_timestamp_id
 				ON signals (service_name, timestamp, id)`,
+		},
+	},
+	{
+		version: signalsByTraceTimestampIndexVersion,
+		statements: []string{
+			`CREATE INDEX IF NOT EXISTS idx_signals_trace_id_timestamp_id
+				ON signals (trace_id, timestamp, id)`,
 		},
 	},
 }

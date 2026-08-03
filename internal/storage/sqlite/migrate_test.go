@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestMigrateAppliesInitialSchemaOnCleanDatabase garante que uma instalação nova recebe todas as tabelas essenciais.
@@ -18,6 +19,8 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
+	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	for _, table := range []string{
 		"signals",
 		"incidents",
@@ -42,6 +45,14 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	if err := createVersionOneSchema(ctx, database); err != nil {
 		t.Fatalf("create version one schema: %v", err)
 	}
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO signals (
+			id, signal_type, service_name, timestamp, trace_id, span_id, severity,
+			attributes_json, measurements_json
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "existing-signal", "span", "checkout-service", time.Unix(1, 0).UTC(), "existing-trace", "existing-span", "info", `{}`, `{}`); err != nil {
+		t.Fatalf("insert populated signal before upgrade: %v", err)
+	}
 
 	if err := Migrate(ctx, database); err != nil {
 		t.Fatalf("Migrate() error = %v", err)
@@ -49,7 +60,16 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
 	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
+	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
+	var preservedTraceID string
+	if err := database.QueryRowContext(ctx, `SELECT trace_id FROM signals WHERE id = ?`, "existing-signal").Scan(&preservedTraceID); err != nil {
+		t.Fatalf("read signal after upgrade: %v", err)
+	}
+	if preservedTraceID != "existing-trace" {
+		t.Fatalf("trace after upgrade = %q, want existing-trace", preservedTraceID)
+	}
 }
 
 // TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied garante que reiniciar o processo não reaplica migrations concluídas.
@@ -67,7 +87,9 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
 	assertTableExists(t, database, "signals")
+	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 }
 
 func openMigrationTestDatabase(t *testing.T) *sql.DB {

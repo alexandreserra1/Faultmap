@@ -170,10 +170,23 @@ Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de e
 
 O terminal agrega essas evidências no ranking do `checkout-service`. Com os pesos padrão, o score é `0.40`: erros HTTP contribuem `0.10`, latência `0.09`, timeout de banco `0.06` e correlação pelo trace `0.15`. Esse número representa prioridade determinística de investigação, não probabilidade de causa. Cada parcela permanece visível e limitações repetidas são consolidadas ao final do relatório.
 
+### Investigar um trace
+
+Use um `trace_id` apresentado pelo diagnóstico ou pela listagem de telemetria para reconstruir seu fluxo:
+
+```bash
+go run ./cmd/faultmap blame trace \
+  --config ./faultmap-volume/faultmap.yaml \
+  --trace 30000000000000000000000000000001 \
+  --limit 20
+```
+
+O comando faz uma única consulta parametrizada e limitada, constrói o grafo em memória e mostra somente campos seguros. Para a fixture de incidente, a saída liga `POST /checkout` com HTTP `500` à operação `INSERT orders` que terminou em timeout PostgreSQL. A relação usa o `parentSpanId` do OTLP quando disponível; telemetria antiga só recebe o fallback quando existe exatamente um span HTTP e um span de banco no trace.
+
 ## Especificação
 
 A especificação é modular e sua leitura completa é obrigatória antes de implementar ou revisar o projeto. Comece por [FAULTMAP_MVP.md](FAULTMAP_MVP.md), que direciona para todos os documentos normativos em [`docs/mvp/`](docs/mvp/).
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria e diagnostica incidentes por comparação de janelas. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas ampliarão as fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica incidentes por comparação de janelas e reconstrói o grafo de um trace. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas ampliarão as exportações e fontes de evidência antes da criação do `demo-shop`.

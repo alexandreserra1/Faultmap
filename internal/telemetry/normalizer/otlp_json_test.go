@@ -20,6 +20,7 @@ func TestParseOTLPJSONNormalizesResourceSpans(t *testing.T) {
     "scopeSpans": [{"spans": [{
       "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
       "spanId": "00f067aa0ba902b7",
+      "parentSpanId": "00f067aa0ba90000",
       "name": "POST /checkout",
       "kind": "SPAN_KIND_SERVER",
       "startTimeUnixNano": "1722110400000000000",
@@ -57,6 +58,7 @@ func TestParseOTLPJSONNormalizesResourceSpans(t *testing.T) {
 			"retry":                     "true",
 			"span.kind":                 "SPAN_KIND_SERVER",
 			"span.name":                 "POST /checkout",
+			"span.parent_id":            "00f067aa0ba90000",
 			"status.message":            "payment unavailable",
 		},
 		Measurements: map[string]float64{"duration_ms": 125},

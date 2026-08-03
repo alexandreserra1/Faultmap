@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
@@ -118,6 +119,45 @@ func (repository *SignalRepository) ListByServiceAndWindow(
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate signals for service %q: %w", serviceName, err)
+	}
+	return signals, nil
+}
+
+// ListByTraceID devolve no máximo limit sinais do trace exato, ordenados por
+// timestamp e ID. A consulta usa o pool compartilhado e não carrega outros traces.
+func (repository *SignalRepository) ListByTraceID(ctx context.Context, traceID string, limit int) ([]domain.Signal, error) {
+	traceID = strings.TrimSpace(traceID)
+	if traceID == "" {
+		return nil, fmt.Errorf("signal trace ID is required")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("signal trace list limit must be greater than zero")
+	}
+
+	rows, err := repository.database.QueryContext(ctx, `
+		SELECT
+			id, signal_type, service_name, timestamp, trace_id, span_id, severity,
+			attributes_json, measurements_json
+		FROM signals
+		WHERE trace_id = ?
+		ORDER BY timestamp ASC, id ASC
+		LIMIT ?
+	`, traceID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list signals for trace %q: %w", traceID, err)
+	}
+	defer rows.Close()
+
+	signals := make([]domain.Signal, 0)
+	for rows.Next() {
+		signal, err := scanSignal(rows)
+		if err != nil {
+			return nil, err
+		}
+		signals = append(signals, signal)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate signals for trace %q: %w", traceID, err)
 	}
 	return signals, nil
 }
