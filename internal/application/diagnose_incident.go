@@ -2,8 +2,11 @@ package application
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/faultmap/faultmap/internal/detection"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
@@ -12,6 +15,7 @@ import (
 
 // Diagnosis reúne as janelas, contagens e hipóteses produzidas para uma investigação de incidente.
 type Diagnosis struct {
+	ID                  string
 	ServiceName         string
 	Windows             incidentdomain.InvestigationWindow
 	BaselineSignalCount int
@@ -58,6 +62,7 @@ func DiagnoseIncident(
 		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: ranquear suspeitos: %w", err)
 	}
 	return Diagnosis{
+		ID:                  DiagnosisID(serviceName, windows),
 		ServiceName:         serviceName,
 		Windows:             windows,
 		BaselineSignalCount: len(baseline),
@@ -65,4 +70,18 @@ func DiagnoseIncident(
 		Findings:            findings,
 		Suspects:            suspects,
 	}, nil
+}
+
+// DiagnosisID deriva uma identidade estável do serviço e das janelas UTC para
+// que retries da mesma investigação não criem incidentes duplicados.
+func DiagnosisID(serviceName string, windows incidentdomain.InvestigationWindow) string {
+	canonical := strings.Join([]string{
+		strings.TrimSpace(serviceName),
+		windows.Baseline.Start.UTC().Format(time.RFC3339Nano),
+		windows.Baseline.End.UTC().Format(time.RFC3339Nano),
+		windows.Incident.Start.UTC().Format(time.RFC3339Nano),
+		windows.Incident.End.UTC().Format(time.RFC3339Nano),
+	}, "\x00")
+	digest := sha256.Sum256([]byte(canonical))
+	return "inc_" + hex.EncodeToString(digest[:12])
 }

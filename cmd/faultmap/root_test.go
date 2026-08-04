@@ -291,6 +291,49 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	if occurrences := strings.Count(diagnosisOutput, causalLimitation); occurrences != 1 {
 		t.Errorf("limitação geral aparece %d vezes, esperado 1:\n%s", occurrences, diagnosisOutput)
 	}
+	if !strings.Contains(diagnosisOutput, "Diagnóstico salvo: inc_") {
+		t.Errorf("saída não confirma persistência do diagnóstico:\n%s", diagnosisOutput)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco para verificar diagnóstico: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco de verificação: %v", closeErr)
+		}
+	})
+	var incidentID string
+	if err := database.QueryRow(`SELECT id FROM incidents`).Scan(&incidentID); err != nil {
+		t.Fatalf("ler incidente persistido: %v", err)
+	}
+	assertTableCount(t, database, "incidents", 1)
+	assertTableCount(t, database, "findings", 4)
+	assertTableCount(t, database, "ranking_results", 1)
+
+	var retryOutput bytes.Buffer
+	retry := newRootCommand()
+	retry.SetArgs([]string{
+		"diagnose", "incident",
+		"--config", configPath,
+		"--service", "checkout-service",
+		"--since", "1m",
+		"--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z",
+		"--limit", "100",
+	})
+	retry.SetOut(&retryOutput)
+	retry.SetErr(io.Discard)
+	if err := retry.Execute(); err != nil {
+		t.Fatalf("repetir diagnóstico: %v", err)
+	}
+	if !strings.Contains(retryOutput.String(), "Diagnóstico já existente: "+incidentID) {
+		t.Errorf("retry não explica idempotência:\n%s", retryOutput.String())
+	}
+	assertTableCount(t, database, "incidents", 1)
+	assertTableCount(t, database, "findings", 4)
+	assertTableCount(t, database, "ranking_results", 1)
 }
 
 // TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL garante que um trace
@@ -452,5 +495,24 @@ func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	}
 	if tableCount != 3 {
 		t.Fatalf("migrated table count = %d, want 3", tableCount)
+	}
+}
+
+func assertTableCount(t *testing.T, database *sql.DB, table string, want int) {
+	t.Helper()
+	allowed := map[string]struct{}{
+		"incidents":       {},
+		"findings":        {},
+		"ranking_results": {},
+	}
+	if _, ok := allowed[table]; !ok {
+		t.Fatalf("tabela não permitida no teste: %q", table)
+	}
+	var count int
+	if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+		t.Fatalf("contar %s: %v", table, err)
+	}
+	if count != want {
+		t.Fatalf("quantidade em %s = %d, esperado %d", table, count, want)
 	}
 }

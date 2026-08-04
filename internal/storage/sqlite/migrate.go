@@ -12,6 +12,7 @@ const (
 	initialSchemaVersion                  = 1
 	signalsByServiceTimestampIndexVersion = 2
 	signalsByTraceTimestampIndexVersion   = 3
+	diagnosisForeignKeysVersion           = 4
 )
 
 type migration struct {
@@ -105,6 +106,44 @@ var migrations = []migration{
 		statements: []string{
 			`CREATE INDEX IF NOT EXISTS idx_signals_trace_id_timestamp_id
 				ON signals (trace_id, timestamp, id)`,
+		},
+	},
+	{
+		version: diagnosisForeignKeysVersion,
+		statements: []string{
+			`ALTER TABLE findings RENAME TO findings_without_incident_fk`,
+			`CREATE TABLE findings (
+				id TEXT PRIMARY KEY,
+				incident_id TEXT NOT NULL,
+				rule_id TEXT NOT NULL,
+				subject_id TEXT NOT NULL,
+				score REAL NOT NULL,
+				confidence TEXT NOT NULL,
+				evidence_json TEXT NOT NULL,
+				limitations_json TEXT NOT NULL,
+				FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+			)`,
+			`INSERT INTO findings (
+				id, incident_id, rule_id, subject_id, score, confidence,
+				evidence_json, limitations_json
+			)
+			SELECT
+				id, incident_id, rule_id, subject_id, score, confidence,
+				evidence_json, limitations_json
+			FROM findings_without_incident_fk`,
+			`DROP TABLE findings_without_incident_fk`,
+			`ALTER TABLE ranking_results RENAME TO ranking_results_without_incident_fk`,
+			`CREATE TABLE ranking_results (
+				id TEXT PRIMARY KEY,
+				incident_id TEXT NOT NULL,
+				generated_at DATETIME NOT NULL,
+				suspects_json TEXT NOT NULL,
+				FOREIGN KEY (incident_id) REFERENCES incidents(id) ON DELETE CASCADE
+			)`,
+			`INSERT INTO ranking_results (id, incident_id, generated_at, suspects_json)
+			SELECT id, incident_id, generated_at, suspects_json
+			FROM ranking_results_without_incident_fk`,
+			`DROP TABLE ranking_results_without_incident_fk`,
 		},
 	},
 }

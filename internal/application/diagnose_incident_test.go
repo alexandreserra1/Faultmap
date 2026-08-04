@@ -39,6 +39,9 @@ func TestDiagnoseIncidentComparaJanelasEDetectaEvidências(t *testing.T) {
 	if diagnosis.BaselineSignalCount != 2 || diagnosis.IncidentSignalCount != 2 {
 		t.Fatalf("contagens = baseline %d, incidente %d; esperado 2 e 2", diagnosis.BaselineSignalCount, diagnosis.IncidentSignalCount)
 	}
+	if diagnosis.ID != DiagnosisID("checkout-service", windows) {
+		t.Fatalf("diagnosis.ID = %q, esperado ID determinístico", diagnosis.ID)
+	}
 	for _, rule := range []string{detection.RuleErrorRateDelta, detection.RuleLatencyDelta, detection.RuleDatabaseTimeout} {
 		if !hasFinding(diagnosis.Findings, rule) {
 			t.Errorf("diagnóstico não contém finding %q: %#v", rule, diagnosis.Findings)

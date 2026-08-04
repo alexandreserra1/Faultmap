@@ -89,6 +89,8 @@ CREATE TABLE ranking_results (
 );
 ```
 
+O diagnóstico persistido é um snapshot imutável. Seu ID é derivado do serviço e das janelas UTC; findings recebem IDs estáveis e o ranking usa `ranking:<incident_id>`. Incidente, findings e ranking são gravados na mesma transação curta. Retries não substituem o snapshot original. `findings.incident_id` e `ranking_results.incident_id` possuem chaves estrangeiras para impedir registros órfãos.
+
 ## Ingestão OTLP
 
 O Faultmap não substitui o OpenTelemetry Collector:

@@ -422,14 +422,30 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return terminal.RenderDiagnosis(
+			created, err := application.PersistDiagnosis(
+				command.Context(),
+				diagnosis,
+				storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			if err := terminal.RenderDiagnosis(
 				command.OutOrStdout(),
 				diagnosis.ServiceName,
 				diagnosis.BaselineSignalCount,
 				diagnosis.IncidentSignalCount,
 				diagnosis.Findings,
 				diagnosis.Suspects,
-			)
+			); err != nil {
+				return err
+			}
+			if created {
+				_, err = fmt.Fprintf(command.OutOrStdout(), "\nDiagnóstico salvo: %s\n", diagnosis.ID)
+			} else {
+				_, err = fmt.Fprintf(command.OutOrStdout(), "\nDiagnóstico já existente: %s\n", diagnosis.ID)
+			}
+			return err
 		},
 	}
 	command.Flags().StringVar(&baseline, "baseline", "60m", "duração da janela baseline")

@@ -20,6 +20,7 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	for _, table := range []string{
 		"signals",
@@ -53,6 +54,26 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	`, "existing-signal", "span", "checkout-service", time.Unix(1, 0).UTC(), "existing-trace", "existing-span", "info", `{}`, `{}`); err != nil {
 		t.Fatalf("insert populated signal before upgrade: %v", err)
 	}
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO incidents (id, service_name, environment, started_at, ended_at, status)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, "existing-incident", "checkout-service", "", time.Unix(1, 0).UTC(), time.Unix(2, 0).UTC(), "diagnosed"); err != nil {
+		t.Fatalf("insert populated incident before upgrade: %v", err)
+	}
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO findings (
+			id, incident_id, rule_id, subject_id, score, confidence,
+			evidence_json, limitations_json
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, "existing-finding", "existing-incident", "rule", "checkout-service", 0.5, "alta", `[]`, `[]`); err != nil {
+		t.Fatalf("insert populated finding before upgrade: %v", err)
+	}
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO ranking_results (id, incident_id, generated_at, suspects_json)
+		VALUES (?, ?, ?, ?)
+	`, "existing-ranking", "existing-incident", time.Unix(2, 0).UTC(), `[]`); err != nil {
+		t.Fatalf("insert populated ranking before upgrade: %v", err)
+	}
 
 	if err := Migrate(ctx, database); err != nil {
 		t.Fatalf("Migrate() error = %v", err)
@@ -61,6 +82,7 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	var preservedTraceID string
@@ -70,6 +92,25 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	if preservedTraceID != "existing-trace" {
 		t.Fatalf("trace after upgrade = %q, want existing-trace", preservedTraceID)
 	}
+	if got := migrationRowCount(t, database, "findings"); got != 1 {
+		t.Fatalf("findings after upgrade = %d, want 1", got)
+	}
+	if got := migrationRowCount(t, database, "ranking_results"); got != 1 {
+		t.Fatalf("ranking_results after upgrade = %d, want 1", got)
+	}
+}
+
+func migrationRowCount(t *testing.T, database *sql.DB, table string) int {
+	t.Helper()
+	allowed := map[string]struct{}{"findings": {}, "ranking_results": {}}
+	if _, ok := allowed[table]; !ok {
+		t.Fatalf("table %q is not allowed", table)
+	}
+	var count int
+	if err := database.QueryRowContext(context.Background(), "SELECT COUNT(*) FROM "+table).Scan(&count); err != nil {
+		t.Fatalf("count %s: %v", table, err)
+	}
+	return count
 }
 
 // TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied garante que reiniciar o processo não reaplica migrations concluídas.
@@ -88,6 +129,7 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	assertMigrationVersion(t, database, initialSchemaVersion, 1)
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
+	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertTableExists(t, database, "signals")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 }
