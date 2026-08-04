@@ -358,6 +358,66 @@ func TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL(t *testing.T) {
 	}
 }
 
+// TestExportGraphCommandGeraMermaidDoTrace cobre a exportação do mesmo grafo
+// auditável sem criar uma segunda forma de consultar a telemetria.
+func TestExportGraphCommandGeraMermaidDoTrace(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "checkout-incident-sample.json"))
+	if err != nil {
+		t.Fatalf("resolver fixture: %v", err)
+	}
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+	ingest.SetOut(io.Discard)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingerir fixture: %v", err)
+	}
+
+	var output bytes.Buffer
+	export := newRootCommand()
+	export.SetArgs([]string{
+		"export", "graph",
+		"--config", configPath,
+		"--trace", "30000000000000000000000000000001",
+		"--format", "mermaid",
+		"--limit", "20",
+	})
+	export.SetOut(&output)
+	export.SetErr(io.Discard)
+	if err := export.Execute(); err != nil {
+		t.Fatalf("export graph erro = %v", err)
+	}
+
+	result := output.String()
+	for _, expected := range []string{
+		"flowchart TD",
+		"checkout-service",
+		"POST /checkout",
+		"INSERT orders",
+		"|contém|",
+		"|consulta|",
+	} {
+		if !strings.Contains(result, expected) {
+			t.Errorf("Mermaid não contém %q:\n%s", expected, result)
+		}
+	}
+	if strings.Contains(strings.ToUpper(result), "INSERT INTO") {
+		t.Errorf("Mermaid expôs SQL bruto:\n%s", result)
+	}
+}
+
 // TestInitCommandCreatesMigratedSQLiteWorkspace verifica que init produz um schema utilizável.
 func TestInitCommandCreatesMigratedSQLiteWorkspace(t *testing.T) {
 	t.Parallel()

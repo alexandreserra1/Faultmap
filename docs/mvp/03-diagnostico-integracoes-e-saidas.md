@@ -62,6 +62,8 @@ faultmap export graph --incident inc_001 --format mermaid
 
 `blame trace` consulta somente o `trace_id` solicitado, com limite obrigatório, e apresenta o fluxo cronológico e suas relações usando uma allowlist de campos. SQL bruto, credenciais e atributos arbitrários não são exibidos.
 
+Enquanto incidentes persistidos ainda não estiverem disponíveis, `export graph --trace <id> --format mermaid` exporta o subgrafo de um trace para a saída padrão. A serialização é determinística, usa IDs sintéticos, escapa rótulos externos e rejeita arestas que apontem para nós ausentes.
+
 `faultmap init` cria `faultmap.yaml`, `faultmap.db` e `faultmap-out/`.
 
 ## Artefatos gerados

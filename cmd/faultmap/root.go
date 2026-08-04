@@ -10,6 +10,7 @@ import (
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	"github.com/faultmap/faultmap/internal/ranking"
+	"github.com/faultmap/faultmap/internal/reporting/mermaid"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
 	"github.com/spf13/cobra"
@@ -26,7 +27,75 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newTelemetryCommand())
 	root.AddCommand(newDiagnoseCommand())
 	root.AddCommand(newBlameCommand())
+	root.AddCommand(newExportCommand())
 	return root
+}
+
+// newExportCommand agrupa formatos estruturados derivados das evidências persistidas.
+func newExportCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "export",
+		Short: "Exporta evidências do Faultmap",
+	}
+	command.AddCommand(newExportGraphCommand())
+	return command
+}
+
+// newExportGraphCommand gera um diagrama Mermaid do trace solicitado sem persistir estado derivado.
+func newExportGraphCommand() *cobra.Command {
+	var configPath string
+	var format string
+	var traceID string
+	var limit int
+
+	command := &cobra.Command{
+		Use:   "graph",
+		Short: "Exporta o grafo de evidências de um trace",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(traceID) == "" {
+				return fmt.Errorf("exportar grafo: --trace é obrigatório")
+			}
+			if limit <= 0 {
+				return fmt.Errorf("exportar grafo: --limit deve ser maior que zero")
+			}
+			if format != "mermaid" {
+				return fmt.Errorf("exportar grafo: --format deve ser mermaid")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			investigation, err := application.BlameTrace(
+				command.Context(),
+				traceID,
+				limit,
+				storage.NewSignalRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return mermaid.RenderTraceGraph(command.OutOrStdout(), investigation.Graph)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&format, "format", "mermaid", "formato de saída")
+	command.Flags().StringVar(&traceID, "trace", "", "identificador do trace")
+	command.Flags().IntVar(&limit, "limit", 1_000, "quantidade máxima de sinais do trace")
+	return command
 }
 
 // newBlameCommand agrupa investigações focadas em uma evidência identificável.

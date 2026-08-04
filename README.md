@@ -183,10 +183,35 @@ go run ./cmd/faultmap blame trace \
 
 O comando faz uma única consulta parametrizada e limitada, constrói o grafo em memória e mostra somente campos seguros. Para a fixture de incidente, a saída liga `POST /checkout` com HTTP `500` à operação `INSERT orders` que terminou em timeout PostgreSQL. A relação usa o `parentSpanId` do OTLP quando disponível; telemetria antiga só recebe o fallback quando existe exatamente um span HTTP e um span de banco no trace.
 
+### Exportar o grafo em Mermaid
+
+O mesmo grafo pode ser exportado em um formato renderizável pelo GitHub e por ferramentas compatíveis com Mermaid:
+
+```bash
+go run ./cmd/faultmap export graph \
+  --config ./faultmap-volume/faultmap.yaml \
+  --trace 30000000000000000000000000000001 \
+  --format mermaid \
+  --limit 20
+```
+
+Por padrão, o diagrama é escrito na saída padrão. Para criar um artefato no diretório reservado pelo `init`, use o redirecionamento do terminal:
+
+```bash
+go run ./cmd/faultmap export graph \
+  --config ./faultmap-volume/faultmap.yaml \
+  --trace 30000000000000000000000000000001 \
+  --format mermaid \
+  --limit 20 \
+  > ./faultmap-volume/faultmap-out/trace-checkout.mmd
+```
+
+Os identificadores Mermaid são sintéticos e os rótulos são escapados. Assim, nomes vindos da telemetria não são interpretados como sintaxe do diagrama.
+
 ## Especificação
 
 A especificação é modular e sua leitura completa é obrigatória antes de implementar ou revisar o projeto. Comece por [FAULTMAP_MVP.md](FAULTMAP_MVP.md), que direciona para todos os documentos normativos em [`docs/mvp/`](docs/mvp/).
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica incidentes por comparação de janelas e reconstrói o grafo de um trace. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas ampliarão as exportações e fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica incidentes por comparação de janelas, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão relatórios JSON/Markdown e novas fontes de evidência antes da criação do `demo-shop`.
