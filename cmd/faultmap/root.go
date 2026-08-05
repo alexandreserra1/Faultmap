@@ -27,9 +27,115 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newIngestCommand())
 	root.AddCommand(newTelemetryCommand())
 	root.AddCommand(newDiagnoseCommand())
+	root.AddCommand(newIncidentCommand())
 	root.AddCommand(newBlameCommand())
 	root.AddCommand(newExportCommand())
 	return root
+}
+
+// newIncidentCommand agrupa consultas de snapshots de diagnósticos já persistidos.
+func newIncidentCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "incident",
+		Short: "Consulta diagnósticos persistidos",
+	}
+	command.AddCommand(newIncidentListCommand())
+	command.AddCommand(newIncidentShowCommand())
+	return command
+}
+
+// newIncidentListCommand apresenta resumos recentes sem carregar findings ou ranking.
+func newIncidentListCommand() *cobra.Command {
+	var configPath string
+	var limit int
+
+	command := &cobra.Command{
+		Use:   "list",
+		Short: "Lista diagnósticos persistidos",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			// A validação antecede I/O para não abrir o pool quando a entrada já é inválida.
+			if limit <= 0 || limit > 1_000 {
+				return fmt.Errorf("listar incidentes: --limit deve estar entre 1 e 1000")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			incidents, err := application.ListIncidents(
+				command.Context(),
+				limit,
+				storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return terminal.RenderIncidentList(command.OutOrStdout(), incidents)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().IntVar(&limit, "limit", 20, "quantidade máxima de incidentes")
+	return command
+}
+
+// newIncidentShowCommand recupera um diagnóstico completo sem executar novamente os detectores.
+func newIncidentShowCommand() *cobra.Command {
+	var configPath string
+	var incidentID string
+
+	command := &cobra.Command{
+		Use:   "show",
+		Short: "Exibe um diagnóstico persistido",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			// O identificador é validado antes de qualquer leitura de arquivo ou banco.
+			if strings.TrimSpace(incidentID) == "" {
+				return fmt.Errorf("consultar incidente: --id é obrigatório")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.GetIncident(
+				command.Context(),
+				incidentID,
+				storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return terminal.RenderPersistedDiagnosis(command.OutOrStdout(), diagnosis)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&incidentID, "id", "", "identificador do incidente")
+	return command
 }
 
 // newExportCommand agrupa formatos estruturados derivados das evidências persistidas.

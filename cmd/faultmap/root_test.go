@@ -403,6 +403,90 @@ func TestDiagnoseIncidentCommandNaoPersisteJanelaDeIncidenteVazia(t *testing.T) 
 	assertTableCount(t, database, "ranking_results", 0)
 }
 
+// TestIncidentListCommandExibeSnapshotsLimitados garante que a consulta de
+// histórico apresente somente o resumo persistido, sem recalcular diagnósticos.
+func TestIncidentListCommandExibeSnapshotsLimitados(t *testing.T) {
+	t.Parallel()
+
+	configPath, incidentID := preparePersistedIncident(t)
+	var output bytes.Buffer
+	command := newRootCommand()
+	command.SetArgs([]string{"incident", "list", "--config", configPath, "--limit", "10"})
+	command.SetOut(&output)
+	command.SetErr(io.Discard)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("incident list erro = %v", err)
+	}
+	for _, expected := range []string{
+		"Incidentes persistidos — 1",
+		incidentID,
+		"checkout-service",
+		"Status: diagnosed",
+		"2025-12-01 10:01:00 UTC",
+		"2025-12-01 10:02:00 UTC",
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, output.String())
+		}
+	}
+}
+
+// TestIncidentShowCommandRecuperaDiagnosticoCompleto garante que findings e
+// ranking sejam lidos do snapshot, inclusive as contagens originais das janelas.
+func TestIncidentShowCommandRecuperaDiagnosticoCompleto(t *testing.T) {
+	t.Parallel()
+
+	configPath, incidentID := preparePersistedIncident(t)
+	var output bytes.Buffer
+	command := newRootCommand()
+	command.SetArgs([]string{"incident", "show", "--config", configPath, "--id", incidentID})
+	command.SetOut(&output)
+	command.SetErr(io.Discard)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("incident show erro = %v", err)
+	}
+	result := output.String()
+	for _, expected := range []string{
+		"Incidente persistido — " + incidentID,
+		"Serviço: checkout-service",
+		"Status: diagnosed",
+		"Baseline: 40 sinais",
+		"Incidente: 40 sinais",
+		"Score agregado: 0.40",
+		"database_http_trace_correlation",
+		"database_timeout",
+		"error_rate_delta",
+		"latency_delta",
+		"Correlação entre sinais não comprova causalidade.",
+	} {
+		if !strings.Contains(result, expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, result)
+		}
+	}
+}
+
+// TestIncidentCommandsValidamEntradaAntesDoBanco evita abrir o pool para
+// comandos que já possuem limite ou identificador inválido.
+func TestIncidentCommandsValidamEntradaAntesDoBanco(t *testing.T) {
+	t.Parallel()
+
+	list := newRootCommand()
+	list.SetArgs([]string{"incident", "list", "--config", "inexistente.yaml", "--limit", "0"})
+	list.SetOut(io.Discard)
+	list.SetErr(io.Discard)
+	if err := list.Execute(); err == nil || !strings.Contains(err.Error(), "limit") {
+		t.Fatalf("incident list erro = %v, esperado limite inválido", err)
+	}
+
+	show := newRootCommand()
+	show.SetArgs([]string{"incident", "show", "--config", "inexistente.yaml", "--id", " "})
+	show.SetOut(io.Discard)
+	show.SetErr(io.Discard)
+	if err := show.Execute(); err == nil || !strings.Contains(err.Error(), "--id") {
+		t.Fatalf("incident show erro = %v, esperado ID obrigatório", err)
+	}
+}
+
 // TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL garante que um trace
 // correlacionado possa ser investigado sem expor SQL bruto ou atributos livres.
 func TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL(t *testing.T) {
@@ -582,4 +666,54 @@ func assertTableCount(t *testing.T, database *sql.DB, table string, want int) {
 	if count != want {
 		t.Fatalf("quantidade em %s = %d, esperado %d", table, count, want)
 	}
+}
+
+func preparePersistedIncident(t *testing.T) (configPath string, incidentID string) {
+	t.Helper()
+	projectDir := t.TempDir()
+	configPath = filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+	for _, fixtureName := range []string{"checkout-baseline-sample.json", "checkout-incident-sample.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver fixture %q: %v", fixtureName, err)
+		}
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir fixture %q: %v", fixtureName, err)
+		}
+	}
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident", "--config", configPath,
+		"--service", "checkout-service", "--since", "1m", "--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z", "--limit", "100",
+	})
+	diagnose.SetOut(io.Discard)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnosticar fixture: %v", err)
+	}
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	defer func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	}()
+	if err := database.QueryRow(`SELECT id FROM incidents LIMIT 1`).Scan(&incidentID); err != nil {
+		t.Fatalf("ler ID persistido: %v", err)
+	}
+	return configPath, incidentID
 }

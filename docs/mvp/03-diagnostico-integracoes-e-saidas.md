@@ -54,6 +54,8 @@ faultmap serve
 faultmap ingest file --input ./fixtures/otel-sample.json
 faultmap ingest github --repo acme/checkout --deployments --commits
 faultmap diagnose incident --service checkout --since 30m --baseline 60m --environment staging
+faultmap incident list --limit 20
+faultmap incident show --id inc_001
 faultmap blame trace 7f3b0b3f1b4d
 faultmap explain suspect checkout-service
 faultmap export report --incident inc_001 --format markdown
@@ -64,7 +66,11 @@ faultmap export graph --incident inc_001 --format mermaid
 
 `diagnose incident` persiste o resultado depois de concluir as duas leituras limitadas e o cálculo determinístico. A escrita usa o mesmo pool do comando e uma única transação para incidente, findings e ranking. O ID determinístico torna retries idempotentes; um snapshot existente não é atualizado silenciosamente. Quando a janela do incidente não contém sinais, nenhuma transação é iniciada e o resultado não é persistido, evitando congelar uma investigação executada antes da chegada da telemetria.
 
-Enquanto incidentes persistidos ainda não estiverem disponíveis, `export graph --trace <id> --format mermaid` exporta o subgrafo de um trace para a saída padrão. A serialização é determinística, usa IDs sintéticos, escapa rótulos externos e rejeita arestas que apontem para nós ausentes.
+`incident list` consulta somente resumos persistidos e não recalcula diagnósticos. A leitura exige limite entre 1 e 1.000, seleciona apenas ID, serviço, status e janela, e ordena deterministicamente por início do incidente decrescente e ID crescente. A versão atual implementa uma página limitada dos registros mais recentes, sem cursor nem `offset`; paginação por cursor deverá ser adicionada quando o volume justificar essa evolução.
+
+`incident show` recupera por ID o snapshot gravado, incluindo metadados das janelas, contagens, findings e ranking, sem reler sinais ou executar detectores. A consistência entre essas partes é protegida por uma transação curta de leitura, e a quantidade de findings é limitada a 1.000. Incidentes legados cujas colunas de baseline e contagens sejam nulas continuam legíveis: a saída declara os metadados ausentes, preserva a janela do incidente e apresenta os findings e o ranking disponíveis sem fabricar zeros.
+
+`export graph --trace <id> --format mermaid` exporta o subgrafo de um trace para a saída padrão. A serialização é determinística, usa IDs sintéticos, escapa rótulos externos e rejeita arestas que apontem para nós ausentes.
 
 `faultmap init` cria `faultmap.yaml`, `faultmap.db` e `faultmap-out/`.
 

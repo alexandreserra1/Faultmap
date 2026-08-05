@@ -37,10 +37,24 @@ func (repository *DiagnosisRepository) Save(ctx context.Context, diagnosis appli
 	}
 
 	result, err := transaction.ExecContext(ctx, `
-		INSERT INTO incidents (id, service_name, environment, started_at, ended_at, status)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO incidents (
+			id, service_name, environment, started_at, ended_at, status,
+			baseline_start, baseline_end, baseline_signal_count, incident_signal_count
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO NOTHING
-	`, diagnosis.ID, diagnosis.ServiceName, "", diagnosis.Windows.Incident.Start.UTC(), diagnosis.Windows.Incident.End.UTC(), "diagnosed")
+	`,
+		diagnosis.ID,
+		diagnosis.ServiceName,
+		"",
+		diagnosis.Windows.Incident.Start.UTC(),
+		diagnosis.Windows.Incident.End.UTC(),
+		"diagnosed",
+		diagnosis.Windows.Baseline.Start.UTC(),
+		diagnosis.Windows.Baseline.End.UTC(),
+		diagnosis.BaselineSignalCount,
+		diagnosis.IncidentSignalCount,
+	)
 	if err != nil {
 		return false, rollbackDiagnosisTransaction(transaction, fmt.Errorf("insert incident %q: %w", diagnosis.ID, err))
 	}
@@ -107,6 +121,13 @@ type preparedFinding struct {
 func prepareDiagnosis(diagnosis application.Diagnosis) (preparedDiagnosis, error) {
 	if strings.TrimSpace(diagnosis.ID) == "" {
 		return preparedDiagnosis{}, fmt.Errorf("prepare diagnosis: ID is required")
+	}
+	if len(diagnosis.Findings) > maxFindingsPerIncident {
+		return preparedDiagnosis{}, fmt.Errorf(
+			"prepare diagnosis %q: findings exceed maximum of %d",
+			diagnosis.ID,
+			maxFindingsPerIncident,
+		)
 	}
 	prepared := preparedDiagnosis{findings: make([]preparedFinding, 0, len(diagnosis.Findings))}
 	for _, finding := range diagnosis.Findings {

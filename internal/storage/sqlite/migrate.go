@@ -13,6 +13,8 @@ const (
 	signalsByServiceTimestampIndexVersion = 2
 	signalsByTraceTimestampIndexVersion   = 3
 	diagnosisForeignKeysVersion           = 4
+	diagnosisSnapshotMetadataVersion      = 5
+	diagnosisReadIndexesVersion           = 6
 )
 
 type migration struct {
@@ -144,6 +146,26 @@ var migrations = []migration{
 			SELECT id, incident_id, generated_at, suspects_json
 			FROM ranking_results_without_incident_fk`,
 			`DROP TABLE ranking_results_without_incident_fk`,
+		},
+	},
+	{
+		version: diagnosisSnapshotMetadataVersion,
+		statements: []string{
+			`ALTER TABLE incidents ADD COLUMN baseline_start DATETIME`,
+			`ALTER TABLE incidents ADD COLUMN baseline_end DATETIME`,
+			`ALTER TABLE incidents ADD COLUMN baseline_signal_count INTEGER`,
+			`ALTER TABLE incidents ADD COLUMN incident_signal_count INTEGER`,
+		},
+	},
+	{
+		version: diagnosisReadIndexesVersion,
+		statements: []string{
+			`CREATE INDEX idx_incidents_status_started_at_id
+				ON incidents (status, started_at DESC, id ASC, service_name, ended_at)`,
+			`CREATE INDEX idx_findings_incident_id_rule_id_id
+				ON findings (incident_id, rule_id ASC, id ASC)`,
+			`CREATE UNIQUE INDEX idx_ranking_results_incident_id
+				ON ranking_results (incident_id)`,
 		},
 	},
 }

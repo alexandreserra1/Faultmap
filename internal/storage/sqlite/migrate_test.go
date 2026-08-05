@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -21,7 +22,12 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
+	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
+	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
+	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
+	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
+	assertIndexExists(t, database, "idx_ranking_results_incident_id")
 	for _, table := range []string{
 		"signals",
 		"incidents",
@@ -83,8 +89,13 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
+	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
+	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
+	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
+	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
+	assertIndexExists(t, database, "idx_ranking_results_incident_id")
 	var preservedTraceID string
 	if err := database.QueryRowContext(ctx, `SELECT trace_id FROM signals WHERE id = ?`, "existing-signal").Scan(&preservedTraceID); err != nil {
 		t.Fatalf("read signal after upgrade: %v", err)
@@ -130,8 +141,92 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	assertMigrationVersion(t, database, signalsByServiceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, signalsByTraceTimestampIndexVersion, 1)
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
+	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
+	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertTableExists(t, database, "signals")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
+	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
+	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
+	assertIndexExists(t, database, "idx_ranking_results_incident_id")
+}
+
+// TestDiagnosisReadQueriesUsePurposeBuiltIndexes garante que as consultas do
+// histórico não façam full scan nem ordenação temporária conforme o volume cresce.
+func TestDiagnosisReadQueriesUsePurposeBuiltIndexes(t *testing.T) {
+	t.Parallel()
+
+	database := openMigrationTestDatabase(t)
+	if err := Migrate(context.Background(), database); err != nil {
+		t.Fatalf("Migrate() error = %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		query     string
+		arguments []any
+		wantIndex string
+	}{
+		{
+			name: "list incidents",
+			query: `
+				SELECT id, service_name, status, started_at, ended_at
+				FROM incidents
+				WHERE status = ? AND ended_at IS NOT NULL
+				ORDER BY started_at DESC, id ASC
+				LIMIT ?
+			`,
+			arguments: []any{"diagnosed", 20},
+			wantIndex: "idx_incidents_status_started_at_id",
+		},
+		{
+			name: "get incident",
+			query: `
+				SELECT id, service_name, status, started_at, ended_at,
+					baseline_start, baseline_end, baseline_signal_count, incident_signal_count
+				FROM incidents
+				WHERE id = ? AND status = ? AND ended_at IS NOT NULL
+			`,
+			arguments: []any{"incident-id", "diagnosed"},
+			wantIndex: "sqlite_autoindex_incidents_1",
+		},
+		{
+			name: "get findings",
+			query: `
+				SELECT rule_id, subject_id, score, confidence, evidence_json, limitations_json
+				FROM findings
+				WHERE incident_id = ?
+				ORDER BY rule_id ASC, id ASC
+				LIMIT ?
+			`,
+			arguments: []any{"incident-id", maxFindingsPerIncident + 1},
+			wantIndex: "idx_findings_incident_id_rule_id_id",
+		},
+		{
+			name: "get ranking",
+			query: `
+				SELECT suspects_json
+				FROM ranking_results
+				WHERE incident_id = ?
+			`,
+			arguments: []any{"incident-id"},
+			wantIndex: "idx_ranking_results_incident_id",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan := queryPlan(t, database, test.query, test.arguments...)
+			if !strings.Contains(plan, "USING ") || !strings.Contains(plan, test.wantIndex) {
+				t.Fatalf("query plan = %q, want index %q", plan, test.wantIndex)
+			}
+			if strings.Contains(plan, "USE TEMP B-TREE") {
+				t.Fatalf("query plan uses temporary sorting: %q", plan)
+			}
+			if strings.Contains(plan, "SCAN ") {
+				t.Fatalf("query plan performs full scan: %q", plan)
+			}
+		})
+	}
 }
 
 func openMigrationTestDatabase(t *testing.T) *sql.DB {
@@ -216,4 +311,28 @@ func assertIndexExists(t *testing.T, database *sql.DB, index string) {
 	if err != nil {
 		t.Fatalf("query index %q: %v", index, err)
 	}
+}
+
+func queryPlan(t *testing.T, database *sql.DB, query string, arguments ...any) string {
+	t.Helper()
+
+	rows, err := database.QueryContext(context.Background(), "EXPLAIN QUERY PLAN "+query, arguments...)
+	if err != nil {
+		t.Fatalf("explain query plan: %v", err)
+	}
+	defer rows.Close()
+
+	var details []string
+	for rows.Next() {
+		var id, parent, notUsed int
+		var detail string
+		if err := rows.Scan(&id, &parent, &notUsed, &detail); err != nil {
+			t.Fatalf("scan query plan: %v", err)
+		}
+		details = append(details, detail)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate query plan: %v", err)
+	}
+	return strings.Join(details, "; ")
 }

@@ -22,17 +22,22 @@ func RenderDiagnosis(
 	var output strings.Builder
 	fmt.Fprintf(&output, "Diagnóstico do incidente — %s\n\n", serviceName)
 	fmt.Fprintf(&output, "Baseline: %d sinais · Incidente: %d sinais\n", baselineSignalCount, incidentSignalCount)
+	renderDiagnosisAnalysis(&output, findings, suspects)
 
+	if _, err := io.WriteString(writer, output.String()); err != nil {
+		return fmt.Errorf("escrever diagnóstico no terminal: %w", err)
+	}
+	return nil
+}
+
+// renderDiagnosisAnalysis compartilha ranking, findings e limitações entre o
+// diagnóstico recém-calculado e a leitura de um snapshot persistido.
+func renderDiagnosisAnalysis(output *strings.Builder, findings []detection.Finding, suspects []ranking.Suspect) {
 	if len(findings) == 0 {
 		output.WriteString("\nNenhuma anomalia determinística foi encontrada nas janelas informadas.\n")
-		if _, err := io.WriteString(writer, output.String()); err != nil {
-			return fmt.Errorf("escrever diagnóstico no terminal: %w", err)
-		}
-		return nil
+		return
 	}
-
-	renderSuspectRanking(&output, suspects)
-
+	renderSuspectRanking(output, suspects)
 	orderedFindings := append([]detection.Finding(nil), findings...)
 	sort.Slice(orderedFindings, func(firstIndex, secondIndex int) bool {
 		if orderedFindings[firstIndex].Score != orderedFindings[secondIndex].Score {
@@ -47,32 +52,27 @@ func RenderDiagnosis(
 
 	output.WriteString("\nEvidências:\n")
 	for _, finding := range orderedFindings {
-		fmt.Fprintf(&output, "- %s\n", ruleLabel(finding.Rule))
-		fmt.Fprintf(&output, "  ID da regra: %s\n", finding.Rule)
-		fmt.Fprintf(&output, "  Score: %.2f\n", finding.Score)
-		fmt.Fprintf(&output, "  Confiança: %s\n", finding.Confidence)
+		fmt.Fprintf(output, "- %s\n", ruleLabel(finding.Rule))
+		fmt.Fprintf(output, "  ID da regra: %s\n", finding.Rule)
+		fmt.Fprintf(output, "  Score: %.2f\n", finding.Score)
+		fmt.Fprintf(output, "  Confiança: %s\n", finding.Confidence)
 		orderedEvidence := append([]detection.Evidence(nil), finding.Evidence...)
 		sort.Slice(orderedEvidence, func(firstIndex, secondIndex int) bool {
 			return orderedEvidence[firstIndex].Summary < orderedEvidence[secondIndex].Summary
 		})
 		for _, evidence := range orderedEvidence {
-			fmt.Fprintf(&output, "  Evidência: %s\n", evidence.Summary)
+			fmt.Fprintf(output, "  Evidência: %s\n", evidence.Summary)
 		}
 		for _, limitation := range specificLimitations(finding.Limitations, generalLimitations) {
-			fmt.Fprintf(&output, "  Limitação específica: %s\n", limitation)
+			fmt.Fprintf(output, "  Limitação específica: %s\n", limitation)
 		}
 	}
 	if len(generalLimitations) > 0 {
 		output.WriteString("\nLimitações gerais:\n")
 		for _, limitation := range sortedKeys(generalLimitations) {
-			fmt.Fprintf(&output, "- %s\n", limitation)
+			fmt.Fprintf(output, "- %s\n", limitation)
 		}
 	}
-
-	if _, err := io.WriteString(writer, output.String()); err != nil {
-		return fmt.Errorf("escrever diagnóstico no terminal: %w", err)
-	}
-	return nil
 }
 
 // renderSuspectRanking apresenta o cálculo agregado antes das evidências para

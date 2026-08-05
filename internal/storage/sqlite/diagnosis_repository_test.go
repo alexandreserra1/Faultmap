@@ -156,6 +156,19 @@ func TestDiagnosisRepositorySaveRespectsCanceledContext(t *testing.T) {
 	}
 }
 
+// TestPrepareDiagnosisRejectsMoreFindingsThanHistoryCanRead impede que a
+// persistência crie um snapshot que o próprio histórico rejeitaria ao recuperar.
+func TestPrepareDiagnosisRejectsMoreFindingsThanHistoryCanRead(t *testing.T) {
+	t.Parallel()
+
+	diagnosis := testDiagnosis(t, "incident-too-many-findings")
+	diagnosis.Findings = make([]detection.Finding, maxFindingsPerIncident+1)
+
+	if _, err := prepareDiagnosis(diagnosis); err == nil {
+		t.Fatalf("prepareDiagnosis() error = nil for %d findings, want limit error", len(diagnosis.Findings))
+	}
+}
+
 // TestDiagnosisTablesEnforceIncidentForeignKeys protege a integridade mesmo
 // quando uma escrita inválida tenta contornar o repositório.
 func TestDiagnosisTablesEnforceIncidentForeignKeys(t *testing.T) {

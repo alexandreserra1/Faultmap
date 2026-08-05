@@ -172,6 +172,30 @@ O terminal agrega essas evidências no ranking do `checkout-service`. Com os pes
 
 Ao concluir, o comando salva atomicamente o incidente, seus findings e o ranking no SQLite e imprime um identificador como `inc_be37a8fae2744b8cea62ed08`. Esse ID deriva do serviço e das janelas UTC. Repetir a mesma investigação é idempotente: o snapshot original não é substituído nem duplicado, e a CLI informa `Diagnóstico já existente`. Se a janela do incidente ainda não possuir sinais, a análise é exibida, mas não é persistida; isso permite repetir o comando depois que a telemetria chegar.
 
+### Consultar incidentes persistidos
+
+Liste os snapshots mais recentes sem executar novamente os detectores ou o ranking:
+
+```bash
+go run ./cmd/faultmap incident list \
+  --config ./faultmap-volume/faultmap.yaml \
+  --limit 20
+```
+
+A listagem lê apenas o resumo persistido de cada incidente: ID, serviço, status e janela. `--limit` define quantos registros mais recentes serão apresentados, aceita valores de 1 a 1.000 e evita uma leitura ilimitada. A ordem é estável, do início de incidente mais recente para o mais antigo, com o ID como desempate. Nesta versão ainda não há cursor nem `offset`; para acessar um snapshot fora do limite atual, aumente `--limit` dentro do máximo permitido.
+
+Use o ID retornado pelo diagnóstico ou pela listagem para recuperar o snapshot completo:
+
+```bash
+go run ./cmd/faultmap incident show \
+  --config ./faultmap-volume/faultmap.yaml \
+  --id inc_be37a8fae2744b8cea62ed08
+```
+
+`incident show` lê as janelas, contagens, findings, evidências, limitações e ranking que foram gravados no momento do diagnóstico. Ele não consulta novamente a telemetria nem recalcula scores; assim, uma investigação continua auditável mesmo quando novos sinais chegam ao banco. A leitura aceita no máximo 1.000 findings por incidente para proteger memória e tempo de resposta.
+
+Snapshots criados antes da inclusão dos metadados de baseline continuam compatíveis. Nesses diagnósticos legados, o comando apresenta a janela do incidente e os findings ou ranking disponíveis, informa explicitamente que a baseline e as contagens não estão disponíveis e não inventa valores zero.
+
 ### Investigar um trace
 
 Use um `trace_id` apresentado pelo diagnóstico ou pela listagem de telemetria para reconstruir seu fluxo:
@@ -216,4 +240,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica e persiste incidentes, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas permitirão consultar incidentes persistidos, gerar relatórios JSON/Markdown e adicionar novas fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas gerarão relatórios JSON/Markdown e adicionarão novas fontes de evidência antes da criação do `demo-shop`.

@@ -91,6 +91,10 @@ CREATE TABLE ranking_results (
 
 O diagnóstico persistido é um snapshot imutável. Seu ID é derivado do serviço e das janelas UTC; findings recebem IDs estáveis e o ranking usa `ranking:<incident_id>`. Incidente, findings e ranking são gravados na mesma transação curta. Retries não substituem o snapshot original. `findings.incident_id` e `ranking_results.incident_id` possuem chaves estrangeiras para impedir registros órfãos.
 
+As consultas de histórico leem esse snapshot sem recalcular detectores, scores ou ranking a partir da telemetria atual. A listagem seleciona somente os campos de resumo, possui limite obrigatório entre 1 e 1.000 e usa ordenação estável por início decrescente e ID crescente. A primeira versão retorna apenas a página limitada mais recente, sem cursor ou `offset`; a consulta individual carrega no máximo 1.000 findings e o ranking do incidente em uma transação curta de leitura.
+
+As colunas adicionadas para início/fim da baseline e contagens de sinais permanecem anuláveis para preservar bancos criados por versões anteriores. Ao ler um snapshot legado sem esses metadados, a aplicação representa a ausência explicitamente, mantém a janela conhecida do incidente e devolve os findings e o ranking existentes. Camadas superiores não devem interpretar campos ausentes como zero nem disparar um novo diagnóstico implicitamente.
+
 ## Ingestão OTLP
 
 O Faultmap não substitui o OpenTelemetry Collector:
