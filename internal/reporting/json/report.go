@@ -27,6 +27,7 @@ type report struct {
 type incident struct {
 	ID          string `json:"id"`
 	ServiceName string `json:"service_name"`
+	Environment string `json:"environment"`
 	Status      string `json:"status"`
 }
 
@@ -48,6 +49,7 @@ type finding struct {
 type evidence struct {
 	Summary       string   `json:"summary"`
 	SignalIDs     []string `json:"signal_ids"`
+	ChangeIDs     []string `json:"change_ids"`
 	BaselineValue float64  `json:"baseline_value"`
 	IncidentValue float64  `json:"incident_value"`
 }
@@ -85,6 +87,7 @@ func newReport(diagnosis application.PersistedDiagnosis) report {
 		Incident: incident{
 			ID:          diagnosis.Incident.ID,
 			ServiceName: diagnosis.Incident.ServiceName,
+			Environment: diagnosis.Incident.Environment,
 			Status:      diagnosis.Incident.Status,
 		},
 		IncidentWindow: window{
@@ -142,6 +145,7 @@ func reportFinding(source detection.Finding) finding {
 		result.Evidence = append(result.Evidence, evidence{
 			Summary:       sourceEvidence.Summary,
 			SignalIDs:     sortedStrings(sourceEvidence.SignalIDs),
+			ChangeIDs:     sortedStrings(sourceEvidence.ChangeIDs),
 			BaselineValue: sourceEvidence.BaselineValue,
 			IncidentValue: sourceEvidence.IncidentValue,
 		})

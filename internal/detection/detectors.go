@@ -20,6 +20,8 @@ const (
 	RuleDatabaseTimeout = "database_timeout"
 	// RuleTraceCorrelation relaciona impacto HTTP e timeout PostgreSQL observados no mesmo trace.
 	RuleTraceCorrelation = "database_http_trace_correlation"
+	// RuleDeploymentProximity identifica mudança implantada pouco antes do incidente.
+	RuleDeploymentProximity = "deployment_proximity"
 
 	minimumSampleSize = 5
 )
@@ -38,6 +40,7 @@ const (
 type Evidence struct {
 	Summary       string
 	SignalIDs     []string
+	ChangeIDs     []string
 	BaselineValue float64
 	IncidentValue float64
 }

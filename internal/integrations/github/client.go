@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -45,10 +46,24 @@ func NewClient(httpClient *http.Client, baseURL, token string) (*Client, error) 
 	if err != nil || (parsedBaseURL.Scheme != "http" && parsedBaseURL.Scheme != "https") || parsedBaseURL.Host == "" {
 		return nil, fmt.Errorf("criar cliente GitHub: URL base inválida")
 	}
+	if parsedBaseURL.User != nil || parsedBaseURL.RawQuery != "" || parsedBaseURL.Fragment != "" {
+		return nil, fmt.Errorf("criar cliente GitHub: URL base não pode conter credenciais, query ou fragmento")
+	}
+	if parsedBaseURL.Scheme != "https" && !isLoopbackHost(parsedBaseURL.Hostname()) {
+		return nil, fmt.Errorf("criar cliente GitHub: HTTPS é obrigatório fora do host local")
+	}
 	if strings.TrimSpace(token) == "" {
 		return nil, fmt.Errorf("criar cliente GitHub: GITHUB_TOKEN é obrigatório")
 	}
 	return &Client{httpClient: httpClient, baseURL: parsedBaseURL, token: token}, nil
+}
+
+func isLoopbackHost(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	address := net.ParseIP(host)
+	return address != nil && address.IsLoopback()
 }
 
 // Fetch consulta no máximo uma página por recurso para impedir trabalho e memória ilimitados.

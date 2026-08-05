@@ -86,13 +86,14 @@ func readPersistedIncident(ctx context.Context, transaction *sql.Tx, id string) 
 	var baselineCount, incidentCount sql.NullInt64
 	err := transaction.QueryRowContext(ctx, `
 		SELECT
-			id, service_name, status, started_at, ended_at,
+			id, service_name, environment, status, started_at, ended_at,
 			baseline_start, baseline_end, baseline_signal_count, incident_signal_count
 		FROM incidents
 		WHERE id = ? AND status = ? AND ended_at IS NOT NULL
 	`, id, "diagnosed").Scan(
 		&diagnosis.Incident.ID,
 		&diagnosis.Incident.ServiceName,
+		&diagnosis.Incident.Environment,
 		&diagnosis.Incident.Status,
 		&diagnosis.Incident.IncidentStart,
 		&diagnosis.Incident.IncidentEnd,

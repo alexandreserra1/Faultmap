@@ -646,6 +646,7 @@ func newDiagnoseCommand() *cobra.Command {
 func newDiagnoseIncidentCommand() *cobra.Command {
 	var baseline string
 	var configPath string
+	var environment string
 	var incidentDuration string
 	var limit int
 	var serviceName string
@@ -703,14 +704,23 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 				return fmt.Errorf("aplicar migrations SQLite: %w", err)
 			}
 
-			diagnosis, err := application.DiagnoseIncident(
-				command.Context(),
-				serviceName,
-				windows,
-				limit,
-				rankingConfig(loadedConfig),
-				storage.NewSignalRepository(database),
-			)
+			diagnosisEnvironment := strings.TrimSpace(environment)
+			if diagnosisEnvironment == "" && loadedConfig.GitHub.Enabled {
+				diagnosisEnvironment = strings.TrimSpace(loadedConfig.GitHub.Environment)
+			}
+			var diagnosis application.Diagnosis
+			if diagnosisEnvironment == "" {
+				diagnosis, err = application.DiagnoseIncident(
+					command.Context(), serviceName, windows, limit,
+					rankingConfig(loadedConfig), storage.NewSignalRepository(database),
+				)
+			} else {
+				diagnosis, err = application.DiagnoseIncidentWithDeployments(
+					command.Context(), serviceName, diagnosisEnvironment, windows, limit,
+					rankingConfig(loadedConfig), storage.NewSignalRepository(database),
+					storage.NewChangeRepository(database),
+				)
+			}
 			if err != nil {
 				return err
 			}
@@ -745,6 +755,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 	}
 	command.Flags().StringVar(&baseline, "baseline", "60m", "duração da janela baseline")
 	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&environment, "environment", "", "ambiente usado para correlacionar deployments")
 	command.Flags().StringVar(&incidentDuration, "since", "30m", "duração da janela de incidente")
 	command.Flags().IntVar(&limit, "limit", 1_000, "quantidade máxima de sinais por janela")
 	command.Flags().StringVar(&serviceName, "service", "", "nome do serviço")
@@ -757,10 +768,11 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 func rankingConfig(configuration config.Config) ranking.Config {
 	return ranking.Config{
 		Weights: ranking.Weights{
-			ErrorRateDelta:   configuration.Ranking.Weights.ErrorRateDelta,
-			DatabaseEvidence: configuration.Ranking.Weights.DatabaseEvidence,
-			GraphProximity:   configuration.Ranking.Weights.GraphProximity,
-			LatencyDelta:     configuration.Ranking.Weights.LatencyDelta,
+			ErrorRateDelta:      configuration.Ranking.Weights.ErrorRateDelta,
+			DeploymentProximity: configuration.Ranking.Weights.DeploymentProximity,
+			DatabaseEvidence:    configuration.Ranking.Weights.DatabaseEvidence,
+			GraphProximity:      configuration.Ranking.Weights.GraphProximity,
+			LatencyDelta:        configuration.Ranking.Weights.LatencyDelta,
 		},
 		TopN: configuration.Investigation.TopSuspects,
 	}

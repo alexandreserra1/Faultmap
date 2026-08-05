@@ -37,6 +37,9 @@ func TestDiagnosisIDEDeterministicoEmUTC(t *testing.T) {
 	if first == DiagnosisID("payment-service", windows) {
 		t.Fatal("serviços diferentes receberam o mesmo ID")
 	}
+	if first == diagnosisID("checkout-service", "staging", windows) {
+		t.Fatal("ambientes diferentes receberam o mesmo ID")
+	}
 }
 
 // TestPersistDiagnosisValidaEDelegaUmaVez mantém SQL fora do caso de uso e

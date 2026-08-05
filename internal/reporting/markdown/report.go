@@ -18,6 +18,9 @@ func Render(writer io.Writer, diagnosis application.PersistedDiagnosis) error {
 	var output strings.Builder
 	fmt.Fprintf(&output, "# Diagnóstico do incidente `%s`\n\n", inlineCode(diagnosis.Incident.ID))
 	fmt.Fprintf(&output, "**Serviço:** %s  \n", markdownText(diagnosis.Incident.ServiceName))
+	if diagnosis.Incident.Environment != "" {
+		fmt.Fprintf(&output, "**Ambiente:** %s  \n", markdownText(diagnosis.Incident.Environment))
+	}
 	fmt.Fprintf(&output, "**Status:** %s  \n", markdownText(diagnosis.Incident.Status))
 	if diagnosis.MetadataComplete() {
 		fmt.Fprintf(

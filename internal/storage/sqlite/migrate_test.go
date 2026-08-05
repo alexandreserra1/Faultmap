@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -25,11 +26,13 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
+	assertMigrationVersion(t, database, compactDeploymentsLookupIndexVersion, 1)
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
 	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
 	assertIndexExists(t, database, "idx_ranking_results_incident_id")
 	assertIndexExists(t, database, "idx_deployments_service_environment_time_id")
+	assertIndexColumns(t, database, "idx_deployments_service_environment_time_id", []string{"service_name", "environment", "deployed_at", "id"})
 	for _, table := range []string{
 		"signals",
 		"incidents",
@@ -94,6 +97,7 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
+	assertMigrationVersion(t, database, compactDeploymentsLookupIndexVersion, 1)
 	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
@@ -148,6 +152,7 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
 	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
+	assertMigrationVersion(t, database, compactDeploymentsLookupIndexVersion, 1)
 	assertTableExists(t, database, "signals")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
@@ -333,6 +338,29 @@ func assertIndexExists(t *testing.T, database *sql.DB, index string) {
 	}
 	if err != nil {
 		t.Fatalf("query index %q: %v", index, err)
+	}
+}
+
+func assertIndexColumns(t *testing.T, database *sql.DB, index string, expected []string) {
+	t.Helper()
+	rows, err := database.QueryContext(context.Background(), `SELECT name FROM pragma_index_info(?) ORDER BY seqno`, index)
+	if err != nil {
+		t.Fatalf("ler colunas do índice %q: %v", index, err)
+	}
+	defer rows.Close()
+	var columns []string
+	for rows.Next() {
+		var column string
+		if err := rows.Scan(&column); err != nil {
+			t.Fatalf("ler coluna do índice %q: %v", index, err)
+		}
+		columns = append(columns, column)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("percorrer colunas do índice %q: %v", index, err)
+	}
+	if !reflect.DeepEqual(columns, expected) {
+		t.Fatalf("colunas do índice %q = %#v, esperado %#v", index, columns, expected)
 	}
 }
 

@@ -20,6 +20,7 @@ var ErrIncidentNotFound = errors.New("incidente não encontrado")
 type IncidentSummary struct {
 	ID            string
 	ServiceName   string
+	Environment   string
 	Status        string
 	IncidentStart time.Time
 	IncidentEnd   time.Time

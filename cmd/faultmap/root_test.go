@@ -99,11 +99,11 @@ func TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente(t *testi
 		writer.Header().Set("Content-Type", "application/json")
 		switch request.URL.Path {
 		case "/repos/acme/checkout/commits":
-			if _, err := writer.Write([]byte(`[{"sha":"abc123","commit":{"message":"Reduce pool","committer":{"date":"2025-12-01T09:54:00Z"}},"author":{"login":"alex"}}]`)); err != nil {
+			if _, err := writer.Write([]byte(`[{"sha":"1.0.1","commit":{"message":"Reduce pool","committer":{"date":"2025-12-01T09:54:00Z"}},"author":{"login":"alex"}}]`)); err != nil {
 				t.Errorf("responder commits: %v", err)
 			}
 		case "/repos/acme/checkout/deployments":
-			if _, err := writer.Write([]byte(`[{"id":42,"sha":"abc123","ref":"main","task":"deploy","environment":"staging","created_at":"2025-12-01T09:55:00Z"}]`)); err != nil {
+			if _, err := writer.Write([]byte(`[{"id":42,"sha":"1.0.1","ref":"main","task":"deploy","environment":"staging","created_at":"2025-12-01T09:55:00Z"}]`)); err != nil {
 				t.Errorf("responder deployments: %v", err)
 			}
 		default:
@@ -153,6 +153,41 @@ func TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente(t *testi
 	if output := execute(); !strings.Contains(output, "1 commits coletados; 0 novos") || !strings.Contains(output, "1 deployments coletados; 0 novos") {
 		t.Fatalf("saída do retry inesperada:\n%s", output)
 	}
+	for _, fixtureName := range []string{"checkout-baseline-sample.json", "checkout-incident-sample.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver fixture: %v", err)
+		}
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--config", configPath, "--input", fixturePath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir %s: %v", fixtureName, err)
+		}
+	}
+	var diagnosisOutput bytes.Buffer
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident", "--config", configPath, "--service", "checkout-service",
+		"--environment", "staging", "--since", "1m", "--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z", "--limit", "100",
+	})
+	diagnose.SetOut(&diagnosisOutput)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnosticar com deployment: %v", err)
+	}
+	for _, expected := range []string{
+		"deployment_proximity",
+		"6 minuto(s) antes do incidente",
+		"service.version observada no incidente",
+		"Score agregado: 0.58",
+	} {
+		if !strings.Contains(diagnosisOutput.String(), expected) {
+			t.Errorf("diagnóstico não contém %q:\n%s", expected, diagnosisOutput.String())
+		}
+	}
 
 	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
 	if err != nil {
@@ -171,6 +206,21 @@ func TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente(t *testi
 		if count != expected {
 			t.Fatalf("%s = %d, esperado %d", table, count, expected)
 		}
+	}
+	var incidentID string
+	if err := database.QueryRow(`SELECT id FROM incidents WHERE environment = ? LIMIT 1`, "staging").Scan(&incidentID); err != nil {
+		t.Fatalf("ler incidente por ambiente: %v", err)
+	}
+	var persistedOutput bytes.Buffer
+	show := newRootCommand()
+	show.SetArgs([]string{"incident", "show", "--config", configPath, "--id", incidentID})
+	show.SetOut(&persistedOutput)
+	show.SetErr(io.Discard)
+	if err := show.Execute(); err != nil {
+		t.Fatalf("consultar incidente com deployment: %v", err)
+	}
+	if !strings.Contains(persistedOutput.String(), "Ambiente: staging") || !strings.Contains(persistedOutput.String(), "deployment_proximity") {
+		t.Fatalf("snapshot não preservou ambiente e finding:\n%s", persistedOutput.String())
 	}
 }
 

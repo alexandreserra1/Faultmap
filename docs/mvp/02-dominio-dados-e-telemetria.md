@@ -110,6 +110,8 @@ faultmap ingest file --input ./fixtures/otel-sample.json
 
 A ingestão deve validar o payload; extrair resource attributes, `service.name`, `service.version`, ambiente, trace/span IDs, status, duração, atributos HTTP e de banco; normalizar e persistir; e ignorar duplicidades pelo ID.
 
+A normalização de spans propaga para cada sinal somente os atributos de Resource necessários à identidade operacional: `service.version`, `service.instance.id` e `deployment.environment.name`. A allowlist evita duplicar atributos arbitrários do Resource e permite relacionar a versão observada ao commit de um deployment.
+
 Consultas por trace usam um índice composto em `(trace_id, timestamp, id)`, limite obrigatório e ordenação determinística. O grafo é derivado dos sinais persistidos por uma única consulta; nenhuma leitura N+1 é necessária.
 
 ## Atributos OpenTelemetry prioritários

@@ -136,6 +136,19 @@ O token nunca é gravado no YAML, no SQLite ou nas mensagens de erro. A coleta a
 
 Esta primeira fatia usa uma única chamada REST para commits e outra para deployments. Por isso, ainda não importa a lista de arquivos de cada commit nem o status individual de cada deployment: esses detalhes exigiriam uma requisição adicional por item e não serão implementados como N+1. Até existir uma estratégia em lote, `files_json` fica vazio e o estado do deployment é registrado como `unknown`.
 
+Depois de importar, informe o mesmo ambiente ao diagnosticar:
+
+```bash
+go run ./cmd/faultmap diagnose incident \
+  --config ./faultmap-local/faultmap.yaml \
+  --service checkout-service \
+  --environment staging \
+  --since 15m \
+  --baseline 30m
+```
+
+O Faultmap consulta somente deployments já persistidos, dentro de até uma hora antes do início do incidente. Um deployment próximo recebe o finding `deployment_proximity`; quando o commit também corresponde à `service.version` observada nos spans do incidente, a confiança aumenta. O score usa uma queda linear pela distância temporal: um deployment seis minutos antes recebe score `0.90`, que com peso `0.20` contribui `0.18` para o suspeito. A saída sempre declara que proximidade e correspondência de versão não provam causalidade.
+
 ### Consultar sinais no terminal
 
 Liste a telemetria persistida de um serviço em uma janela temporal limitada:
@@ -284,4 +297,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão novas fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, importa commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id` e proximidade de deployment com correspondência opcional de versão. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão `retry_storm`, ingestão OTLP HTTP e o `demo-shop`.

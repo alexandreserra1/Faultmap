@@ -46,7 +46,7 @@ func (repository *DiagnosisRepository) Save(ctx context.Context, diagnosis appli
 	`,
 		diagnosis.ID,
 		diagnosis.ServiceName,
-		"",
+		diagnosis.Environment,
 		diagnosis.Windows.Incident.Start.UTC(),
 		diagnosis.Windows.Incident.End.UTC(),
 		"diagnosed",

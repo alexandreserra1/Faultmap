@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
 	"github.com/faultmap/faultmap/internal/detection"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/ranking"
@@ -58,6 +59,50 @@ func TestDiagnoseIncidentComparaJanelasEDetectaEvidências(t *testing.T) {
 	}
 }
 
+// TestDiagnoseIncidentWithDeploymentsIncluiMudancaNoRanking garante que a
+// consulta externa já persistida participe da mesma análise determinística.
+func TestDiagnoseIncidentWithDeploymentsIncluiMudancaNoRanking(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2025, time.December, 1, 10, 1, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(incidentStart, incidentStart.Add(time.Minute), time.Minute)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+	baseline := diagnosisHTTPSignal("baseline-http", incidentStart.Add(-time.Minute), 201, 120)
+	baseline.Attributes["service.version"] = "1.0.0"
+	incident := diagnosisHTTPSignal("incident-http", incidentStart, 500, 2300)
+	incident.Attributes["service.version"] = "1.0.1"
+	signalReader := &diagnosisReaderFake{baseline: []domain.Signal{baseline}, incident: []domain.Signal{incident}}
+	deploymentReader := &deploymentReaderFake{deployments: []changedomain.Deployment{{
+		ID: "deployment-42", Repository: "acme/checkout", Environment: "staging",
+		ServiceName: "checkout-service", CommitSHA: "1.0.1", DeployedAt: incidentStart.Add(-6 * time.Minute),
+	}}}
+
+	diagnosis, err := DiagnoseIncidentWithDeployments(
+		context.Background(), "checkout-service", "staging", windows, 100,
+		testRankingConfig(), signalReader, deploymentReader,
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentWithDeployments() erro = %v", err)
+	}
+	if diagnosis.Environment != "staging" {
+		t.Fatalf("Environment = %q", diagnosis.Environment)
+	}
+	if !hasFinding(diagnosis.Findings, detection.RuleDeploymentProximity) {
+		t.Fatalf("findings = %#v, esperado deployment_proximity", diagnosis.Findings)
+	}
+	if len(deploymentReader.calls) != 1 || deploymentReader.calls[0].serviceName != "checkout-service" || deploymentReader.calls[0].environment != "staging" {
+		t.Fatalf("consultas de deployment = %#v", deploymentReader.calls)
+	}
+	if diagnosis.ID == DiagnosisID("checkout-service", windows) {
+		t.Fatal("ID com ambiente colidiu com diagnóstico sem ambiente")
+	}
+	if len(diagnosis.Suspects) != 1 || !hasContribution(diagnosis.Suspects[0], detection.RuleDeploymentProximity) {
+		t.Fatalf("ranking = %#v", diagnosis.Suspects)
+	}
+}
+
 // TestDiagnoseIncidentRejeitaLimiteInválido impede consultas ilimitadas ao repositório.
 func TestDiagnoseIncidentRejeitaLimiteInválido(t *testing.T) {
 	t.Parallel()
@@ -102,13 +147,41 @@ func TestDiagnoseIncidentRejeitaRankingInválidoAntesDasConsultas(t *testing.T) 
 func testRankingConfig() ranking.Config {
 	return ranking.Config{
 		Weights: ranking.Weights{
-			ErrorRateDelta:   0.25,
-			DatabaseEvidence: 0.20,
-			GraphProximity:   0.15,
-			LatencyDelta:     0.10,
+			ErrorRateDelta:      0.25,
+			DeploymentProximity: 0.20,
+			DatabaseEvidence:    0.20,
+			GraphProximity:      0.15,
+			LatencyDelta:        0.10,
 		},
 		TopN: 3,
 	}
+}
+
+type deploymentQuery struct {
+	serviceName string
+	environment string
+	start       time.Time
+	end         time.Time
+	limit       int
+}
+
+type deploymentReaderFake struct {
+	deployments []changedomain.Deployment
+	calls       []deploymentQuery
+}
+
+func (reader *deploymentReaderFake) ListDeployments(
+	_ context.Context,
+	serviceName string,
+	environment string,
+	start time.Time,
+	end time.Time,
+	limit int,
+) ([]changedomain.Deployment, error) {
+	reader.calls = append(reader.calls, deploymentQuery{
+		serviceName: serviceName, environment: environment, start: start, end: end, limit: limit,
+	})
+	return reader.deployments, nil
 }
 
 // diagnosisReaderFake separa as respostas pelas janelas esperadas sem usar infraestrutura.
@@ -162,6 +235,15 @@ func diagnosisDatabaseSignal(id string, timestamp time.Time, failed bool, durati
 func hasFinding(findings []detection.Finding, rule string) bool {
 	for _, finding := range findings {
 		if finding.Rule == rule {
+			return true
+		}
+	}
+	return false
+}
+
+func hasContribution(suspect ranking.Suspect, rule string) bool {
+	for _, contribution := range suspect.Contributions {
+		if contribution.RuleID == rule {
 			return true
 		}
 	}

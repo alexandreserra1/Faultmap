@@ -44,6 +44,8 @@ Coletar commits, SHA, autor, mensagem, arquivos modificados, horário, deploymen
 
 A primeira fatia operacional limita cada execução a uma página de até 100 commits e uma página de até 100 deployments, persiste ambos atomicamente e é idempotente. Como os endpoints de listagem não incluem arquivos por commit nem o status atual de cada deployment, esses dois detalhes permanecem explicitamente vazios/desconhecidos nesta etapa; não é permitido buscá-los com uma requisição N+1. Uma evolução deve usar uma operação em lote ou justificar uma estratégia limitada e medida.
 
+O detector `deployment_proximity` consulta somente deployments persistidos do mesmo serviço e ambiente, em uma janela de até uma hora antes do início do incidente. Seu score decai linearmente com a distância temporal. A correspondência entre `commit_sha` e `service.version` eleva a confiança e a mudança de versões entre baseline/incidente é registrada na evidência. O ID do deployment é preservado como proveniência, separado dos IDs de sinais, e a limitação causal é obrigatória.
+
 ## Integração PostgreSQL
 
 Na primeira fase, usar spans OpenTelemetry para detectar operações lentas, timeout, erros, excesso de queries, possível N+1 e banco/operação envolvidos. Uma fase posterior poderá usar `pg_stat_activity`, `pg_stat_statements`, `pg_locks` e `pg_stat_database`. CDC e logical decoding não pertencem à primeira entrega funcional.

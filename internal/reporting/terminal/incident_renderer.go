@@ -50,6 +50,9 @@ func RenderPersistedDiagnosis(writer io.Writer, diagnosis application.PersistedD
 	var output strings.Builder
 	fmt.Fprintf(&output, "Incidente persistido — %s\n", diagnosis.Incident.ID)
 	fmt.Fprintf(&output, "Serviço: %s\n", diagnosis.Incident.ServiceName)
+	if diagnosis.Incident.Environment != "" {
+		fmt.Fprintf(&output, "Ambiente: %s\n", diagnosis.Incident.Environment)
+	}
 	fmt.Fprintf(&output, "Status: %s\n", diagnosis.Incident.Status)
 	if diagnosis.MetadataComplete() {
 		fmt.Fprintf(

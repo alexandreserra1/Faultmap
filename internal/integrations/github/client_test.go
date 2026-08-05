@@ -135,6 +135,23 @@ func TestClientFetchPreservesCancellationAndDoesNotLeakToken(t *testing.T) {
 	}
 }
 
+// TestNewClientRejectsTokenOverInsecureRemoteURL evita enviar a credencial para
+// HTTP remoto ou para URLs com componentes inesperados.
+func TestNewClientRejectsTokenOverInsecureRemoteURL(t *testing.T) {
+	t.Parallel()
+
+	for _, baseURL := range []string{
+		"http://api.example.com",
+		"https://user@example.com",
+		"https://api.example.com?redirect=evil",
+		"https://api.example.com#fragment",
+	} {
+		if _, err := NewClient(http.DefaultClient, baseURL, "token"); err == nil {
+			t.Fatalf("NewClient() erro = nil para %q", baseURL)
+		}
+	}
+}
+
 func assertQueryValue(t *testing.T, query url.Values, key, expected string) {
 	t.Helper()
 	if got := query.Get(key); got != expected {

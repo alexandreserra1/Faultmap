@@ -16,7 +16,11 @@ func TestParseOTLPJSONNormalizesResourceSpans(t *testing.T) {
 
 	const payload = `{
   "resourceSpans": [{
-    "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "checkout-service"}}]},
+    "resource": {"attributes": [
+      {"key": "service.name", "value": {"stringValue": "checkout-service"}},
+      {"key": "service.version", "value": {"stringValue": "1.0.1"}},
+      {"key": "deployment.environment.name", "value": {"stringValue": "staging"}}
+    ]},
     "scopeSpans": [{"spans": [{
       "traceId": "4bf92f3577b34da6a3ce929d0e0e4736",
       "spanId": "00f067aa0ba902b7",
@@ -53,13 +57,15 @@ func TestParseOTLPJSONNormalizesResourceSpans(t *testing.T) {
 		SpanID:      "00f067aa0ba902b7",
 		Severity:    "error",
 		Attributes: map[string]string{
-			"http.request.method":       "POST",
-			"http.response.status_code": "500",
-			"retry":                     "true",
-			"span.kind":                 "SPAN_KIND_SERVER",
-			"span.name":                 "POST /checkout",
-			"span.parent_id":            "00f067aa0ba90000",
-			"status.message":            "payment unavailable",
+			"deployment.environment.name": "staging",
+			"http.request.method":         "POST",
+			"http.response.status_code":   "500",
+			"retry":                       "true",
+			"service.version":             "1.0.1",
+			"span.kind":                   "SPAN_KIND_SERVER",
+			"span.name":                   "POST /checkout",
+			"span.parent_id":              "00f067aa0ba90000",
+			"status.message":              "payment unavailable",
 		},
 		Measurements: map[string]float64{"duration_ms": 125},
 	}

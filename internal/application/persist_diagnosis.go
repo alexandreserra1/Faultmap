@@ -29,7 +29,7 @@ func PersistDiagnosis(ctx context.Context, diagnosis Diagnosis, store DiagnosisS
 	if diagnosis.IncidentSignalCount <= 0 {
 		return false, fmt.Errorf("persistir diagnóstico: %w", ErrNoIncidentSignals)
 	}
-	expectedID := DiagnosisID(diagnosis.ServiceName, diagnosis.Windows)
+	expectedID := diagnosisID(diagnosis.ServiceName, diagnosis.Environment, diagnosis.Windows)
 	if diagnosis.ID != expectedID {
 		return false, fmt.Errorf("persistir diagnóstico: ID não corresponde ao serviço e às janelas")
 	}

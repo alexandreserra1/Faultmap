@@ -12,10 +12,11 @@ import (
 
 // Weights define a contribuição máxima de cada classe de evidência no score final.
 type Weights struct {
-	ErrorRateDelta   float64
-	DatabaseEvidence float64
-	GraphProximity   float64
-	LatencyDelta     float64
+	ErrorRateDelta      float64
+	DeploymentProximity float64
+	DatabaseEvidence    float64
+	GraphProximity      float64
+	LatencyDelta        float64
 }
 
 // Config define os pesos e o limite de suspeitos devolvidos pelo motor.
@@ -123,6 +124,7 @@ func (config Config) Validate() error {
 	}
 	weights := []float64{
 		config.Weights.ErrorRateDelta,
+		config.Weights.DeploymentProximity,
 		config.Weights.DatabaseEvidence,
 		config.Weights.GraphProximity,
 		config.Weights.LatencyDelta,
@@ -145,6 +147,8 @@ func weightForRule(rule string, weights Weights) (float64, bool) {
 		return weights.DatabaseEvidence, true
 	case detection.RuleTraceCorrelation:
 		return weights.GraphProximity, true
+	case detection.RuleDeploymentProximity:
+		return weights.DeploymentProximity, true
 	default:
 		return 0, false
 	}

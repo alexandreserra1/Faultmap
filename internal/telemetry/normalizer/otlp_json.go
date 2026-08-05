@@ -37,12 +37,13 @@ func ParseOTLPJSON(ctx context.Context, reader io.Reader) ([]domain.Signal, erro
 	signals := make([]domain.Signal, 0)
 	for resourceIndex, resourceSpan := range request.ResourceSpans {
 		serviceName := serviceName(resourceSpan.Resource.Attributes)
+		resourceAttributes := resourceSignalAttributes(resourceSpan.Resource.Attributes)
 		for _, scopeSpan := range resourceSpan.ScopeSpans {
 			for spanIndex, span := range scopeSpan.Spans {
 				if err := contextError(ctx); err != nil {
 					return nil, err
 				}
-				signal, err := normalizeSpan(serviceName, span)
+				signal, err := normalizeSpan(serviceName, resourceAttributes, span)
 				if err != nil {
 					return nil, fmt.Errorf("normalizar resourceSpans[%d].scopeSpans[].spans[%d]: %w", resourceIndex, spanIndex, err)
 				}
@@ -102,7 +103,7 @@ type anyValue struct {
 	KVListValue json.RawMessage `json:"kvlistValue"`
 }
 
-func normalizeSpan(serviceName string, source span) (domain.Signal, error) {
+func normalizeSpan(serviceName string, resourceAttributes map[string]string, source span) (domain.Signal, error) {
 	if strings.TrimSpace(source.TraceID) == "" {
 		return domain.Signal{}, fmt.Errorf("traceId é obrigatório")
 	}
@@ -122,7 +123,13 @@ func normalizeSpan(serviceName string, source span) (domain.Signal, error) {
 		return domain.Signal{}, fmt.Errorf("endTimeUnixNano não pode ser anterior a startTimeUnixNano")
 	}
 
-	attributes := normalizeAttributes(source.Attributes)
+	attributes := make(map[string]string, len(resourceAttributes)+len(source.Attributes)+3)
+	for key, value := range resourceAttributes {
+		attributes[key] = value
+	}
+	for key, value := range normalizeAttributes(source.Attributes) {
+		attributes[key] = value
+	}
 	if source.Name != "" {
 		attributes["span.name"] = source.Name
 	}
@@ -149,6 +156,26 @@ func normalizeSpan(serviceName string, source span) (domain.Signal, error) {
 			"duration_ms": float64(endedAt.Sub(startedAt)) / float64(time.Millisecond),
 		},
 	}, nil
+}
+
+// resourceSignalAttributes copia somente identidade operacional necessária à
+// correlação, sem carregar todo o Resource para cada sinal persistido.
+func resourceSignalAttributes(source []keyValue) map[string]string {
+	allowed := map[string]struct{}{
+		"service.version":             {},
+		"service.instance.id":         {},
+		"deployment.environment.name": {},
+	}
+	attributes := make(map[string]string, len(allowed))
+	for _, attribute := range source {
+		if _, ok := allowed[attribute.Key]; !ok {
+			continue
+		}
+		if value, ok := attribute.Value.stringValue(); ok {
+			attributes[attribute.Key] = value
+		}
+	}
+	return attributes
 }
 
 func serviceName(attributes []keyValue) string {

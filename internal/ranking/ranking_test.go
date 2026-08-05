@@ -76,12 +76,14 @@ func TestRankMapeiaCadaRegraAoPesoCorreto(t *testing.T) {
 		{Rule: detection.RuleLatencyDelta, ServiceName: "api", Score: 1, Confidence: detection.ConfidenceHigh},
 		{Rule: detection.RuleDatabaseTimeout, ServiceName: "api", Score: 1, Confidence: detection.ConfidenceHigh},
 		{Rule: detection.RuleTraceCorrelation, ServiceName: "api", Score: 1, Confidence: detection.ConfidenceHigh},
+		{Rule: detection.RuleDeploymentProximity, ServiceName: "api", Score: 1, Confidence: detection.ConfidenceHigh},
 	}
 	weights := ranking.Weights{
-		ErrorRateDelta:   0.10,
-		LatencyDelta:     0.20,
-		DatabaseEvidence: 0.30,
-		GraphProximity:   0.40,
+		ErrorRateDelta:      0.10,
+		LatencyDelta:        0.20,
+		DatabaseEvidence:    0.30,
+		GraphProximity:      0.40,
+		DeploymentProximity: 0.50,
 	}
 
 	suspects, err := ranking.Rank(findings, ranking.Config{Weights: weights, TopN: 1})
@@ -96,6 +98,7 @@ func TestRankMapeiaCadaRegraAoPesoCorreto(t *testing.T) {
 	assertContribution(t, suspects[0].Contributions, detection.RuleLatencyDelta, weights.LatencyDelta)
 	assertContribution(t, suspects[0].Contributions, detection.RuleDatabaseTimeout, weights.DatabaseEvidence)
 	assertContribution(t, suspects[0].Contributions, detection.RuleTraceCorrelation, weights.GraphProximity)
+	assertContribution(t, suspects[0].Contributions, detection.RuleDeploymentProximity, weights.DeploymentProximity)
 }
 
 func TestRankLimitaScoreAoIntervaloDeZeroAUm(t *testing.T) {
