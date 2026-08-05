@@ -336,6 +336,73 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	assertTableCount(t, database, "ranking_results", 1)
 }
 
+// TestDiagnoseIncidentCommandNaoPersisteJanelaDeIncidenteVazia garante que
+// telemetria ainda não recebida não produza um snapshot imutável incompleto.
+func TestDiagnoseIncidentCommandNaoPersisteJanelaDeIncidenteVazia(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "checkout-baseline-sample.json"))
+	if err != nil {
+		t.Fatalf("resolver fixture: %v", err)
+	}
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+	ingest.SetOut(io.Discard)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingerir baseline: %v", err)
+	}
+
+	var output bytes.Buffer
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident",
+		"--config", configPath,
+		"--service", "checkout-service",
+		"--since", "1m",
+		"--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z",
+		"--limit", "100",
+	})
+	diagnose.SetOut(&output)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnose incident erro = %v", err)
+	}
+	for _, expected := range []string{
+		"Baseline: 40 sinais · Incidente: 0 sinais",
+		"Nenhuma anomalia determinística",
+		"Diagnóstico não salvo: janela do incidente sem sinais.",
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, output.String())
+		}
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
+	assertTableCount(t, database, "incidents", 0)
+	assertTableCount(t, database, "findings", 0)
+	assertTableCount(t, database, "ranking_results", 0)
+}
+
 // TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL garante que um trace
 // correlacionado possa ser investigado sem expor SQL bruto ou atributos livres.
 func TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL(t *testing.T) {

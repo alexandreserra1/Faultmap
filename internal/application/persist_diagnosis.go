@@ -2,9 +2,13 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 )
+
+// ErrNoIncidentSignals indica que ainda não há dados suficientes para congelar um snapshot imutável.
+var ErrNoIncidentSignals = errors.New("janela do incidente sem sinais")
 
 // DiagnosisStore define a única gravação atômica necessária para preservar um diagnóstico.
 type DiagnosisStore interface {
@@ -21,6 +25,9 @@ func PersistDiagnosis(ctx context.Context, diagnosis Diagnosis, store DiagnosisS
 	}
 	if err := diagnosis.Windows.Validate(); err != nil {
 		return false, fmt.Errorf("persistir diagnóstico: janelas inválidas: %w", err)
+	}
+	if diagnosis.IncidentSignalCount <= 0 {
+		return false, fmt.Errorf("persistir diagnóstico: %w", ErrNoIncidentSignals)
 	}
 	expectedID := DiagnosisID(diagnosis.ServiceName, diagnosis.Windows)
 	if diagnosis.ID != expectedID {

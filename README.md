@@ -170,7 +170,7 @@ Essa amostra contém 20 traces por janela. O resultado esperado inclui taxa de e
 
 O terminal agrega essas evidências no ranking do `checkout-service`. Com os pesos padrão, o score é `0.40`: erros HTTP contribuem `0.10`, latência `0.09`, timeout de banco `0.06` e correlação pelo trace `0.15`. Esse número representa prioridade determinística de investigação, não probabilidade de causa. Cada parcela permanece visível e limitações repetidas são consolidadas ao final do relatório.
 
-Ao concluir, o comando salva atomicamente o incidente, seus findings e o ranking no SQLite e imprime um identificador como `inc_be37a8fae2744b8cea62ed08`. Esse ID deriva do serviço e das janelas UTC. Repetir a mesma investigação é idempotente: o snapshot original não é substituído nem duplicado, e a CLI informa `Diagnóstico já existente`.
+Ao concluir, o comando salva atomicamente o incidente, seus findings e o ranking no SQLite e imprime um identificador como `inc_be37a8fae2744b8cea62ed08`. Esse ID deriva do serviço e das janelas UTC. Repetir a mesma investigação é idempotente: o snapshot original não é substituído nem duplicado, e a CLI informa `Diagnóstico já existente`. Se a janela do incidente ainda não possuir sinais, a análise é exibida, mas não é persistida; isso permite repetir o comando depois que a telemetria chegar.
 
 ### Investigar um trace
 

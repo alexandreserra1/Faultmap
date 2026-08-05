@@ -68,6 +68,23 @@ func TestPersistDiagnosisRejeitaEntradaAntesDoStore(t *testing.T) {
 	}
 }
 
+// TestPersistDiagnosisNaoSalvaIncidenteSemSinais evita congelar como imutável
+// uma investigação executada antes de a telemetria do incidente chegar.
+func TestPersistDiagnosisNaoSalvaIncidenteSemSinais(t *testing.T) {
+	t.Parallel()
+
+	diagnosis := validDiagnosisForPersistence(t)
+	diagnosis.IncidentSignalCount = 0
+	store := &diagnosisStoreFake{}
+	_, err := PersistDiagnosis(context.Background(), diagnosis, store)
+	if !errors.Is(err, ErrNoIncidentSignals) {
+		t.Fatalf("PersistDiagnosis() erro = %v, esperado ErrNoIncidentSignals", err)
+	}
+	if store.calls != 0 {
+		t.Fatalf("chamadas ao store = %d, esperado zero", store.calls)
+	}
+}
+
 // TestPersistDiagnosisPreservaCausaDoStore garante diagnóstico operacional sem perder errors.Is.
 func TestPersistDiagnosisPreservaCausaDoStore(t *testing.T) {
 	t.Parallel()
@@ -101,5 +118,11 @@ func validDiagnosisForPersistence(t *testing.T) Diagnosis {
 	if err != nil {
 		t.Fatalf("criar janelas: %v", err)
 	}
-	return Diagnosis{ID: DiagnosisID("checkout-service", windows), ServiceName: "checkout-service", Windows: windows}
+	return Diagnosis{
+		ID:                  DiagnosisID("checkout-service", windows),
+		ServiceName:         "checkout-service",
+		Windows:             windows,
+		BaselineSignalCount: 40,
+		IncidentSignalCount: 40,
+	}
 }

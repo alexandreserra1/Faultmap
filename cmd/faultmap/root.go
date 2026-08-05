@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -422,13 +423,14 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			created, err := application.PersistDiagnosis(
+			created, persistenceErr := application.PersistDiagnosis(
 				command.Context(),
 				diagnosis,
 				storage.NewDiagnosisRepository(database),
 			)
-			if err != nil {
-				return err
+			skippedEmptyIncident := errors.Is(persistenceErr, application.ErrNoIncidentSignals)
+			if persistenceErr != nil && !skippedEmptyIncident {
+				return persistenceErr
 			}
 			if err := terminal.RenderDiagnosis(
 				command.OutOrStdout(),
@@ -440,7 +442,9 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			); err != nil {
 				return err
 			}
-			if created {
+			if skippedEmptyIncident {
+				_, err = fmt.Fprintln(command.OutOrStdout(), "\nDiagnóstico não salvo: janela do incidente sem sinais.")
+			} else if created {
 				_, err = fmt.Fprintf(command.OutOrStdout(), "\nDiagnóstico salvo: %s\n", diagnosis.ID)
 			} else {
 				_, err = fmt.Fprintf(command.OutOrStdout(), "\nDiagnóstico já existente: %s\n", diagnosis.ID)
