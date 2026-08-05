@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -484,6 +485,108 @@ func TestIncidentCommandsValidamEntradaAntesDoBanco(t *testing.T) {
 	show.SetErr(io.Discard)
 	if err := show.Execute(); err == nil || !strings.Contains(err.Error(), "--id") {
 		t.Fatalf("incident show erro = %v, esperado ID obrigatório", err)
+	}
+}
+
+// TestExportReportCommandGeraJSONEMarkdownDoMesmoSnapshot garante formatos
+// estruturados e humanos sem executar novamente detectores ou ranking.
+func TestExportReportCommandGeraJSONEMarkdownDoMesmoSnapshot(t *testing.T) {
+	t.Parallel()
+
+	configPath, incidentID := preparePersistedIncident(t)
+
+	var jsonOutput bytes.Buffer
+	jsonCommand := newRootCommand()
+	jsonCommand.SetArgs([]string{
+		"export", "report", "--config", configPath,
+		"--incident", incidentID, "--format", "json",
+	})
+	jsonCommand.SetOut(&jsonOutput)
+	jsonCommand.SetErr(io.Discard)
+	if err := jsonCommand.Execute(); err != nil {
+		t.Fatalf("export report JSON erro = %v", err)
+	}
+	var document struct {
+		SchemaVersion string `json:"schema_version"`
+		Incident      struct {
+			ID          string `json:"id"`
+			ServiceName string `json:"service_name"`
+		} `json:"incident"`
+		Baseline *struct {
+			SignalCount int `json:"signal_count"`
+		} `json:"baseline"`
+		IncidentWindow struct {
+			SignalCount int `json:"signal_count"`
+		} `json:"incident_window"`
+		Findings []struct {
+			RuleID string `json:"rule_id"`
+		} `json:"findings"`
+		Ranking []struct {
+			ID    string  `json:"id"`
+			Score float64 `json:"score"`
+		} `json:"ranking"`
+	}
+	if err := json.Unmarshal(jsonOutput.Bytes(), &document); err != nil {
+		t.Fatalf("decodificar relatório JSON: %v\n%s", err, jsonOutput.String())
+	}
+	if document.SchemaVersion != "1" || document.Incident.ID != incidentID || document.Incident.ServiceName != "checkout-service" {
+		t.Fatalf("cabeçalho JSON inesperado: %#v", document)
+	}
+	if document.Baseline == nil || document.Baseline.SignalCount != 40 || document.IncidentWindow.SignalCount != 40 {
+		t.Fatalf("janelas JSON inesperadas: baseline=%#v incidente=%#v", document.Baseline, document.IncidentWindow)
+	}
+	if len(document.Findings) != 4 || len(document.Ranking) != 1 || document.Ranking[0].Score < 0.4035 || document.Ranking[0].Score > 0.4037 {
+		t.Fatalf("análise JSON inesperada: findings=%d ranking=%#v", len(document.Findings), document.Ranking)
+	}
+
+	var markdownOutput bytes.Buffer
+	markdownCommand := newRootCommand()
+	markdownCommand.SetArgs([]string{
+		"export", "report", "--config", configPath,
+		"--incident", incidentID, "--format", "markdown",
+	})
+	markdownCommand.SetOut(&markdownOutput)
+	markdownCommand.SetErr(io.Discard)
+	if err := markdownCommand.Execute(); err != nil {
+		t.Fatalf("export report Markdown erro = %v", err)
+	}
+	for _, expected := range []string{
+		"# Diagnóstico do incidente `" + incidentID + "`",
+		"**Serviço:** checkout-service",
+		"**Baseline:** 40 sinais",
+		"## Ranking de suspeitos",
+		"## Evidências",
+		"database_http_trace_correlation",
+		"Correlação entre sinais não comprova causalidade.",
+	} {
+		if !strings.Contains(markdownOutput.String(), expected) {
+			t.Errorf("Markdown não contém %q:\n%s", expected, markdownOutput.String())
+		}
+	}
+}
+
+// TestExportReportCommandValidaEntradaAntesDoBanco evita I/O quando ID ou
+// formato já são inválidos.
+func TestExportReportCommandValidaEntradaAntesDoBanco(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "incident required", args: []string{"export", "report", "--config", "inexistente.yaml", "--incident", " "}, want: "--incident"},
+		{name: "format allowlist", args: []string{"export", "report", "--config", "inexistente.yaml", "--incident", "inc_1", "--format", "html"}, want: "--format"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			command := newRootCommand()
+			command.SetArgs(test.args)
+			command.SetOut(io.Discard)
+			command.SetErr(io.Discard)
+			if err := command.Execute(); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("export report erro = %v, esperado %q", err, test.want)
+			}
+		})
 	}
 }
 

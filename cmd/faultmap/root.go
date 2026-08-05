@@ -11,6 +11,8 @@ import (
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	"github.com/faultmap/faultmap/internal/ranking"
+	jsonreport "github.com/faultmap/faultmap/internal/reporting/json"
+	"github.com/faultmap/faultmap/internal/reporting/markdown"
 	"github.com/faultmap/faultmap/internal/reporting/mermaid"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
@@ -144,7 +146,63 @@ func newExportCommand() *cobra.Command {
 		Use:   "export",
 		Short: "Exporta evidências do Faultmap",
 	}
+	command.AddCommand(newExportReportCommand())
 	command.AddCommand(newExportGraphCommand())
+	return command
+}
+
+// newExportReportCommand serializa um snapshot persistido sem recalcular sua análise.
+func newExportReportCommand() *cobra.Command {
+	var configPath string
+	var format string
+	var incidentID string
+
+	command := &cobra.Command{
+		Use:   "report",
+		Short: "Exporta um diagnóstico persistido",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(incidentID) == "" {
+				return fmt.Errorf("exportar relatório: --incident é obrigatório")
+			}
+			format = strings.ToLower(strings.TrimSpace(format))
+			if format != "json" && format != "markdown" {
+				return fmt.Errorf("exportar relatório: --format deve ser json ou markdown")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.GetIncident(
+				command.Context(),
+				incidentID,
+				storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			if format == "json" {
+				return jsonreport.Render(command.OutOrStdout(), diagnosis)
+			}
+			return markdown.Render(command.OutOrStdout(), diagnosis)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&format, "format", "markdown", "formato do relatório: json ou markdown")
+	command.Flags().StringVar(&incidentID, "incident", "", "identificador do incidente persistido")
 	return command
 }
 

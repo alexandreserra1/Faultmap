@@ -70,6 +70,8 @@ faultmap export graph --incident inc_001 --format mermaid
 
 `incident show` recupera por ID o snapshot gravado, incluindo metadados das janelas, contagens, findings e ranking, sem reler sinais ou executar detectores. A consistência entre essas partes é protegida por uma transação curta de leitura, e a quantidade de findings é limitada a 1.000. Incidentes legados cujas colunas de baseline e contagens sejam nulas continuam legíveis: a saída declara os metadados ausentes, preserva a janela do incidente e apresenta os findings e o ranking disponíveis sem fabricar zeros.
 
+`export report --incident <id> --format json|markdown` recupera o mesmo snapshot persistido usado por `incident show` e escreve o relatório na saída padrão. O formato JSON possui contrato explícito com `schema_version`, timestamps UTC em RFC 3339, scores com a precisão armazenada e `baseline: null` para snapshots legados. O Markdown prioriza leitura humana, apresenta scores com duas casas e declara metadados legados ausentes. Ambos possuem ordenação determinística e não recalculam a investigação.
+
 `export graph --trace <id> --format mermaid` exporta o subgrafo de um trace para a saída padrão. A serialização é determinística, usa IDs sintéticos, escapa rótulos externos e rejeita arestas que apontem para nós ausentes.
 
 `faultmap init` cria `faultmap.yaml`, `faultmap.db` e `faultmap-out/`.

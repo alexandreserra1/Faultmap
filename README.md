@@ -196,6 +196,28 @@ go run ./cmd/faultmap incident show \
 
 Snapshots criados antes da inclusão dos metadados de baseline continuam compatíveis. Nesses diagnósticos legados, o comando apresenta a janela do incidente e os findings ou ranking disponíveis, informa explicitamente que a baseline e as contagens não estão disponíveis e não inventa valores zero.
 
+### Exportar relatórios JSON e Markdown
+
+Exporte o mesmo snapshot persistido em Markdown para leitura humana:
+
+```bash
+go run ./cmd/faultmap export report \
+  --config ./faultmap-volume/faultmap.yaml \
+  --incident inc_be37a8fae2744b8cea62ed08 \
+  --format markdown > report.md
+```
+
+Ou gere o contrato JSON versionado para automações e integrações:
+
+```bash
+go run ./cmd/faultmap export report \
+  --config ./faultmap-volume/faultmap.yaml \
+  --incident inc_be37a8fae2744b8cea62ed08 \
+  --format json > incident-summary.json
+```
+
+Os dois formatos são escritos na saída padrão para permitir redirecionamento ou composição com outras ferramentas. Nenhum deles relê a telemetria ou recalcula detectores e ranking. O Markdown arredonda scores para duas casas para facilitar a leitura; o JSON preserva a precisão numérica do snapshot e inclui `schema_version: "1"`. Em snapshots legados, `baseline` é `null` no JSON e o Markdown declara que os metadados estão indisponíveis.
+
 ### Investigar um trace
 
 Use um `trace_id` apresentado pelo diagnóstico ou pela listagem de telemetria para reconstruir seu fluxo:
@@ -240,4 +262,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas gerarão relatórios JSON/Markdown e adicionarão novas fontes de evidência antes da criação do `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL e correlação desses impactos pelo mesmo `trace_id`. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão novas fontes de evidência antes da criação do `demo-shop`.
