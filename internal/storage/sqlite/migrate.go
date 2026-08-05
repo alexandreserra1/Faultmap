@@ -15,6 +15,7 @@ const (
 	diagnosisForeignKeysVersion           = 4
 	diagnosisSnapshotMetadataVersion      = 5
 	diagnosisReadIndexesVersion           = 6
+	deploymentsLookupIndexVersion         = 7
 )
 
 type migration struct {
@@ -166,6 +167,13 @@ var migrations = []migration{
 				ON findings (incident_id, rule_id ASC, id ASC)`,
 			`CREATE UNIQUE INDEX idx_ranking_results_incident_id
 				ON ranking_results (incident_id)`,
+		},
+	},
+	{
+		version: deploymentsLookupIndexVersion,
+		statements: []string{
+			`CREATE INDEX idx_deployments_service_environment_time_id
+				ON deployments (service_name, environment, deployed_at DESC, id ASC, repository, commit_sha, metadata_json)`,
 		},
 	},
 }

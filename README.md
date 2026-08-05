@@ -114,6 +114,28 @@ Ingeridos 2 sinais; 2 novos.
 
 Executar o mesmo comando outra vez é seguro: os dois spans são identificados pelos IDs de trace e span, portanto o resultado terá `0 novos`.
 
+### Importar commits e deployments do GitHub
+
+Defina o token somente no ambiente e importe uma janela limitada:
+
+```bash
+export GITHUB_TOKEN="seu-token"
+
+go run ./cmd/faultmap ingest github \
+  --config ./faultmap-local/faultmap.yaml \
+  --repo acme/checkout \
+  --commits \
+  --deployments \
+  --service checkout-service \
+  --environment staging \
+  --since 168h \
+  --limit 100
+```
+
+O token nunca é gravado no YAML, no SQLite ou nas mensagens de erro. A coleta aceita no máximo 100 itens por recurso e grava commits e deployments na mesma transação curta e idempotente. Repetir a janela não cria duplicidades.
+
+Esta primeira fatia usa uma única chamada REST para commits e outra para deployments. Por isso, ainda não importa a lista de arquivos de cada commit nem o status individual de cada deployment: esses detalhes exigiriam uma requisição adicional por item e não serão implementados como N+1. Até existir uma estratégia em lote, `files_json` fica vazio e o estado do deployment é registrado como `unknown`.
+
 ### Consultar sinais no terminal
 
 Liste a telemetria persistida de um serviço em uma janela temporal limitada:

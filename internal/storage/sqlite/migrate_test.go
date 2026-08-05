@@ -24,10 +24,12 @@ func TestMigrateAppliesInitialSchemaOnCleanDatabase(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
+	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
 	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
 	assertIndexExists(t, database, "idx_ranking_results_incident_id")
+	assertIndexExists(t, database, "idx_deployments_service_environment_time_id")
 	for _, table := range []string{
 		"signals",
 		"incidents",
@@ -91,11 +93,13 @@ func TestMigrateUpgradesVersionOneDatabaseWithSignalLookupIndex(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
+	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
 	assertIndexExists(t, database, "idx_signals_service_name_timestamp_id")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
 	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
 	assertIndexExists(t, database, "idx_ranking_results_incident_id")
+	assertIndexExists(t, database, "idx_deployments_service_environment_time_id")
 	var preservedTraceID string
 	if err := database.QueryRowContext(ctx, `SELECT trace_id FROM signals WHERE id = ?`, "existing-signal").Scan(&preservedTraceID); err != nil {
 		t.Fatalf("read signal after upgrade: %v", err)
@@ -143,11 +147,13 @@ func TestMigrateIsIdempotentWhenSchemaIsAlreadyApplied(t *testing.T) {
 	assertMigrationVersion(t, database, diagnosisForeignKeysVersion, 1)
 	assertMigrationVersion(t, database, diagnosisSnapshotMetadataVersion, 1)
 	assertMigrationVersion(t, database, diagnosisReadIndexesVersion, 1)
+	assertMigrationVersion(t, database, deploymentsLookupIndexVersion, 1)
 	assertTableExists(t, database, "signals")
 	assertIndexExists(t, database, "idx_signals_trace_id_timestamp_id")
 	assertIndexExists(t, database, "idx_incidents_status_started_at_id")
 	assertIndexExists(t, database, "idx_findings_incident_id_rule_id_id")
 	assertIndexExists(t, database, "idx_ranking_results_incident_id")
+	assertIndexExists(t, database, "idx_deployments_service_environment_time_id")
 }
 
 // TestDiagnosisReadQueriesUsePurposeBuiltIndexes garante que as consultas do
@@ -210,6 +216,23 @@ func TestDiagnosisReadQueriesUsePurposeBuiltIndexes(t *testing.T) {
 			`,
 			arguments: []any{"incident-id"},
 			wantIndex: "idx_ranking_results_incident_id",
+		},
+		{
+			name: "list deployments",
+			query: `
+				SELECT id, repository, environment, service_name, commit_sha, deployed_at, metadata_json
+				FROM deployments
+				WHERE service_name = ? AND environment = ? AND deployed_at >= ? AND deployed_at < ?
+				ORDER BY deployed_at DESC, id ASC
+				LIMIT ?
+			`,
+			arguments: []any{
+				"checkout-service", "staging",
+				time.Date(2025, time.December, 1, 9, 0, 0, 0, time.UTC),
+				time.Date(2025, time.December, 1, 10, 0, 0, 0, time.UTC),
+				100,
+			},
+			wantIndex: "idx_deployments_service_environment_time_id",
 		},
 	}
 

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,6 +89,109 @@ func TestIngestFileCommandPersisteFixtureOTLP(t *testing.T) {
 	}
 	if signalCount != 2 {
 		t.Fatalf("quantidade de sinais = %d, esperado 2", signalCount)
+	}
+}
+
+// TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente cobre a
+// fronteira HTTP mockada e o banco real sem depender da disponibilidade externa.
+func TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		switch request.URL.Path {
+		case "/repos/acme/checkout/commits":
+			if _, err := writer.Write([]byte(`[{"sha":"abc123","commit":{"message":"Reduce pool","committer":{"date":"2025-12-01T09:54:00Z"}},"author":{"login":"alex"}}]`)); err != nil {
+				t.Errorf("responder commits: %v", err)
+			}
+		case "/repos/acme/checkout/deployments":
+			if _, err := writer.Write([]byte(`[{"id":42,"sha":"abc123","ref":"main","task":"deploy","environment":"staging","created_at":"2025-12-01T09:55:00Z"}]`)); err != nil {
+				t.Errorf("responder deployments: %v", err)
+			}
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ler configuração: %v", err)
+	}
+	content = bytes.Replace(content, []byte("api_url: https://api.github.com"), []byte("api_url: "+server.URL), 1)
+	if err := os.WriteFile(configPath, content, 0o600); err != nil {
+		t.Fatalf("atualizar API GitHub do teste: %v", err)
+	}
+	t.Setenv("GITHUB_TOKEN", "test-token")
+
+	execute := func() string {
+		t.Helper()
+		var output bytes.Buffer
+		command := newRootCommand()
+		command.SetArgs([]string{
+			"ingest", "github", "--config", configPath, "--repo", "acme/checkout",
+			"--commits", "--deployments", "--service", "checkout-service",
+			"--environment", "staging", "--since", "2h", "--until", "2025-12-01T11:00:00Z", "--limit", "20",
+		})
+		command.SetOut(&output)
+		command.SetErr(io.Discard)
+		if err := command.Execute(); err != nil {
+			t.Fatalf("ingest github erro = %v", err)
+		}
+		return output.String()
+	}
+	if output := execute(); !strings.Contains(output, "1 commits coletados; 1 novos") || !strings.Contains(output, "1 deployments coletados; 1 novos") {
+		t.Fatalf("primeira saída inesperada:\n%s", output)
+	}
+	if output := execute(); !strings.Contains(output, "1 commits coletados; 0 novos") || !strings.Contains(output, "1 deployments coletados; 0 novos") {
+		t.Fatalf("saída do retry inesperada:\n%s", output)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	defer func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	}()
+	for table, expected := range map[string]int{"commits": 1, "deployments": 1} {
+		var count int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count); err != nil {
+			t.Fatalf("contar %s: %v", table, err)
+		}
+		if count != expected {
+			t.Fatalf("%s = %d, esperado %d", table, count, expected)
+		}
+	}
+}
+
+// TestIngestGitHubCommandValidaFlagsAntesDoBanco evita I/O para seleção ou limite inválidos.
+func TestIngestGitHubCommandValidaFlagsAntesDoBanco(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{args: []string{"ingest", "github", "--config", "inexistente.yaml", "--repo", "acme/checkout"}, want: "--commits"},
+		{args: []string{"ingest", "github", "--config", "inexistente.yaml", "--repo", "acme/checkout", "--commits", "--limit", "0"}, want: "--limit"},
+	} {
+		command := newRootCommand()
+		command.SetArgs(test.args)
+		command.SetOut(io.Discard)
+		command.SetErr(io.Discard)
+		if err := command.Execute(); err == nil || !strings.Contains(err.Error(), test.want) {
+			t.Fatalf("ingest github erro = %v, esperado %q", err, test.want)
+		}
 	}
 }
 

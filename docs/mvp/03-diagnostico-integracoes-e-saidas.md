@@ -42,6 +42,8 @@ faultmap ingest github --repo acme/checkout --deployments --commits --environmen
 
 Coletar commits, SHA, autor, mensagem, arquivos modificados, horário, deployments, statuses, ambiente, versão e repositório. Relacionar `service.version → commit → deployment → service → incident`. A autenticação usa exclusivamente `GITHUB_TOKEN`, que nunca pode ser registrado em logs.
 
+A primeira fatia operacional limita cada execução a uma página de até 100 commits e uma página de até 100 deployments, persiste ambos atomicamente e é idempotente. Como os endpoints de listagem não incluem arquivos por commit nem o status atual de cada deployment, esses dois detalhes permanecem explicitamente vazios/desconhecidos nesta etapa; não é permitido buscá-los com uma requisição N+1. Uma evolução deve usar uma operação em lote ou justificar uma estratégia limitada e medida.
+
 ## Integração PostgreSQL
 
 Na primeira fase, usar spans OpenTelemetry para detectar operações lentas, timeout, erros, excesso de queries, possível N+1 e banco/operação envolvidos. Uma fase posterior poderá usar `pg_stat_activity`, `pg_stat_statements`, `pg_locks` e `pg_stat_database`. CDC e logical decoding não pertencem à primeira entrega funcional.

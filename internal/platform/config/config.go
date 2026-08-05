@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -61,6 +62,7 @@ type RankingWeights struct {
 // GitHubConfig habilita a correlação opcional com commits e deployments.
 type GitHubConfig struct {
 	Enabled     bool   `yaml:"enabled"`
+	APIURL      string `yaml:"api_url"`
 	Repository  string `yaml:"repository"`
 	Environment string `yaml:"environment"`
 }
@@ -97,7 +99,7 @@ func Default() Config {
 			LatencyDelta:        0.10,
 			LogCorrelation:      0.10,
 		}},
-		GitHub: GitHubConfig{Environment: "staging"},
+		GitHub: GitHubConfig{APIURL: "https://api.github.com", Environment: "staging"},
 		Privacy: PrivacyConfig{
 			MaxAttributeLength: 512,
 			BlockedAttributes:  []string{"http.request.body", "db.statement"},
@@ -168,6 +170,10 @@ func (config Config) Validate() error {
 	}
 	if config.GitHub.Enabled && strings.TrimSpace(config.GitHub.Repository) == "" {
 		return fmt.Errorf("configuração inválida: github.repository é obrigatório quando github.enabled é true")
+	}
+	githubURL, err := url.Parse(strings.TrimSpace(config.GitHub.APIURL))
+	if err != nil || (githubURL.Scheme != "http" && githubURL.Scheme != "https") || githubURL.Host == "" {
+		return fmt.Errorf("configuração inválida: github.api_url deve ser uma URL HTTP(S)")
 	}
 	return nil
 }

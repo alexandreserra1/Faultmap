@@ -3,12 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/faultmap/faultmap/internal/application"
+	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
+	githubintegration "github.com/faultmap/faultmap/internal/integrations/github"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	"github.com/faultmap/faultmap/internal/ranking"
 	jsonreport "github.com/faultmap/faultmap/internal/reporting/json"
@@ -374,7 +378,130 @@ func newIngestCommand() *cobra.Command {
 		Short: "Importa telemetria para o Faultmap",
 	}
 	command.AddCommand(newIngestFileCommand())
+	command.AddCommand(newIngestGitHubCommand())
 	return command
+}
+
+// newIngestGitHubCommand importa uma página limitada de mudanças sem manter estado em memória.
+func newIngestGitHubCommand() *cobra.Command {
+	var commits bool
+	var configPath string
+	var deployments bool
+	var environment string
+	var limit int
+	var repository string
+	var serviceName string
+	var since string
+	var until string
+
+	command := &cobra.Command{
+		Use:   "github",
+		Short: "Importa commits e deployments do GitHub",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if !commits && !deployments {
+				return fmt.Errorf("ingerir GitHub: selecione --commits e/ou --deployments")
+			}
+			if limit <= 0 || limit > 100 {
+				return fmt.Errorf("ingerir GitHub: --limit deve estar entre 1 e 100")
+			}
+			windowDuration, err := time.ParseDuration(since)
+			if err != nil || windowDuration <= 0 {
+				return fmt.Errorf("ingerir GitHub: --since deve ser uma duração positiva")
+			}
+			importUntil, err := githubImportEnd(until)
+			if err != nil {
+				return err
+			}
+			token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+			if token == "" {
+				return fmt.Errorf("ingerir GitHub: GITHUB_TOKEN é obrigatório")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			repository = strings.TrimSpace(repository)
+			if repository == "" {
+				repository = strings.TrimSpace(loadedConfig.GitHub.Repository)
+			}
+			parts := strings.Split(repository, "/")
+			if len(parts) != 2 || strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+				return fmt.Errorf("ingerir GitHub: --repo deve usar owner/repository")
+			}
+			environment = strings.TrimSpace(environment)
+			if environment == "" {
+				environment = strings.TrimSpace(loadedConfig.GitHub.Environment)
+			}
+			serviceName = strings.TrimSpace(serviceName)
+			if deployments && serviceName == "" {
+				serviceName = parts[1]
+			}
+
+			client, err := githubintegration.NewClient(
+				&http.Client{Timeout: 15 * time.Second},
+				loadedConfig.GitHub.APIURL,
+				token,
+			)
+			if err != nil {
+				return err
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			result, err := application.IngestChanges(
+				command.Context(),
+				changedomain.ImportRequest{
+					Repository: repository, Environment: environment, ServiceName: serviceName,
+					Since: importUntil.Add(-windowDuration), Until: importUntil, Limit: limit,
+					IncludeCommits: commits, IncludeDeployments: deployments,
+				},
+				client,
+				storage.NewChangeRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(
+				command.OutOrStdout(),
+				"%d commits coletados; %d novos. %d deployments coletados; %d novos.\n",
+				result.CommitsFetched, result.CommitsPersisted,
+				result.DeploymentsFetched, result.DeploymentsPersisted,
+			)
+			return err
+		},
+	}
+	command.Flags().BoolVar(&commits, "commits", false, "importar commits")
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().BoolVar(&deployments, "deployments", false, "importar deployments")
+	command.Flags().StringVar(&environment, "environment", "", "ambiente dos deployments")
+	command.Flags().IntVar(&limit, "limit", 100, "quantidade máxima por recurso")
+	command.Flags().StringVar(&repository, "repo", "", "repositório owner/repository")
+	command.Flags().StringVar(&serviceName, "service", "", "serviço associado aos deployments")
+	command.Flags().StringVar(&since, "since", "168h", "janela retroativa da importação")
+	command.Flags().StringVar(&until, "until", "", "fim da importação em RFC 3339")
+	return command
+}
+
+func githubImportEnd(until string) (time.Time, error) {
+	if strings.TrimSpace(until) == "" {
+		return time.Now().UTC(), nil
+	}
+	parsed, err := time.Parse(time.RFC3339, until)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("ingerir GitHub: --until deve usar RFC 3339: %w", err)
+	}
+	return parsed.UTC(), nil
 }
 
 // newIngestFileCommand importa um arquivo OTLP JSON para o banco definido pela configuração local.
