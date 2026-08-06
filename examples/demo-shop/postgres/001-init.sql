@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS payments (
+    id BIGSERIAL PRIMARY KEY,
+    order_id TEXT NOT NULL UNIQUE,
+    amount_cents BIGINT NOT NULL CHECK (amount_cents > 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

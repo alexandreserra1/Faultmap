@@ -17,18 +17,18 @@ Este documento é parte obrigatória da especificação do MVP. Leia também o [
 
 ## Primeira demonstração obrigatória
 
-1. Subir `checkout-service`, `payment-service` e PostgreSQL.
-2. Configurar `DB_MAX_CONNECTIONS=20` e gerar tráfego normal.
-3. Simular deploy com `DB_MAX_CONNECTIONS=3`.
-4. Aumentar a carga.
-5. Observar aumento de latência e erros.
+1. Subir `checkout-service`, `payment-service`, PostgreSQL, OTel Collector e Faultmap.
+2. Gerar no mínimo oito traces saudáveis com uma chamada ao pagamento por trace.
+3. Simular a nova versão com `PAYMENT_MAX_ATTEMPTS=4` e o pagamento retornando HTTP 503.
+4. Gerar no mínimo oito traces do incidente e aguardar o batch do Collector.
+5. Observar aumento de erros e repetição da mesma operação cliente dentro do trace.
 6. Executar:
 
 ```bash
-faultmap diagnose incident --service checkout --since 15m --baseline 30m
+faultmap diagnose incident --service checkout-service --since 15s --baseline 30s
 ```
 
-Resultado esperado: suspeito principal `checkout-service`, score acima de 0,80 e evidências de aumento de error rate/p95, deploy recente, mudança de versão, alteração do pool e espera ou timeout PostgreSQL. A saída deve afirmar que é uma hipótese sustentada por evidências, não prova absoluta de causalidade.
+Resultado esperado: suspeito principal `checkout-service`, findings `error_rate_delta` e `retry_storm` com confiança alta, baseline próxima de uma tentativa e incidente próximo de quatro tentativas por trace. A saída deve afirmar que é uma hipótese sustentada por evidências, não prova absoluta de causalidade, e listar explicações alternativas para spans repetidos.
 
 ## Diretrizes para implementação
 

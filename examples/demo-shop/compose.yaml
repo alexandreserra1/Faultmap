@@ -1,0 +1,148 @@
+name: faultmap-demo-shop
+
+services:
+  postgres:
+    image: postgres:17.10-alpine3.24
+    environment:
+      POSTGRES_DB: demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: demo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/001-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d demo"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    networks:
+      - demo
+
+  faultmap:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["serve", "--config", "/etc/faultmap/faultmap.yaml"]
+    volumes:
+      - faultmap-data:/var/lib/faultmap
+      - ./faultmap.yaml:/etc/faultmap/faultmap.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:8081:8081"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:8081/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+    networks:
+      - demo
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.153.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      faultmap:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "validate", "--config=/etc/otelcol-contrib/config.yaml"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    networks:
+      - demo
+
+  payment-service:
+    build:
+      context: ../..
+      dockerfile: examples/demo-shop/Dockerfile
+      args:
+        TARGET: payment-service
+    environment:
+      PORT: "8080"
+      FORCE_HTTP_STATUS: "${FORCE_HTTP_STATUS:-0}"
+      DATABASE_URL: postgres://demo:demo@postgres:5432/demo?sslmode=disable
+      DB_MAX_OPEN_CONNS: "${DB_MAX_OPEN_CONNS:-10}"
+      DB_MAX_IDLE_CONNS: "${DB_MAX_IDLE_CONNS:-5}"
+      DB_CONN_MAX_LIFETIME: "${DB_CONN_MAX_LIFETIME:-30m}"
+      DB_CONN_MAX_IDLE_TIME: "${DB_CONN_MAX_IDLE_TIME:-5m}"
+      DB_DELAY: "${DB_DELAY:-0s}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      SERVICE_VERSION: "${PAYMENT_SERVICE_VERSION:-1.0.0}"
+      DEPLOYMENT_ENVIRONMENT: demo
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+    networks:
+      - demo
+
+  checkout-service:
+    build:
+      context: ../..
+      dockerfile: examples/demo-shop/Dockerfile
+      args:
+        TARGET: checkout-service
+    environment:
+      PORT: "8080"
+      PAYMENT_URL: http://payment-service:8080/payment
+      PAYMENT_TIMEOUT: "${PAYMENT_TIMEOUT:-2s}"
+      PAYMENT_MAX_ATTEMPTS: "${PAYMENT_MAX_ATTEMPTS:-1}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      SERVICE_VERSION: "${CHECKOUT_SERVICE_VERSION:-1.0.0}"
+      DEPLOYMENT_ENVIRONMENT: demo
+    depends_on:
+      payment-service:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:8080/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 3s
+    networks:
+      - demo
+
+  load-generator:
+    profiles:
+      - tools
+    build:
+      context: ../..
+      dockerfile: examples/demo-shop/Dockerfile
+      args:
+        TARGET: load-generator
+    environment:
+      TARGET_URL: http://checkout-service:8080/checkout
+      REQUESTS: "${REQUESTS:-100}"
+      CONCURRENCY: "${CONCURRENCY:-5}"
+      REQUEST_TIMEOUT: "${REQUEST_TIMEOUT:-5s}"
+      REQUEST_INTERVAL: "${REQUEST_INTERVAL:-0s}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      SERVICE_VERSION: "${LOAD_GENERATOR_VERSION:-1.0.0}"
+      DEPLOYMENT_ENVIRONMENT: demo
+    depends_on:
+      checkout-service:
+        condition: service_healthy
+    networks:
+      - demo
+
+volumes:
+  postgres-data:
+  faultmap-data:
+
+networks:
+  demo:
+    driver: bridge

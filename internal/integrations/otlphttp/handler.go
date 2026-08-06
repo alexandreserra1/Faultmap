@@ -4,6 +4,7 @@ package otlphttp
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -30,15 +32,16 @@ const (
 )
 
 const (
-	googleCodeInvalidArgument   int32 = 3
-	googleCodeResourceExhausted int32 = 8
-	googleCodeUnimplemented     int32 = 12
-	googleCodeInternal          int32 = 13
-	internalFailureMessage            = "falha interna ao ingerir traces"
-	invalidPayloadMessage             = "payload OTLP inválido"
-	unsupportedMediaTypeMessage       = "Content-Type OTLP não suportado"
-	bodyTooLargeMessage               = "payload OTLP excede o limite"
-	methodNotAllowedMessage           = "método HTTP não permitido"
+	googleCodeInvalidArgument         int32 = 3
+	googleCodeResourceExhausted       int32 = 8
+	googleCodeUnimplemented           int32 = 12
+	googleCodeInternal                int32 = 13
+	internalFailureMessage                  = "falha interna ao ingerir traces"
+	invalidPayloadMessage                   = "payload OTLP inválido"
+	unsupportedMediaTypeMessage             = "Content-Type OTLP não suportado"
+	unsupportedContentEncodingMessage       = "Content-Encoding OTLP não suportado"
+	bodyTooLargeMessage                     = "payload OTLP excede o limite"
+	methodNotAllowedMessage                 = "método HTTP não permitido"
 )
 
 // ErrInvalidPayload permite que a integração de normalização classifique um
@@ -136,6 +139,11 @@ func (handler *traceHandler) ServeHTTP(response http.ResponseWriter, request *ht
 		writeGoogleStatus(response, ContentTypeJSON, http.StatusUnsupportedMediaType, googleCodeInvalidArgument, unsupportedMediaTypeMessage)
 		return
 	}
+	contentEncoding, contentEncodingOK := parseContentEncoding(request.Header.Get("Content-Encoding"))
+	if !contentEncodingOK {
+		writeGoogleStatus(response, contentType, http.StatusUnsupportedMediaType, googleCodeInvalidArgument, unsupportedContentEncodingMessage)
+		return
+	}
 	if request.ContentLength > handler.maxRequestBodyBytes {
 		writeGoogleStatus(response, contentType, http.StatusRequestEntityTooLarge, googleCodeResourceExhausted, bodyTooLargeMessage)
 		return
@@ -154,6 +162,15 @@ func (handler *traceHandler) ServeHTTP(response http.ResponseWriter, request *ht
 	}
 	if int64(len(payload)) > handler.maxRequestBodyBytes {
 		writeGoogleStatus(response, contentType, http.StatusRequestEntityTooLarge, googleCodeResourceExhausted, bodyTooLargeMessage)
+		return
+	}
+	payload, tooLarge, err := decodePayload(payload, contentEncoding, handler.maxRequestBodyBytes)
+	if tooLarge {
+		writeGoogleStatus(response, contentType, http.StatusRequestEntityTooLarge, googleCodeResourceExhausted, bodyTooLargeMessage)
+		return
+	}
+	if err != nil {
+		writeGoogleStatus(response, contentType, http.StatusBadRequest, googleCodeInvalidArgument, invalidPayloadMessage)
 		return
 	}
 	if request.Context().Err() != nil {
@@ -179,6 +196,38 @@ func (handler *traceHandler) ServeHTTP(response http.ResponseWriter, request *ht
 		return
 	}
 	writeGoogleStatus(response, contentType, http.StatusInternalServerError, googleCodeInternal, internalFailureMessage)
+}
+
+func parseContentEncoding(header string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(header)) {
+	case "", "identity":
+		return "identity", true
+	case "gzip":
+		return "gzip", true
+	default:
+		return "", false
+	}
+}
+
+// decodePayload aplica o limite também aos bytes descompactados para impedir
+// que um payload gzip pequeno expanda além da memória aceita pelo servidor.
+func decodePayload(payload []byte, contentEncoding string, maxBytes int64) ([]byte, bool, error) {
+	if contentEncoding != "gzip" {
+		return payload, false, nil
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(payload))
+	if err != nil {
+		return nil, false, fmt.Errorf("abrir payload OTLP gzip: %w", err)
+	}
+	decoded, readErr := io.ReadAll(io.LimitReader(reader, maxBytes+1))
+	closeErr := reader.Close()
+	if readErr != nil || closeErr != nil {
+		return nil, false, errors.Join(readErr, closeErr)
+	}
+	if int64(len(decoded)) > maxBytes {
+		return nil, true, nil
+	}
+	return decoded, false, nil
 }
 
 func parseContentType(header string) (Encoding, string, bool) {

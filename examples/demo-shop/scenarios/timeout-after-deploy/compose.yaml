@@ -1,0 +1,10 @@
+services:
+  checkout-service:
+    environment:
+      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}"
+      PAYMENT_TIMEOUT: "150ms"
+      PAYMENT_MAX_ATTEMPTS: "1"
+  payment-service:
+    environment:
+      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}"
+      DB_DELAY: "800ms"

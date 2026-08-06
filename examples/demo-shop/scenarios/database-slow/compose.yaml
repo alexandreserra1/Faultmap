@@ -1,0 +1,5 @@
+services:
+  payment-service:
+    environment:
+      SERVICE_VERSION: "1.1.0-database-slow"
+      DB_DELAY: "750ms"

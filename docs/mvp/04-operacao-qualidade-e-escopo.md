@@ -6,7 +6,7 @@ Este documento é parte obrigatória da especificação do MVP. Leia também o [
 
 Criar `examples/demo-shop/` com `load-generator`, `checkout-service`, `payment-service`, PostgreSQL e `otel-collector`. O fluxo é `POST /checkout → checkout-service → payment-service → PostgreSQL`.
 
-Cenários obrigatórios: banco lento, pool de conexões reduzido, payment retornando HTTP 500, retry excessivo, alteração de timeout após deploy e lock na tabela de pedidos. Cada cenário inclui README, script de inicialização, script de execução, resultado esperado, fixture de telemetria e teste de aceitação.
+Cenários obrigatórios: banco lento, pool de conexões reduzido, payment retornando HTTP 500, retry excessivo, alteração de timeout após deploy e lock na tabela de pagamentos. A infraestrutura e o schema inicial são compartilhados pelo Compose base; cada cenário inclui README, override Compose, gerador de carga limitado, resultado esperado e contrato de aceitação. A telemetria deve ser produzida pela instrumentação OTLP real; fixtures estáticas não substituem a aceitação E2E da demo.
 
 ## Critérios de aceite
 
@@ -83,7 +83,7 @@ privacy:
   blocked_attributes: [http.request.body, db.statement]
 ```
 
-`max_request_body_bytes` limita cada lote antes da decodificação. Os timeouts protegem, respectivamente, cabeçalhos lentos, leitura e escrita completas, conexões persistentes ociosas e a drenagem no encerramento. Todos devem ser positivos; os listeners devem usar `host:porta`, portas válidas e endereços diferentes. Como `Load` aplica o YAML sobre os defaults, workspaces antigos que ainda não possuem esses campos recebem os valores seguros acima sem migração manual.
+`max_request_body_bytes` limita cada lote recebido e também o resultado da descompactação gzip. Os timeouts protegem, respectivamente, cabeçalhos lentos, leitura e escrita completas, conexões persistentes ociosas e a drenagem no encerramento. Todos devem ser positivos; os listeners devem usar `host:porta`, portas válidas e endereços diferentes. Como `Load` aplica o YAML sobre os defaults, workspaces antigos que ainda não possuem esses campos recebem os valores seguros acima sem migração manual.
 
 ## Testes obrigatórios
 

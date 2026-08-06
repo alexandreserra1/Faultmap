@@ -1,0 +1,5 @@
+services:
+  payment-service:
+    environment:
+      SERVICE_VERSION: "1.1.0-payment-500"
+      FORCE_HTTP_STATUS: "500"

@@ -2,6 +2,7 @@ package otlphttp
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,101 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestHandlerDescompactaOTLPGzipAntesDaIngestao(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte{0x0a, 0x00}
+	var compressed bytes.Buffer
+	compressor := gzip.NewWriter(&compressed)
+	if _, err := compressor.Write(payload); err != nil {
+		t.Fatalf("compactar payload do teste: %v", err)
+	}
+	if err := compressor.Close(); err != nil {
+		t.Fatalf("finalizar payload compactado do teste: %v", err)
+	}
+
+	var receivedPayload []byte
+	handler := newTestHandler(t, IngestFunc(func(_ context.Context, reader io.Reader, encoding Encoding) error {
+		if encoding != EncodingProtobuf {
+			t.Fatalf("esperava protobuf, recebeu %q", encoding)
+		}
+		var err error
+		receivedPayload, err = io.ReadAll(reader)
+		return err
+	}), Options{})
+	request := httptest.NewRequest(http.MethodPost, TracePath, bytes.NewReader(compressed.Bytes()))
+	request.Header.Set("Content-Type", ContentTypeProtobuf)
+	request.Header.Set("Content-Encoding", "gzip")
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("esperava status 200, recebeu %d: %s", response.Code, response.Body.String())
+	}
+	if !bytes.Equal(receivedPayload, payload) {
+		t.Fatalf("ingester recebeu bytes ainda compactados: recebeu %x, esperado %x", receivedPayload, payload)
+	}
+}
+
+func TestHandlerValidaContentEncodingETamanhoDescompactado(t *testing.T) {
+	t.Parallel()
+
+	compact := func(t *testing.T, payload string) []byte {
+		t.Helper()
+		var compressed bytes.Buffer
+		compressor := gzip.NewWriter(&compressed)
+		if _, err := compressor.Write([]byte(payload)); err != nil {
+			t.Fatalf("compactar payload do teste: %v", err)
+		}
+		if err := compressor.Close(); err != nil {
+			t.Fatalf("finalizar payload compactado do teste: %v", err)
+		}
+		return compressed.Bytes()
+	}
+
+	tests := []struct {
+		name            string
+		contentEncoding string
+		body            []byte
+		maxBodyBytes    int64
+		expectedStatus  int
+		expectedMessage string
+	}{
+		{name: "codificação não suportada", contentEncoding: "br", body: []byte("payload"), maxBodyBytes: 64, expectedStatus: http.StatusUnsupportedMediaType, expectedMessage: "Content-Encoding OTLP não suportado"},
+		{name: "gzip inválido", contentEncoding: "gzip", body: []byte("inválido"), maxBodyBytes: 64, expectedStatus: http.StatusBadRequest, expectedMessage: "payload OTLP inválido"},
+		{name: "corpo descompactado excede limite", contentEncoding: "gzip", body: compact(t, "12345"), maxBodyBytes: 4, expectedStatus: http.StatusRequestEntityTooLarge, expectedMessage: "payload OTLP excede o limite"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			handler := newTestHandler(t, IngestFunc(func(context.Context, io.Reader, Encoding) error {
+				calls++
+				return nil
+			}), Options{MaxRequestBodyBytes: test.maxBodyBytes})
+			request := httptest.NewRequest(http.MethodPost, TracePath, bytes.NewReader(test.body))
+			request.Header.Set("Content-Type", ContentTypeProtobuf)
+			request.Header.Set("Content-Encoding", test.contentEncoding)
+			request.ContentLength = -1
+			response := httptest.NewRecorder()
+
+			handler.ServeHTTP(response, request)
+
+			if response.Code != test.expectedStatus {
+				t.Fatalf("esperava status %d, recebeu %d: %s", test.expectedStatus, response.Code, response.Body.String())
+			}
+			if calls != 0 {
+				t.Fatalf("ingestão foi chamada %d vez(es) para corpo inválido", calls)
+			}
+			if !strings.Contains(response.Body.String(), test.expectedMessage) {
+				t.Fatalf("resposta %q não contém %q", response.Body.String(), test.expectedMessage)
+			}
+		})
+	}
+}
 
 func TestHandlerRecebeOTLPJSON(t *testing.T) {
 	t.Parallel()

@@ -8,7 +8,7 @@ O Faultmap recebe telemetria, compara o comportamento normal com uma janela de i
 
 ## O que estamos construindo
 
-Um monólito modular em Go, distribuído como um único binário e orientado à CLI. Ele usa OpenTelemetry para reunir traces, logs e métricas; correlaciona esses sinais com deploys e commits do GitHub e operações PostgreSQL; persiste o contexto localmente em SQLite; e gera um ranking explicável de suspeitos.
+Um monólito modular em Go, distribuído como um único binário e orientado à CLI. A etapa atual recebe traces OpenTelemetry, correlaciona esses sinais com deploys e commits do GitHub e operações PostgreSQL, persiste o contexto localmente em SQLite e gera um ranking explicável de suspeitos. Logs e métricas fazem parte da evolução planejada, mas ainda não são recebidos pelo servidor OTLP.
 
 Em vez de responder apenas “algo está errado”, o objetivo é responder:
 
@@ -28,7 +28,7 @@ O resultado deve listar os suspeitos mais prováveis, suas contribuições de sc
 
 ## Como funciona
 
-1. Aplicações enviam traces, logs e métricas por OTLP ao OpenTelemetry Collector.
+1. Aplicações enviam traces por OTLP ao OpenTelemetry Collector.
 2. O Faultmap normaliza e armazena os sinais no SQLite.
 3. Ao diagnosticar um incidente, ele compara a janela atual com uma baseline anterior.
 4. Detectores determinísticos encontram mudanças como aumento de erros, latência, timeout de banco, retry storm e falhas em dependências.
@@ -94,7 +94,45 @@ O `init` não sobrescreve artefatos existentes. Para criar novamente o mesmo wor
 rm -rf ./faultmap-local
 ```
 
-Ainda não há uma demo executável (`demo-shop`) no repositório. Quando ela existir, sua limpeza será documentada junto ao Docker Compose correspondente; por enquanto, a remoção do workspace acima é toda a limpeza local necessária.
+O workspace da CLI é independente da demonstração Docker descrita a seguir.
+
+## Demo Shop
+
+A [`demo-shop`](examples/demo-shop/README.md) executa localmente o caminho completo `checkout-service → payment-service → PostgreSQL → OpenTelemetry Collector → Faultmap`.
+
+Suba os cinco componentes e aguarde os health checks:
+
+```bash
+make demo-up
+```
+
+Gere um checkout saudável:
+
+```bash
+curl --fail-with-body \
+  -H 'Content-Type: application/json' \
+  -d '{"order_id":"manual-1","amount_cents":1990}' \
+  http://127.0.0.1:18080/checkout
+```
+
+Depois de aguardar ao menos um segundo pelo batch do Collector, consulte os spans persistidos:
+
+```bash
+docker compose -f examples/demo-shop/compose.yaml exec -T faultmap \
+  faultmap telemetry list \
+  --config /etc/faultmap/faultmap.yaml \
+  --service checkout-service \
+  --since 5m \
+  --limit 20
+```
+
+Os seis cenários controlados e seus diagnósticos estão documentados no [guia da demo](examples/demo-shop/README.md#cenários). Para acompanhar os processos use `make demo-logs`; para encerrá-los preservando os volumes use:
+
+```bash
+make demo-down
+```
+
+`docker compose -f examples/demo-shop/compose.yaml down --volumes` também apaga conscientemente os bancos locais da demonstração; não use `--volumes` se quiser manter o histórico.
 
 ### Receber traces por OTLP/HTTP
 
@@ -130,7 +168,7 @@ Resposta esperada:
 {"status":"ok"}
 ```
 
-Para encaminhar traces de aplicações reais, configure um OpenTelemetry Collector. O exporter `otlphttp` acrescenta `/v1/traces` ao `endpoint` para o pipeline de traces:
+Para encaminhar traces de aplicações reais, configure um OpenTelemetry Collector. O exporter `otlp_http` acrescenta `/v1/traces` ao `endpoint` para o pipeline de traces:
 
 ```yaml
 receivers:
@@ -143,7 +181,7 @@ processors:
   batch:
 
 exporters:
-  otlphttp/faultmap:
+  otlp_http/faultmap:
     endpoint: http://faultmap:4318
 
 service:
@@ -151,10 +189,10 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/faultmap]
+      exporters: [otlp_http/faultmap]
 ```
 
-O receiver limita cada requisição a 64 MiB por padrão e configura timeouts de cabeçalho, leitura, escrita, conexão ociosa e encerramento. Payload inválido retorna `400`, método incorreto `405`, corpo acima do limite `413`, formato não suportado `415` e falha interna `500`, sem expor detalhes de persistência.
+O receiver aceita corpo sem compactação ou com `Content-Encoding: gzip`. Ele limita cada requisição e também o corpo descompactado a 64 MiB por padrão, além de configurar timeouts de cabeçalho, leitura, escrita, conexão ociosa e encerramento. Payload inválido retorna `400`, método incorreto `405`, corpo acima do limite `413`, formato não suportado `415` e falha interna `500`, sem expor detalhes de persistência.
 
 Esta primeira versão não implementa autenticação nem TLS no receiver. Em uma máquina de desenvolvimento, altere os listeners para `127.0.0.1`; em rede compartilhada, mantenha o Faultmap em uma rede privada e coloque autenticação e TLS em um proxy ou gateway confiável. Não exponha as portas diretamente à internet.
 
@@ -363,4 +401,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf, importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência opcional de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A próxima entrega principal é o `demo-shop` instrumentado e reproduzível.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência opcional de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A `demo-shop` instrumentada já reproduz seis falhas controladas; falta automatizar e executar a matriz E2E completa para encerrar o aceite formal de todos os cenários.

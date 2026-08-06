@@ -1,0 +1,15 @@
+.git
+.gitignore
+.github
+.idea
+.vscode
+faultmap-local
+faultmap-volume
+faultmap-persist-test*
+*.db
+*.db-shm
+*.db-wal
+coverage.out
+bin
+dist
+tmp

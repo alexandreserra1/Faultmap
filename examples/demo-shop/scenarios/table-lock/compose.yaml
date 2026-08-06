@@ -1,0 +1,22 @@
+services:
+  payment-service:
+    environment:
+      SERVICE_VERSION: "1.1.0-table-lock"
+  lock-holder:
+    image: postgres:17.10-alpine3.24
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: "demo"
+      DB_LOCK_DURATION: "8"
+      PGOPTIONS: "-c statement_timeout=10000"
+    entrypoint: ["/bin/sh", "-eu", "-c"]
+    command:
+      - >-
+        psql --host postgres --username demo --dbname demo
+        --set ON_ERROR_STOP=1
+        --command "BEGIN; LOCK TABLE payments IN ACCESS EXCLUSIVE MODE; SELECT pg_sleep($${DB_LOCK_DURATION}); COMMIT;"
+    networks:
+      - demo
+    restart: "no"

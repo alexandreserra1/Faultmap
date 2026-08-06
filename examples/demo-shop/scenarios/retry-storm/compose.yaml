@@ -1,0 +1,10 @@
+services:
+  checkout-service:
+    environment:
+      SERVICE_VERSION: "1.1.0-retry-storm"
+      PAYMENT_MAX_ATTEMPTS: "4"
+      PAYMENT_TIMEOUT: "500ms"
+  payment-service:
+    environment:
+      SERVICE_VERSION: "1.1.0-retry-storm"
+      FORCE_HTTP_STATUS: "503"
