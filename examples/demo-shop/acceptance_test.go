@@ -148,6 +148,10 @@ func TestReadmesDocumentamExecucaoDaDemo(t *testing.T) {
 	if strings.Contains(rootREADME, "Ainda não há uma demo executável") {
 		t.Fatal("README raiz ainda anuncia a demo executável como futura")
 	}
+	requireContains(t, rootREADME, "matriz E2E automatizada cobre os seis cenários")
+	if strings.Contains(rootREADME, "falta automatizar e executar a matriz E2E completa") {
+		t.Fatal("README raiz ainda anuncia a matriz E2E como pendente")
+	}
 
 	demoREADME := readRequiredFile(t, "README.md")
 	requireContains(t, demoREADME, "portas locais `18080`, `4318` e `8081`")
@@ -174,6 +178,45 @@ func TestTimeoutDeployAceitaSHAReal(t *testing.T) {
 	requireContains(t, compose, "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}")
 	readme := readRequiredFile(t, filepath.Join("scenarios", "timeout-after-deploy", "README.md"))
 	requireContains(t, readme, "TIMEOUT_DEPLOY_VERSION=<commit_sha>")
+}
+
+// TestRunnerE2EDeclaraMatrizLimitesELimpeza exige um executor opt-in que use
+// projeto Docker isolado, janelas históricas e expectativas explícitas.
+func TestRunnerE2EDeclaraMatrizLimitesELimpeza(t *testing.T) {
+	t.Parallel()
+
+	runnerPath := "run-e2e.sh"
+	runner := readRequiredFile(t, runnerPath)
+	if !strings.HasPrefix(runner, "#!/usr/bin/env bash\nset -euo pipefail\n") {
+		t.Fatal("runner E2E deve iniciar com bash e set -euo pipefail")
+	}
+	for _, expected := range []string{
+		"faultmap-demo-shop-e2e",
+		"database-slow small-pool payment-500 retry-storm timeout-after-deploy table-lock",
+		"--until",
+		"Confiança: alta",
+		"down --volumes --remove-orphans",
+		"KEEP_E2E_ENVIRONMENT",
+		"OTEL_FLUSH_WAIT_SECONDS=\"${OTEL_FLUSH_WAIT_SECONDS:-6}\"",
+		"Projeto E2E inválido",
+	} {
+		requireContains(t, runner, expected)
+	}
+	if strings.Contains(runner, "docker system prune") || strings.Contains(runner, "rm -rf") {
+		t.Fatal("runner E2E contém limpeza destrutiva ampla")
+	}
+	info, err := os.Stat(runnerPath)
+	if err != nil {
+		t.Fatalf("inspecionar %s: %v", runnerPath, err)
+	}
+	if info.Mode().Perm()&0o111 == 0 {
+		t.Fatalf("%s deve ser executável", runnerPath)
+	}
+
+	makefile := readRequiredFile(t, filepath.Join("..", "..", "Makefile"))
+	requireContains(t, makefile, "demo-test-e2e:")
+	demoREADME := readRequiredFile(t, "README.md")
+	requireContains(t, demoREADME, "make demo-test-e2e")
 }
 
 // readRequiredFile lê artefatos obrigatórios e encerra o subteste com uma

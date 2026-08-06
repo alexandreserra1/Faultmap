@@ -57,6 +57,30 @@ Cada diretório contém um override pequeno, um gerador de carga limitado e o di
 
 Execute um cenário por vez e use `up --build -d --wait` antes de iniciar a carga. `docker compose down` remove os containers e a rede, mas preserva volumes nomeados; acrescente `--volumes` somente se quiser apagar conscientemente os dados locais da demo e obter uma baseline inteiramente limpa.
 
+## Matriz E2E automatizada
+
+O runner opt-in cria o projeto Docker isolado `faultmap-demo-shop-e2e`, gera uma
+baseline limpa, ativa cada falha, calcula janelas históricas exatas e valida o
+suspeito, os findings e a confiança. Como a demo normal e o runner publicam as
+mesmas portas locais, encerre primeiro os containers normais:
+
+```bash
+make demo-down
+make demo-test-e2e
+```
+
+Para executar somente alguns cenários:
+
+```bash
+make demo-test-e2e \
+  E2E_SCENARIOS="database-slow payment-500 timeout-after-deploy table-lock"
+```
+
+Ao terminar, o runner executa `down --volumes --remove-orphans` somente no
+projeto E2E. Use `KEEP_E2E_ENVIRONMENT=1` para preservar esse ambiente durante
+uma investigação manual. Essa opção deixa containers e volumes de teste ativos,
+que depois podem ser removidos explicitamente com o mesmo nome de projeto.
+
 ## Contratos de runtime
 
 Os overrides usam somente controles explícitos dos serviços: `PORT`, `SERVICE_VERSION`, `DB_DELAY`, `DB_MAX_OPEN_CONNS`, `FORCE_HTTP_STATUS`, `PAYMENT_TIMEOUT` e `PAYMENT_MAX_ATTEMPTS`. A carga usa IDs únicos e quantidade configurável, evitando duplicação acidental e execuções ilimitadas.
