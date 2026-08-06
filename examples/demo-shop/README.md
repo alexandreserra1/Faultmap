@@ -69,6 +69,11 @@ make demo-down
 make demo-test-e2e
 ```
 
+No cenário `timeout-after-deploy`, o runner também importa um commit e um
+deployment de um mock GitHub restrito ao loopback do container. A mesma SHA é
+emitida como `service.version`, permitindo validar `deployment_proximity` de
+ponta a ponta sem token real ou acesso à internet.
+
 Para executar somente alguns cenários:
 
 ```bash

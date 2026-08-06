@@ -1,10 +1,24 @@
 services:
+  faultmap:
+    build:
+      context: ../..
+      dockerfile: examples/demo-shop/Dockerfile.e2e
+    volumes:
+      - faultmap-data:/var/lib/faultmap
+      - ./faultmap-github-e2e.yaml:/etc/faultmap/faultmap.yaml:ro
+    environment:
+      PORT: "9090"
+      GITHUB_MOCK_REPOSITORY: acme/checkout
+      GITHUB_MOCK_SHA: "${TIMEOUT_DEPLOY_VERSION:-0123456789abcdef0123456789abcdef01234567}"
+      GITHUB_MOCK_ENVIRONMENT: demo
+      GITHUB_MOCK_TOKEN: e2e-token
+      GITHUB_MOCK_DEPLOYMENT_AGE: 1m
   checkout-service:
     environment:
-      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}"
+      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-0123456789abcdef0123456789abcdef01234567}"
       PAYMENT_TIMEOUT: "150ms"
       PAYMENT_MAX_ATTEMPTS: "1"
   payment-service:
     environment:
-      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}"
+      SERVICE_VERSION: "${TIMEOUT_DEPLOY_VERSION:-0123456789abcdef0123456789abcdef01234567}"
       DB_DELAY: "800ms"

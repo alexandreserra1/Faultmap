@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1.7
+
+ARG GO_VERSION=1.24
+ARG ALPINE_VERSION=3.22
+
+FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/faultmap ./cmd/faultmap \
+    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/github-mock ./examples/demo-shop/cmd/github-mock
+
+FROM alpine:${ALPINE_VERSION}
+
+RUN addgroup -S -g 10001 faultmap \
+    && adduser -S -D -H -u 10001 -G faultmap faultmap \
+    && mkdir -p /var/lib/faultmap \
+    && chown faultmap:faultmap /var/lib/faultmap
+
+COPY --from=build /out/faultmap /usr/local/bin/faultmap
+COPY --from=build /out/github-mock /usr/local/bin/github-mock
+
+USER faultmap
+WORKDIR /var/lib/faultmap
+
+EXPOSE 4318 8081
+
+ENTRYPOINT ["faultmap"]
+CMD ["serve", "--config", "/etc/faultmap/faultmap.yaml"]

@@ -175,7 +175,15 @@ func TestTimeoutDeployAceitaSHAReal(t *testing.T) {
 	t.Parallel()
 
 	compose := readRequiredFile(t, filepath.Join("scenarios", "timeout-after-deploy", "compose.yaml"))
-	requireContains(t, compose, "${TIMEOUT_DEPLOY_VERSION:-2.0.0-timeout-regression}")
+	for _, expected := range []string{
+		"Dockerfile.e2e",
+		"faultmap-github-e2e.yaml",
+		"GITHUB_MOCK_SHA: \"${TIMEOUT_DEPLOY_VERSION",
+	} {
+		requireContains(t, compose, expected)
+	}
+	config := readRequiredFile(t, "faultmap-github-e2e.yaml")
+	requireContains(t, config, "api_url: http://127.0.0.1:9090")
 	readme := readRequiredFile(t, filepath.Join("scenarios", "timeout-after-deploy", "README.md"))
 	requireContains(t, readme, "TIMEOUT_DEPLOY_VERSION=<commit_sha>")
 }
@@ -199,6 +207,10 @@ func TestRunnerE2EDeclaraMatrizLimitesELimpeza(t *testing.T) {
 		"KEEP_E2E_ENVIRONMENT",
 		"OTEL_FLUSH_WAIT_SECONDS=\"${OTEL_FLUSH_WAIT_SECONDS:-6}\"",
 		"Projeto E2E inválido",
+		"faultmap ingest github",
+		"GITHUB_TOKEN=e2e-token",
+		"deployment_proximity",
+		"O commit corresponde à service.version observada no incidente.",
 	} {
 		requireContains(t, runner, expected)
 	}

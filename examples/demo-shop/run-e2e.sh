@@ -9,6 +9,8 @@ CHECKOUT_URL="${FAULTMAP_E2E_CHECKOUT_URL:-http://127.0.0.1:18080/checkout}"
 ALL_SCENARIOS="database-slow small-pool payment-500 retry-storm timeout-after-deploy table-lock"
 KEEP_E2E_ENVIRONMENT="${KEEP_E2E_ENVIRONMENT:-0}"
 OTEL_FLUSH_WAIT_SECONDS="${OTEL_FLUSH_WAIT_SECONDS:-6}"
+TIMEOUT_DEPLOY_VERSION="${TIMEOUT_DEPLOY_VERSION:-0123456789abcdef0123456789abcdef01234567}"
+export TIMEOUT_DEPLOY_VERSION
 
 if [[ ! "${PROJECT_NAME}" =~ ^faultmap-demo-shop-e2e(-[a-z0-9][a-z0-9-]{0,30})?$ ]]; then
   printf 'Projeto E2E inválido; use faultmap-demo-shop-e2e ou um sufixo seguro.\n' >&2
@@ -76,7 +78,7 @@ scenario_findings() {
     database-slow|small-pool|table-lock) printf 'latency_delta\n' ;;
     payment-500) printf 'error_rate_delta\n' ;;
     retry-storm) printf 'error_rate_delta retry_storm\n' ;;
-    timeout-after-deploy) printf 'error_rate_delta latency_delta\n' ;;
+    timeout-after-deploy) printf 'deployment_proximity error_rate_delta latency_delta\n' ;;
   esac
 }
 
@@ -107,8 +109,37 @@ activate_scenario() {
     database-slow|small-pool|payment-500)
       scenario_compose "${scenario}" up -d --wait payment-service
       ;;
-    retry-storm|timeout-after-deploy)
+    retry-storm)
       scenario_compose "${scenario}" up -d --wait payment-service checkout-service
+      ;;
+    timeout-after-deploy)
+      scenario_compose "${scenario}" up --build -d --wait faultmap payment-service checkout-service
+      scenario_compose "${scenario}" exec -d faultmap github-mock
+      local attempt
+      for attempt in $(seq 1 20); do
+        if scenario_compose "${scenario}" exec -T faultmap \
+          wget --quiet --output-document=- http://127.0.0.1:9090/health >/dev/null 2>&1; then
+          break
+        fi
+        sleep 0.25
+      done
+      if ((attempt == 20)) && ! scenario_compose "${scenario}" exec -T faultmap \
+        wget --quiet --output-document=- http://127.0.0.1:9090/health >/dev/null 2>&1; then
+        printf 'github-mock não ficou saudável.\n' >&2
+        return 1
+      fi
+      # O token é fixo e sem privilégio: autentica apenas o mock no loopback do
+      # container e nunca é enviado à rede ou gravado no repositório do usuário.
+      scenario_compose "${scenario}" exec -T -e GITHUB_TOKEN=e2e-token faultmap \
+        faultmap ingest github \
+        --config /etc/faultmap/faultmap.yaml \
+        --repo acme/checkout \
+        --commits \
+        --deployments \
+        --service checkout-service \
+        --environment demo \
+        --since 10m \
+        --limit 20
       ;;
     table-lock)
       scenario_compose "${scenario}" up -d --wait payment-service
@@ -164,6 +195,7 @@ run_scenario() {
     faultmap diagnose incident \
     --config /etc/faultmap/faultmap.yaml \
     --service "${service}" \
+    --environment demo \
     --since "${incident_seconds}s" \
     --baseline "${baseline_seconds}s" \
     --until "${until_rfc}" \
@@ -177,6 +209,9 @@ run_scenario() {
   for finding in $(scenario_findings "${scenario}"); do
     assert_contains "${output}" "ID da regra: ${finding}"
   done
+  if [[ "${scenario}" == "timeout-after-deploy" ]]; then
+    assert_contains "${output}" "O commit corresponde à service.version observada no incidente."
+  fi
   printf 'E2E %s: PASS\n' "${scenario}"
 }
 

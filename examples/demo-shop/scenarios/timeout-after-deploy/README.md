@@ -1,8 +1,20 @@
 # Cenário: timeout depois de uma mudança
 
-A baseline executa a versão normal. O override muda `SERVICE_VERSION` para `2.0.0-timeout-regression`, reduz o timeout do checkout para `150ms` e adiciona `800ms` antes da operação do pagamento. Isso cria uma regressão temporal identificável nos spans.
+A baseline executa a versão normal. O override muda `SERVICE_VERSION` para um SHA de commit, reduz o timeout do checkout para `150ms` e adiciona `800ms` antes da operação do pagamento. Isso cria uma regressão temporal identificável nos spans e uma mudança importável pelo Faultmap.
 
 ## Como executar
+
+```bash
+make demo-down
+make demo-test-e2e E2E_SCENARIOS="timeout-after-deploy"
+```
+
+O runner cria bancos isolados, gera a baseline, sobe um mock mínimo da API do
+GitHub no loopback do próprio container do Faultmap, importa um commit e seu
+deployment e só então produz o incidente. O token `e2e-token` não possui acesso
+ao GitHub real e autentica exclusivamente esse mock local.
+
+Para reproduzir manualmente a preparação dos serviços, use:
 
 ```bash
 docker compose -f examples/demo-shop/compose.yaml up --build -d --wait
@@ -12,7 +24,7 @@ sleep 3
 
 docker compose -f examples/demo-shop/compose.yaml \
   -f examples/demo-shop/scenarios/timeout-after-deploy/compose.yaml \
-  up --build -d --wait checkout-service payment-service
+  up --build -d --wait faultmap checkout-service payment-service
 examples/demo-shop/scenarios/timeout-after-deploy/generate-traffic.sh
 ```
 
@@ -23,14 +35,23 @@ docker compose -f examples/demo-shop/compose.yaml \
   -f examples/demo-shop/scenarios/timeout-after-deploy/compose.yaml \
   exec faultmap faultmap diagnose incident \
   --config /etc/faultmap/faultmap.yaml \
-  --service checkout-service --since 15s --baseline 30s --limit 500
+  --service checkout-service --environment demo \
+  --since 15s --baseline 30s --limit 500
 ```
 
-Para incluir apenas a proximidade temporal de `deployment_proximity`, importe pelo comando `ingest github` um deployment do mesmo serviço e ambiente. Para elevar a confiança por correspondência exata, inicie o override com `TIMEOUT_DEPLOY_VERSION=<commit_sha>` usando o SHA real importado como `service.version`; o texto `2.0.0-timeout-regression` é apenas o fallback local e não corresponde a um SHA do GitHub. Depois repita o diagnóstico com `--environment demo`. O token deve vir somente de `GITHUB_TOKEN`.
+Na execução manual, inicie o `github-mock` dentro do container e use `faultmap
+ingest github` antes de gerar o incidente. Para substituir o SHA determinístico
+do E2E, inicie o override com `TIMEOUT_DEPLOY_VERSION=<commit_sha>`; o mesmo
+valor alimenta o mock e `service.version`. Em uma integração real, o token deve
+vir somente de `GITHUB_TOKEN`.
 
 ## Resultado esperado
 
-Sem dados de mudança, o Faultmap deve apontar aumento de latência/erros e registrar a versão observada, mas não inventará um commit. Com um deployment real previamente importado, `deployment_proximity` deve contribuir para o ranking e declarar que proximidade e versão correspondente não comprovam causalidade.
+O teste automatizado deve apontar `checkout-service`, encontrar
+`error_rate_delta`, `latency_delta` e `deployment_proximity` com confiança alta
+e afirmar que o commit corresponde à `service.version` observada. O relatório
+continua declarando que proximidade temporal e versão correspondente não
+comprovam causalidade.
 
 ## Fonte OTLP
 

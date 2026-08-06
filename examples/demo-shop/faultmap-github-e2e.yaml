@@ -1,0 +1,38 @@
+server:
+  otlp_http_address: 0.0.0.0:4318
+  health_address: 0.0.0.0:8081
+  max_request_body_bytes: 67108864
+  read_header_timeout: 5s
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 60s
+  shutdown_timeout: 10s
+storage:
+  driver: sqlite
+  path: /var/lib/faultmap/faultmap.db
+  retention: 7d
+investigation:
+  default_incident_window: 5m
+  default_baseline_window: 5m
+  top_suspects: 3
+ranking:
+  weights:
+    error_rate_delta: 0.25
+    deployment_proximity: 0.20
+    database_evidence: 0.20
+    graph_proximity: 0.15
+    latency_delta: 0.10
+    log_correlation: 0.10
+github:
+  enabled: true
+  # O endpoint permanece no loopback do mesmo container para que HTTP nunca
+  # seja aceito para um host externo durante o E2E.
+  api_url: http://127.0.0.1:9090
+  repository: acme/checkout
+  environment: demo
+privacy:
+  store_raw_logs: false
+  max_attribute_length: 512
+  blocked_attributes:
+    - http.request.body
+    - db.statement
