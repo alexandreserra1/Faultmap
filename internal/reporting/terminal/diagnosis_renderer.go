@@ -105,6 +105,8 @@ func ruleLabel(rule string) string {
 		return "Timeout PostgreSQL correlacionado a impacto HTTP"
 	case detection.RuleDeploymentProximity:
 		return "Deployment próximo ao incidente"
+	case detection.RuleRetryStorm:
+		return "Tempestade de retries"
 	default:
 		return "Hipótese detectada"
 	}

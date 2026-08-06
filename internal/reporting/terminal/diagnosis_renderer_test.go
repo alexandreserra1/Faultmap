@@ -59,6 +59,31 @@ func TestRenderDiagnosisApresentaRegrasDeFormaHumanaEAuditavel(t *testing.T) {
 	}
 }
 
+// TestRenderDiagnosisApresentaRetryStormEmPortugues mantém o identificador
+// técnico auditável, mas explica a hipótese em linguagem humana.
+func TestRenderDiagnosisApresentaRetryStormEmPortugues(t *testing.T) {
+	t.Parallel()
+
+	result := renderDiagnosisForTest(t, []detection.Finding{{
+		Rule:       detection.RuleRetryStorm,
+		Score:      0.80,
+		Confidence: detection.ConfidenceHigh,
+		Evidence: []detection.Evidence{{
+			Summary: "A média aumentou de 1,00 para 4,00 tentativas por trace.",
+		}},
+	}})
+
+	for _, expected := range []string{
+		"Tempestade de retries",
+		"ID da regra: retry_storm",
+		"Evidência: A média aumentou de 1,00 para 4,00 tentativas por trace.",
+	} {
+		if !strings.Contains(result, expected) {
+			t.Errorf("saída não contém %q:\n%s", expected, result)
+		}
+	}
+}
+
 // TestRenderDiagnosisConsolidaLimitacoesRepetidas mantém limitações gerais uma única vez e preserva as específicas junto de sua hipótese.
 func TestRenderDiagnosisConsolidaLimitacoesRepetidas(t *testing.T) {
 	t.Parallel()

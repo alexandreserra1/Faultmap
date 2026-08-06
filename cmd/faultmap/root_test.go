@@ -492,6 +492,94 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	assertTableCount(t, database, "ranking_results", 1)
 }
 
+// TestDiagnoseIncidentCommandDetectaRetryStorm cobre a ingestão, o ranking e a
+// persistência de uma repetição anormal da mesma chamada outbound por trace.
+func TestDiagnoseIncidentCommandDetectaRetryStorm(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	for _, fixtureName := range []string{"checkout-retry-baseline.json", "checkout-retry-incident.json"} {
+		fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", fixtureName))
+		if err != nil {
+			t.Fatalf("resolver fixture %q: %v", fixtureName, err)
+		}
+		ingest := newRootCommand()
+		ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+		ingest.SetOut(io.Discard)
+		ingest.SetErr(io.Discard)
+		if err := ingest.Execute(); err != nil {
+			t.Fatalf("ingerir fixture %q: %v", fixtureName, err)
+		}
+	}
+
+	var output bytes.Buffer
+	diagnose := newRootCommand()
+	diagnose.SetArgs([]string{
+		"diagnose", "incident", "--config", configPath,
+		"--service", "checkout-service", "--since", "1m", "--baseline", "1m",
+		"--until", "2025-12-01T10:02:00Z", "--limit", "100",
+	})
+	diagnose.SetOut(&output)
+	diagnose.SetErr(io.Discard)
+	if err := diagnose.Execute(); err != nil {
+		t.Fatalf("diagnose incident erro = %v", err)
+	}
+
+	diagnosisOutput := output.String()
+	for _, expected := range []string{
+		"retry_storm",
+		"POST",
+		"payment-service",
+		"média de tentativas por trace aumentou de 1.00 para 3.00",
+		"5 de 5 traces",
+		"Confiança: alta",
+		"retry_storm: score",
+		"× peso",
+		"Diagnóstico salvo: inc_",
+	} {
+		if !strings.Contains(diagnosisOutput, expected) {
+			t.Errorf("diagnóstico de retry não contém %q:\n%s", expected, diagnosisOutput)
+		}
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco para verificar retry_storm: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco de verificação: %v", closeErr)
+		}
+	})
+	var incidentID string
+	if err := database.QueryRow(`SELECT incident_id FROM findings WHERE rule_id = ?`, "retry_storm").Scan(&incidentID); err != nil {
+		t.Fatalf("ler finding retry_storm persistido: %v", err)
+	}
+
+	var persistedOutput bytes.Buffer
+	show := newRootCommand()
+	show.SetArgs([]string{"incident", "show", "--config", configPath, "--id", incidentID})
+	show.SetOut(&persistedOutput)
+	show.SetErr(io.Discard)
+	if err := show.Execute(); err != nil {
+		t.Fatalf("consultar snapshot com retry_storm: %v", err)
+	}
+	for _, expected := range []string{"retry_storm", "POST", "payment-service", "Confiança: alta"} {
+		if !strings.Contains(persistedOutput.String(), expected) {
+			t.Errorf("snapshot de retry não contém %q:\n%s", expected, persistedOutput.String())
+		}
+	}
+}
+
 // TestDiagnoseIncidentCommandNaoPersisteJanelaDeIncidenteVazia garante que
 // telemetria ainda não recebida não produza um snapshot imutável incompleto.
 func TestDiagnoseIncidentCommandNaoPersisteJanelaDeIncidenteVazia(t *testing.T) {

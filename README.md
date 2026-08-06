@@ -149,6 +149,10 @@ go run ./cmd/faultmap diagnose incident \
 
 O Faultmap consulta somente deployments já persistidos, dentro de até uma hora antes do início do incidente. Um deployment próximo recebe o finding `deployment_proximity`; quando o commit também corresponde à `service.version` observada nos spans do incidente, a confiança aumenta. O score usa uma queda linear pela distância temporal: um deployment seis minutos antes recebe score `0.90`, que com peso `0.20` contribui `0.18` para o suspeito. A saída sempre declara que proximidade e correspondência de versão não provam causalidade.
 
+O detector `retry_storm` compara quantas vezes a mesma operação aparece por trace na baseline e no incidente. Quando a repetição cresce de forma anormal, ele registra as médias, o volume analisado e a operação afetada. Para o ranking, a regra reutiliza deliberadamente `graph_proximity`, pois mede uma repetição estrutural dentro do grafo do trace; não existe um peso adicional no YAML. A contribuição segue `score × graph_proximity`: com score `0.80` e peso `0.15`, o valor auditável é `0.12`.
+
+Repetição não prova que houve retry nem que ele causou o incidente. Fan-out legítimo, paginação, loops de negócio e instrumentação duplicada podem produzir spans semelhantes. Por isso, a saída apresenta essa conclusão como hipótese, preserva as limitações do finding e recomenda confirmar a política de retry e o fluxo da aplicação.
+
 ### Consultar sinais no terminal
 
 Liste a telemetria persistida de um serviço em uma janela temporal limitada:
@@ -297,4 +301,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, importa commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id` e proximidade de deployment com correspondência opcional de versão. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão `retry_storm`, ingestão OTLP HTTP e o `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, importa commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência opcional de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão ingestão OTLP HTTP e o `demo-shop`.

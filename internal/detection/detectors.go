@@ -22,6 +22,8 @@ const (
 	RuleTraceCorrelation = "database_http_trace_correlation"
 	// RuleDeploymentProximity identifica mudança implantada pouco antes do incidente.
 	RuleDeploymentProximity = "deployment_proximity"
+	// RuleRetryStorm identifica aumento anormal de chamadas repetidas no mesmo trace.
+	RuleRetryStorm = "retry_storm"
 
 	minimumSampleSize = 5
 )
@@ -67,7 +69,7 @@ func Run(input Input) []Finding {
 	input.Baseline = signalsForService(input.ServiceName, input.Baseline)
 	input.Incident = signalsForService(input.ServiceName, input.Incident)
 
-	findings := make([]Finding, 0, 4)
+	findings := make([]Finding, 0, 5)
 	if finding, found := DetectErrorRateDelta(input); found {
 		findings = append(findings, finding)
 	}
@@ -78,6 +80,9 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectTraceCorrelation(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectRetryStorm(input); found {
 		findings = append(findings, finding)
 	}
 	return findings

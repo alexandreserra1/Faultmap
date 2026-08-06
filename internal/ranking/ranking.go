@@ -147,6 +147,8 @@ func weightForRule(rule string, weights Weights) (float64, bool) {
 		return weights.DatabaseEvidence, true
 	case detection.RuleTraceCorrelation:
 		return weights.GraphProximity, true
+	case detection.RuleRetryStorm:
+		return weights.GraphProximity, true
 	case detection.RuleDeploymentProximity:
 		return weights.DeploymentProximity, true
 	default:

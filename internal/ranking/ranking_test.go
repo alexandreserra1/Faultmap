@@ -101,6 +101,38 @@ func TestRankMapeiaCadaRegraAoPesoCorreto(t *testing.T) {
 	assertContribution(t, suspects[0].Contributions, detection.RuleDeploymentProximity, weights.DeploymentProximity)
 }
 
+// TestRankMapeiaRetryStormParaProximidadeDoGrafo garante que a repetição
+// estrutural no mesmo trace reutilize o peso existente sem ampliar o contrato YAML.
+func TestRankMapeiaRetryStormParaProximidadeDoGrafo(t *testing.T) {
+	t.Parallel()
+
+	findings := []detection.Finding{{
+		Rule:        detection.RuleRetryStorm,
+		ServiceName: "checkout-service",
+		Score:       0.80,
+		Confidence:  detection.ConfidenceHigh,
+		Evidence: []detection.Evidence{{
+			Summary: "A média aumentou de 1,00 para 4,00 tentativas por trace.",
+		}},
+	}}
+
+	suspects, err := ranking.Rank(findings, ranking.Config{
+		Weights: ranking.Weights{GraphProximity: 0.15},
+		TopN:    1,
+	})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("quantidade de suspeitos = %d, esperava 1", len(suspects))
+	}
+	assertFloat(t, "score", suspects[0].Score, 0.12)
+	assertContribution(t, suspects[0].Contributions, detection.RuleRetryStorm, 0.12)
+	if !strings.Contains(suspects[0].Contributions[0].Reason, "score 0.80 × peso 0.15 = 0.12") {
+		t.Errorf("motivo não apresenta a fórmula auditável: %q", suspects[0].Contributions[0].Reason)
+	}
+}
+
 func TestRankLimitaScoreAoIntervaloDeZeroAUm(t *testing.T) {
 	t.Parallel()
 

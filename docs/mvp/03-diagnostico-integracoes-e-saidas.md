@@ -10,7 +10,7 @@ Este documento é parte obrigatória da especificação do MVP. Leia também o [
 - `database_timeout`: identifica spans de banco com timeout, duração acima do limite, erros de contexto/status e aumento frente à baseline.
 - `database_http_trace_correlation`: relaciona, como hipótese, timeout PostgreSQL a erro HTTP 5xx ou latência HTTP acima do p95 da baseline quando os sinais compartilham o mesmo `trace_id`. Conta traces distintos, ignora identificadores vazios e nunca apresenta correlação como prova causal.
 - `database_error`: identifica crescimento de falhas de conexão, erros de query, respostas inválidas e transações abortadas.
-- `retry_storm`: identifica repetição anormal de chamadas semelhantes no mesmo trace ou janela.
+- `retry_storm`: identifica repetição anormal da mesma operação dentro de traces comparáveis entre baseline e incidente. O finding explica as tentativas por trace observadas nas duas janelas e sempre ressalva que spans repetidos podem representar fan-out, paginação ou instrumentação duplicada, não necessariamente uma política de retry.
 - `dependency_failure`: identifica downstream que falha antes de upstream, traces conectando os serviços e aumento correlacionado de erros.
 - `trace_break`: identifica ausência de propagação, traces interrompidos, chamadas conhecidas sem ligação entre spans ou perda de contexto entre serviços.
 - `version_regression`: compara duas versões do mesmo serviço.
@@ -32,7 +32,9 @@ ranking:
 
 O score final fica entre 0 e 1; toda contribuição é armazenada; os pesos são configuráveis; findings com pouco volume têm peso reduzido; evidências contraditórias diminuem confiança; ausência de dados vira limitação, não conclusão inventada. Retornar top 3 por padrão, com limite configurável pelo usuário.
 
-Na implementação inicial, `error_rate_delta` usa `error_rate_delta`, `latency_delta` usa `latency_delta`, `database_timeout` usa `database_evidence` e `database_http_trace_correlation` usa `graph_proximity`, pois representa a ligação entre sinais no mesmo trace. Cada contribuição é calculada como `score do finding × peso`. O total indica prioridade de investigação e não deve ser descrito como probabilidade causal. Pesos do YAML ficam entre 0 e 1, com soma maior que zero e no máximo 1.
+Na implementação inicial, `error_rate_delta` usa `error_rate_delta`, `latency_delta` usa `latency_delta`, `database_timeout` usa `database_evidence`, e tanto `database_http_trace_correlation` quanto `retry_storm` usam `graph_proximity`. A correlação de banco representa a ligação entre sinais no mesmo trace; o retry storm representa repetição estrutural da mesma operação dentro do trace. Esse mapeamento reutiliza deliberadamente o peso existente e não adiciona outro campo ao YAML, preservando o contrato e a soma configurada dos pesos.
+
+Cada finding contribui individualmente com `score do finding × peso da classe`. Por exemplo, um `retry_storm` com score `0.80` e `graph_proximity: 0.15` contribui `0.12`. Se houver mais de um finding da classe estrutural, cada contribuição permanece visível e auditável; o total agregado continua limitado ao intervalo de 0 a 1. Esse total indica prioridade de investigação e não deve ser descrito como probabilidade causal. Pesos do YAML ficam entre 0 e 1, com soma maior que zero e no máximo 1.
 
 ## Integração GitHub
 
