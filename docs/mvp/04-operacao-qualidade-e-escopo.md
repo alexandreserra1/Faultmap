@@ -28,6 +28,8 @@ Medir top-1/top-3 accuracy, tempo de diagnóstico, estabilidade entre execuçõe
 
 Nunca registrar tokens; mascarar credenciais; evitar corpos completos de requisição; não armazenar SQL bruto por padrão (preferir `db.query.summary`); permitir bloqueio de atributos; limitar payloads; validar entradas; suportar retenção configurável; documentar riscos de cardinalidade; executar localmente por padrão.
 
+O receiver OTLP do MVP não oferece autenticação ou TLS. Em desenvolvimento, os listeners devem ser alterados para `127.0.0.1`; em uma rede compartilhada, o processo deve permanecer em segmento privado, protegido por proxy ou gateway com TLS e autenticação. As portas OTLP e health não devem ser publicadas diretamente na internet. Mensagens de erro HTTP não podem incluir o payload recebido, SQL, atributos, caminhos internos ou causas do banco.
+
 ```yaml
 privacy:
   blocked_attributes:
@@ -41,7 +43,7 @@ privacy:
 
 ## Observabilidade do Faultmap
 
-Expor logs estruturados, health check e métricas internas: sinais recebidos, filas internas, eventos descartados, tempo de normalização/diagnóstico, erros de persistência e tamanho do banco. No futuro, o modo servidor oferece `/health/live`, `/health/ready` e `/metrics`.
+O modo servidor expõe `GET /health` em listener separado; a resposta confirma somente que o processo HTTP está vivo. Expor futuramente logs estruturados e métricas internas: sinais recebidos, filas internas, eventos descartados, tempo de normalização/diagnóstico, erros de persistência e tamanho do banco. Sondas distintas `/health/live` e `/health/ready`, além de `/metrics`, permanecem evoluções posteriores.
 
 ## Configuração inicial
 
@@ -49,6 +51,12 @@ Expor logs estruturados, health check e métricas internas: sinais recebidos, fi
 server:
   otlp_http_address: "0.0.0.0:4318"
   health_address: "0.0.0.0:8081"
+  max_request_body_bytes: 67108864
+  read_header_timeout: "5s"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "60s"
+  shutdown_timeout: "10s"
 storage:
   driver: "sqlite"
   path: "./faultmap.db"
@@ -74,6 +82,8 @@ privacy:
   max_attribute_length: 512
   blocked_attributes: [http.request.body, db.statement]
 ```
+
+`max_request_body_bytes` limita cada lote antes da decodificação. Os timeouts protegem, respectivamente, cabeçalhos lentos, leitura e escrita completas, conexões persistentes ociosas e a drenagem no encerramento. Todos devem ser positivos; os listeners devem usar `host:porta`, portas válidas e endereços diferentes. Como `Load` aplica o YAML sobre os defaults, workspaces antigos que ainda não possuem esses campos recebem os valores seguros acima sem migração manual.
 
 ## Testes obrigatórios
 

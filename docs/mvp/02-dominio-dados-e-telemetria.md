@@ -104,11 +104,15 @@ Aplicações → OTLP → OpenTelemetry Collector → OTLP → Faultmap
 ```
 
 ```bash
-faultmap serve --otlp-http-listen 0.0.0.0:4318 --database ./faultmap.db
-faultmap ingest file --input ./fixtures/otel-sample.json
+faultmap serve --config ./faultmap-local/faultmap.yaml
+faultmap ingest file --config ./faultmap-local/faultmap.yaml --input ./fixtures/otel-sample.json
 ```
 
-A ingestão deve validar o payload; extrair resource attributes, `service.name`, `service.version`, ambiente, trace/span IDs, status, duração, atributos HTTP e de banco; normalizar e persistir; e ignorar duplicidades pelo ID.
+O receiver expõe `POST /v1/traces` no listener OTLP e aceita os formatos normativos `application/json` e `application/x-protobuf`. O formato da resposta acompanha o da requisição: sucesso é um `ExportTraceServiceResponse` vazio (`{}` em JSON ou zero bytes em protobuf). Métodos diferentes de `POST`, tipo de mídia desconhecido e lote acima do limite são rejeitados antes de iniciar a persistência. Um `ExportTraceServiceRequest` vazio é válido e retorna sucesso sem iniciar persistência. Erros externos usam mensagens estáveis e não expõem detalhes do banco.
+
+A ingestão valida o payload; extrai resource attributes, `service.name`, `service.version`, ambiente, trace/span IDs, status, duração, atributos HTTP e de banco; normaliza e persiste; e ignora duplicidades pelo ID. Tanto arquivo quanto HTTP reutilizam o mesmo caso de uso e o mesmo normalizador para evitar contratos divergentes. No modo servidor, o contexto da requisição chega à persistência e o processo mantém um único pool SQLite até o encerramento controlado.
+
+O health check usa um listener separado e responde a `GET /health` com `{"status":"ok"}`. Nesta primeira fatia ele indica que o processo HTTP está vivo; não deve ser interpretado como verificação profunda de prontidão do banco.
 
 A normalização de spans propaga para cada sinal somente os atributos de Resource necessários à identidade operacional: `service.version`, `service.instance.id` e `deployment.environment.name`. A allowlist evita duplicar atributos arbitrários do Resource e permite relacionar a versão observada ao commit de um deployment.
 

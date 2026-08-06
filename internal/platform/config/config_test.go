@@ -29,6 +29,9 @@ func TestDefaultYAMLContémTodasAsSeções(t *testing.T) {
 			t.Fatalf("DefaultYAML() não contém a seção %q", section)
 		}
 	}
+	if !bytes.Contains(content, []byte("max_request_body_bytes: 67108864")) {
+		t.Fatalf("DefaultYAML() não contém o limite OTLP de 64 MiB: %s", content)
+	}
 }
 
 // TestLoadLêEValidaConfiguração verifica a desserialização das opções do Faultmap.
@@ -39,6 +42,12 @@ func TestLoadLêEValidaConfiguração(t *testing.T) {
 	content := `server:
   otlp_http_address: "127.0.0.1:4318"
   health_address: "127.0.0.1:8081"
+  max_request_body_bytes: 4194304
+  read_header_timeout: "3s"
+  read_timeout: "20s"
+  write_timeout: "25s"
+  idle_timeout: "45s"
+  shutdown_timeout: "8s"
 storage:
   driver: "sqlite"
   path: "./data/faultmap.db"
@@ -75,6 +84,12 @@ privacy:
 	if loaded.Storage.Path != "./data/faultmap.db" {
 		t.Fatalf("Storage.Path = %q, esperado ./data/faultmap.db", loaded.Storage.Path)
 	}
+	if loaded.Server.MaxRequestBodyBytes != 4*1024*1024 {
+		t.Fatalf("Server.MaxRequestBodyBytes = %d, esperado 4194304", loaded.Server.MaxRequestBodyBytes)
+	}
+	if loaded.Server.ReadHeaderTimeout != "3s" || loaded.Server.ShutdownTimeout != "8s" {
+		t.Fatalf("timeouts do servidor = %#v, esperados valores do YAML", loaded.Server)
+	}
 	if loaded.Investigation.TopSuspects != 5 {
 		t.Fatalf("Investigation.TopSuspects = %d, esperado 5", loaded.Investigation.TopSuspects)
 	}
@@ -83,6 +98,70 @@ privacy:
 	}
 	if !loaded.GitHub.Enabled {
 		t.Fatal("GitHub.Enabled = false, esperado true")
+	}
+}
+
+// TestLoadPreservaDefaultsDoServidorEmYAMLAntigo garante que workspaces
+// existentes recebam limites seguros sem exigir novos campos imediatamente.
+func TestLoadPreservaDefaultsDoServidorEmYAMLAntigo(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `server:
+  otlp_http_address: "127.0.0.1:4318"
+  health_address: "127.0.0.1:8081"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	loaded, err := Load(context.Background(), configPath)
+	if err != nil {
+		t.Fatalf("Load() erro = %v", err)
+	}
+	defaults := Default().Server
+	if loaded.Server.MaxRequestBodyBytes != defaults.MaxRequestBodyBytes ||
+		loaded.Server.ReadHeaderTimeout != defaults.ReadHeaderTimeout ||
+		loaded.Server.ReadTimeout != defaults.ReadTimeout ||
+		loaded.Server.WriteTimeout != defaults.WriteTimeout ||
+		loaded.Server.IdleTimeout != defaults.IdleTimeout ||
+		loaded.Server.ShutdownTimeout != defaults.ShutdownTimeout {
+		t.Fatalf("Server = %#v, esperado preservar defaults %#v", loaded.Server, defaults)
+	}
+}
+
+// TestValidateRejeitaLimitesOperacionaisInválidos impede iniciar um receiver
+// sem limite de corpo ou sem proteção temporal contra clientes lentos.
+func TestValidateRejeitaLimitesOperacionaisInválidos(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name   string
+		change func(*Config)
+	}{
+		{name: "endereço OTLP vazio", change: func(configuration *Config) { configuration.Server.OTLPHTTPAddress = " " }},
+		{name: "endereço OTLP sem porta", change: func(configuration *Config) { configuration.Server.OTLPHTTPAddress = "127.0.0.1" }},
+		{name: "endereço health vazio", change: func(configuration *Config) { configuration.Server.HealthAddress = " " }},
+		{name: "endereço health inválido", change: func(configuration *Config) { configuration.Server.HealthAddress = "http://127.0.0.1:8081" }},
+		{name: "listeners iguais", change: func(configuration *Config) { configuration.Server.HealthAddress = configuration.Server.OTLPHTTPAddress }},
+		{name: "corpo sem limite", change: func(configuration *Config) { configuration.Server.MaxRequestBodyBytes = 0 }},
+		{name: "timeout de cabeçalho inválido", change: func(configuration *Config) { configuration.Server.ReadHeaderTimeout = "nunca" }},
+		{name: "timeout de leitura inválido", change: func(configuration *Config) { configuration.Server.ReadTimeout = "0s" }},
+		{name: "timeout de escrita inválido", change: func(configuration *Config) { configuration.Server.WriteTimeout = "-1s" }},
+		{name: "timeout ocioso inválido", change: func(configuration *Config) { configuration.Server.IdleTimeout = "" }},
+		{name: "timeout de encerramento inválido", change: func(configuration *Config) { configuration.Server.ShutdownTimeout = "amanhã" }},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			configuration := Default()
+			testCase.change(&configuration)
+			if err := configuration.Validate(); err == nil {
+				t.Fatalf("Validate() erro = nil para server %#v", configuration.Server)
+			}
+		})
 	}
 }
 

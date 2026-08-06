@@ -30,6 +30,7 @@ func newRootCommand() *cobra.Command {
 		Short: "Investigação determinística de incidentes",
 	}
 	root.AddCommand(newInitCommand())
+	root.AddCommand(newServeCommand())
 	root.AddCommand(newIngestCommand())
 	root.AddCommand(newTelemetryCommand())
 	root.AddCommand(newDiagnoseCommand())

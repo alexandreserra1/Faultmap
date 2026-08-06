@@ -21,6 +21,9 @@ func ParseOTLPJSON(ctx context.Context, reader io.Reader) ([]domain.Signal, erro
 	if err := contextError(ctx); err != nil {
 		return nil, err
 	}
+	if reader == nil {
+		return nil, fmt.Errorf("interpretar OTLP JSON: leitor é obrigatório")
+	}
 
 	var request exportTraceServiceRequest
 	decoder := json.NewDecoder(contextReader{ctx: ctx, reader: reader})
@@ -34,6 +37,12 @@ func ParseOTLPJSON(ctx context.Context, reader io.Reader) ([]domain.Signal, erro
 		return nil, err
 	}
 
+	return normalizeExportRequest(ctx, request)
+}
+
+// normalizeExportRequest concentra a transformação semântica compartilhada
+// pelos transportes JSON e protobuf, evitando diferenças entre as entradas.
+func normalizeExportRequest(ctx context.Context, request exportTraceServiceRequest) ([]domain.Signal, error) {
 	signals := make([]domain.Signal, 0)
 	for resourceIndex, resourceSpan := range request.ResourceSpans {
 		serviceName := serviceName(resourceSpan.Resource.Attributes)
@@ -76,7 +85,7 @@ type span struct {
 	SpanID            string          `json:"spanId"`
 	ParentSpanID      string          `json:"parentSpanId"`
 	Name              string          `json:"name"`
-	Kind              string          `json:"kind"`
+	Kind              spanKind        `json:"kind"`
 	StartTimeUnixNano json.RawMessage `json:"startTimeUnixNano"`
 	EndTimeUnixNano   json.RawMessage `json:"endTimeUnixNano"`
 	Attributes        []keyValue      `json:"attributes"`
@@ -91,6 +100,44 @@ type status struct {
 type keyValue struct {
 	Key   string   `json:"key"`
 	Value anyValue `json:"value"`
+}
+
+type spanKind string
+
+// UnmarshalJSON aceita tanto o inteiro definido pelo mapeamento JSON oficial
+// quanto o nome simbólico usado pelas fixtures e por exportadores existentes.
+func (kind *spanKind) UnmarshalJSON(raw []byte) error {
+	var symbolic string
+	if err := json.Unmarshal(raw, &symbolic); err == nil {
+		if symbolic == "SPAN_KIND_UNSPECIFIED" {
+			*kind = ""
+		} else {
+			*kind = spanKind(symbolic)
+		}
+		return nil
+	}
+
+	var numeric int
+	if err := json.Unmarshal(raw, &numeric); err != nil {
+		return fmt.Errorf("kind OTLP inválido: %w", err)
+	}
+	switch numeric {
+	case 0:
+		*kind = ""
+	case 1:
+		*kind = "SPAN_KIND_INTERNAL"
+	case 2:
+		*kind = "SPAN_KIND_SERVER"
+	case 3:
+		*kind = "SPAN_KIND_CLIENT"
+	case 4:
+		*kind = "SPAN_KIND_PRODUCER"
+	case 5:
+		*kind = "SPAN_KIND_CONSUMER"
+	default:
+		*kind = spanKind(strconv.Itoa(numeric))
+	}
+	return nil
 }
 
 type anyValue struct {
@@ -134,7 +181,7 @@ func normalizeSpan(serviceName string, resourceAttributes map[string]string, sou
 		attributes["span.name"] = source.Name
 	}
 	if source.Kind != "" {
-		attributes["span.kind"] = source.Kind
+		attributes["span.kind"] = string(source.Kind)
 	}
 	if source.ParentSpanID != "" {
 		attributes["span.parent_id"] = source.ParentSpanID
@@ -273,8 +320,11 @@ func rejectTrailingJSON(decoder *json.Decoder) error {
 }
 
 func contextError(ctx context.Context) error {
+	if ctx == nil {
+		return fmt.Errorf("normalizar OTLP: contexto é obrigatório")
+	}
 	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("normalizar OTLP JSON: contexto cancelado: %w", err)
+		return fmt.Errorf("normalizar OTLP: contexto cancelado: %w", err)
 	}
 	return nil
 }

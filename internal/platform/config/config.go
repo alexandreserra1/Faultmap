@@ -6,8 +6,10 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,8 +28,22 @@ type Config struct {
 
 // ServerConfig define os endereços dos listeners locais do processo.
 type ServerConfig struct {
+	// OTLPHTTPAddress define o listener que recebe lotes OTLP/HTTP de traces.
 	OTLPHTTPAddress string `yaml:"otlp_http_address"`
-	HealthAddress   string `yaml:"health_address"`
+	// HealthAddress separa a sonda operacional do tráfego de ingestão.
+	HealthAddress string `yaml:"health_address"`
+	// MaxRequestBodyBytes limita a memória e o trabalho causados por cada lote recebido.
+	MaxRequestBodyBytes int64 `yaml:"max_request_body_bytes"`
+	// ReadHeaderTimeout limita quanto tempo um cliente pode ocupar o listener sem enviar cabeçalhos.
+	ReadHeaderTimeout string `yaml:"read_header_timeout"`
+	// ReadTimeout limita a leitura completa de uma requisição OTLP.
+	ReadTimeout string `yaml:"read_timeout"`
+	// WriteTimeout limita o envio da resposta ao Collector.
+	WriteTimeout string `yaml:"write_timeout"`
+	// IdleTimeout limita conexões HTTP persistentes que permanecerem ociosas.
+	IdleTimeout string `yaml:"idle_timeout"`
+	// ShutdownTimeout limita a drenagem de requisições durante o encerramento controlado.
+	ShutdownTimeout string `yaml:"shutdown_timeout"`
 }
 
 // StorageConfig define a persistência local e sua política de retenção.
@@ -78,8 +94,14 @@ type PrivacyConfig struct {
 func Default() Config {
 	return Config{
 		Server: ServerConfig{
-			OTLPHTTPAddress: "0.0.0.0:4318",
-			HealthAddress:   "0.0.0.0:8081",
+			OTLPHTTPAddress:     "0.0.0.0:4318",
+			HealthAddress:       "0.0.0.0:8081",
+			MaxRequestBodyBytes: 64 * 1024 * 1024,
+			ReadHeaderTimeout:   "5s",
+			ReadTimeout:         "30s",
+			WriteTimeout:        "30s",
+			IdleTimeout:         "60s",
+			ShutdownTimeout:     "10s",
 		},
 		Storage: StorageConfig{
 			Driver:    "sqlite",
@@ -144,6 +166,9 @@ func Load(ctx context.Context, path string) (Config, error) {
 
 // Validate rejeita opções incompatíveis antes que sejam usadas pelo bootstrap.
 func (config Config) Validate() error {
+	if err := validateServer(config.Server); err != nil {
+		return err
+	}
 	if config.Storage.Driver != "sqlite" {
 		return fmt.Errorf("configuração inválida: storage.driver deve ser sqlite")
 	}
@@ -174,6 +199,58 @@ func (config Config) Validate() error {
 	githubURL, err := url.Parse(strings.TrimSpace(config.GitHub.APIURL))
 	if err != nil || (githubURL.Scheme != "http" && githubURL.Scheme != "https") || githubURL.Host == "" {
 		return fmt.Errorf("configuração inválida: github.api_url deve ser uma URL HTTP(S)")
+	}
+	return nil
+}
+
+// validateServer rejeita listeners ambíguos e limites que deixariam o modo
+// servidor vulnerável a payloads ilimitados ou conexões presas indefinidamente.
+func validateServer(server ServerConfig) error {
+	if err := validateTCPAddress("server.otlp_http_address", server.OTLPHTTPAddress); err != nil {
+		return err
+	}
+	if err := validateTCPAddress("server.health_address", server.HealthAddress); err != nil {
+		return err
+	}
+	if strings.TrimSpace(server.OTLPHTTPAddress) == strings.TrimSpace(server.HealthAddress) {
+		return fmt.Errorf("configuração inválida: server.otlp_http_address e server.health_address devem ser diferentes")
+	}
+	if server.MaxRequestBodyBytes < 1 {
+		return fmt.Errorf("configuração inválida: server.max_request_body_bytes deve ser maior que zero")
+	}
+
+	timeouts := []struct {
+		name  string
+		value string
+	}{
+		{name: "read_header_timeout", value: server.ReadHeaderTimeout},
+		{name: "read_timeout", value: server.ReadTimeout},
+		{name: "write_timeout", value: server.WriteTimeout},
+		{name: "idle_timeout", value: server.IdleTimeout},
+		{name: "shutdown_timeout", value: server.ShutdownTimeout},
+	}
+	for _, timeout := range timeouts {
+		if _, err := parseDuration(timeout.value); err != nil {
+			return fmt.Errorf("configuração inválida: server.%s: %w", timeout.name, err)
+		}
+	}
+	return nil
+}
+
+// validateTCPAddress valida sintaticamente host e porta sem abrir conexão ou
+// depender de resolução DNS durante o bootstrap.
+func validateTCPAddress(name, address string) error {
+	trimmedAddress := strings.TrimSpace(address)
+	host, port, err := net.SplitHostPort(trimmedAddress)
+	if err != nil {
+		return fmt.Errorf("configuração inválida: %s deve usar host:porta: %w", name, err)
+	}
+	if strings.Contains(host, "://") || strings.ContainsAny(host, " \t\r\n") {
+		return fmt.Errorf("configuração inválida: %s possui host inválido", name)
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return fmt.Errorf("configuração inválida: %s deve usar porta numérica entre 1 e 65535", name)
 	}
 	return nil
 }

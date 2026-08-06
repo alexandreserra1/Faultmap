@@ -2,18 +2,154 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+// TestServeCommandRecebeTracesEDeduplica cobre o processo HTTP completo com
+// listeners reais, banco SQLite e encerramento controlado pelo contexto.
+func TestServeCommandRecebeTracesEDeduplica(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	otlpAddress := reserveTCPAddress(t)
+	healthAddress := reserveTCPAddress(t)
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ler configuração: %v", err)
+	}
+	content = bytes.Replace(content, []byte("0.0.0.0:4318"), []byte(otlpAddress), 1)
+	content = bytes.Replace(content, []byte("0.0.0.0:8081"), []byte(healthAddress), 1)
+	if err := os.WriteFile(configPath, content, 0o600); err != nil {
+		t.Fatalf("configurar listeners do teste: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	serveDone := make(chan error, 1)
+	serve := newRootCommand()
+	serve.SetArgs([]string{"serve", "--config", configPath})
+	serve.SetOut(io.Discard)
+	serve.SetErr(io.Discard)
+	go func() {
+		serveDone <- serve.ExecuteContext(ctx)
+	}()
+	t.Cleanup(cancel)
+
+	waitForHealthyServer(t, ctx, "http://"+healthAddress+"/health")
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "checkout-normal.json"))
+	if err != nil {
+		t.Fatalf("resolver fixture OTLP: %v", err)
+	}
+	for attempt := 1; attempt <= 2; attempt++ {
+		fixture, err := os.Open(fixturePath)
+		if err != nil {
+			t.Fatalf("abrir fixture na tentativa %d: %v", attempt, err)
+		}
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://"+otlpAddress+"/v1/traces", fixture)
+		if err != nil {
+			fixture.Close()
+			t.Fatalf("criar requisição OTLP: %v", err)
+		}
+		request.Header.Set("Content-Type", "application/json")
+		response, err := http.DefaultClient.Do(request)
+		if err != nil {
+			t.Fatalf("enviar OTLP na tentativa %d: %v", attempt, err)
+		}
+		body, readErr := io.ReadAll(response.Body)
+		response.Body.Close()
+		if readErr != nil {
+			t.Fatalf("ler resposta OTLP: %v", readErr)
+		}
+		if response.StatusCode != http.StatusOK || strings.TrimSpace(string(body)) != "{}" {
+			t.Fatalf("tentativa %d retornou status %d e corpo %q", attempt, response.StatusCode, body)
+		}
+	}
+	invalidRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://"+otlpAddress+"/v1/traces", strings.NewReader("{"))
+	if err != nil {
+		t.Fatalf("criar requisição OTLP inválida: %v", err)
+	}
+	invalidRequest.Header.Set("Content-Type", "application/json")
+	invalidResponse, err := http.DefaultClient.Do(invalidRequest)
+	if err != nil {
+		t.Fatalf("enviar OTLP inválido: %v", err)
+	}
+	invalidResponse.Body.Close()
+	if invalidResponse.StatusCode != http.StatusBadRequest {
+		t.Fatalf("payload inválido retornou status %d, esperado 400", invalidResponse.StatusCode)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco para verificar deduplicação: %v", err)
+	}
+	defer database.Close()
+	assertTableCount(t, database, "signals", 2)
+
+	cancel()
+	select {
+	case err := <-serveDone:
+		if err != nil {
+			t.Fatalf("serve após cancelamento retornou erro = %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("serve não encerrou dentro do prazo")
+	}
+}
+
+func reserveTCPAddress(t *testing.T) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("reservar endereço TCP: %v", err)
+	}
+	address := listener.Addr().String()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("liberar endereço TCP reservado: %v", err)
+	}
+	return address
+}
+
+func waitForHealthyServer(t *testing.T, ctx context.Context, endpoint string) {
+	t.Helper()
+	client := &http.Client{Timeout: 250 * time.Millisecond}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			t.Fatalf("criar requisição de health: %v", err)
+		}
+		response, err := client.Do(request)
+		if err == nil {
+			response.Body.Close()
+			if response.StatusCode == http.StatusOK {
+				return
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatalf("servidor de health não respondeu em %s", endpoint)
+}
 
 // TestInitCommandGeraConfiguraçãoCompleta garante que init não omite seções do MVP.
 func TestInitCommandGeraConfiguraçãoCompleta(t *testing.T) {
@@ -1001,6 +1137,7 @@ func assertTableCount(t *testing.T, database *sql.DB, table string, want int) {
 		"incidents":       {},
 		"findings":        {},
 		"ranking_results": {},
+		"signals":         {},
 	}
 	if _, ok := allowed[table]; !ok {
 		t.Fatalf("tabela não permitida no teste: %q", table)

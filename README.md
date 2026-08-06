@@ -96,6 +96,68 @@ rm -rf ./faultmap-local
 
 Ainda não há uma demo executável (`demo-shop`) no repositório. Quando ela existir, sua limpeza será documentada junto ao Docker Compose correspondente; por enquanto, a remoção do workspace acima é toda a limpeza local necessária.
 
+### Receber traces por OTLP/HTTP
+
+Inicie o receiver usando o mesmo workspace criado pelo `init`:
+
+```bash
+go run ./cmd/faultmap serve \
+  --config ./faultmap-local/faultmap.yaml
+```
+
+O processo mantém dois listeners independentes: `POST /v1/traces` recebe lotes OTLP no endereço `server.otlp_http_address`, enquanto `GET /health` responde no endereço `server.health_address`. A ingestão reutiliza o mesmo normalizador e o mesmo pool SQLite durante todo o ciclo de vida do processo. Reenviar spans com os mesmos IDs é seguro: a persistência ignora duplicidades.
+
+Envie uma fixture no formato OTLP JSON:
+
+```bash
+curl --fail-with-body \
+  -H 'Content-Type: application/json' \
+  --data-binary @./fixtures/otel/checkout-normal.json \
+  http://127.0.0.1:4318/v1/traces
+```
+
+Uma ingestão aceita retorna `200 OK` e o `ExportTraceServiceResponse` vazio, representado como `{}` em JSON. O endpoint também aceita OTLP protobuf com `Content-Type: application/x-protobuf`; nesse caso, o corpo de sucesso é um protobuf vazio. O formato é determinado pelo `Content-Type`, e não pela extensão ou pelo conteúdo aparente do corpo.
+
+Verifique a saúde do processo separadamente:
+
+```bash
+curl --fail http://127.0.0.1:8081/health
+```
+
+Resposta esperada:
+
+```json
+{"status":"ok"}
+```
+
+Para encaminhar traces de aplicações reais, configure um OpenTelemetry Collector. O exporter `otlphttp` acrescenta `/v1/traces` ao `endpoint` para o pipeline de traces:
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+
+exporters:
+  otlphttp/faultmap:
+    endpoint: http://faultmap:4318
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/faultmap]
+```
+
+O receiver limita cada requisição a 64 MiB por padrão e configura timeouts de cabeçalho, leitura, escrita, conexão ociosa e encerramento. Payload inválido retorna `400`, método incorreto `405`, corpo acima do limite `413`, formato não suportado `415` e falha interna `500`, sem expor detalhes de persistência.
+
+Esta primeira versão não implementa autenticação nem TLS no receiver. Em uma máquina de desenvolvimento, altere os listeners para `127.0.0.1`; em rede compartilhada, mantenha o Faultmap em uma rede privada e coloque autenticação e TLS em um proxy ou gateway confiável. Não exponha as portas diretamente à internet.
+
 ### Importar uma fixture OTLP
 
 Depois de criar o workspace, importe uma fixture de trace OpenTelemetry:
@@ -301,4 +363,4 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O Marco 1 está em andamento. A CLI já inicializa o workspace, ingere traces OTLP de arquivo, importa commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência opcional de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. As próximas entregas adicionarão ingestão OTLP HTTP e o `demo-shop`.
+O Marco 1 está em andamento. A CLI já inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf, importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência opcional de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A próxima entrega principal é o `demo-shop` instrumentado e reproduzível.

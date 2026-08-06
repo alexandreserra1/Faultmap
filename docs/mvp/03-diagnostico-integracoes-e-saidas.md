@@ -70,6 +70,10 @@ faultmap export graph --incident inc_001 --format mermaid
 
 `blame trace` consulta somente o `trace_id` solicitado, com limite obrigatório, e apresenta o fluxo cronológico e suas relações usando uma allowlist de campos. SQL bruto, credenciais e atributos arbitrários não são exibidos.
 
+`serve` carrega uma única configuração, abre um único pool `*sql.DB` e inicia listeners distintos para `POST /v1/traces` e `GET /health`. O receiver é stateless: todo estado durável fica no SQLite e nenhuma sessão HTTP é mantida. Cancelamento do processo dispara encerramento controlado dentro de `server.shutdown_timeout`; nenhuma nova conexão ou pool é criado por requisição.
+
+`POST /v1/traces` aceita `application/json` e `application/x-protobuf`, limita o corpo antes da decodificação e encaminha o contexto recebido ao caso de uso. Uma resposta `200` confirma que o lote válido foi processado; a deduplicação por ID torna reenvios idempotentes. Respostas `400`, `405`, `413`, `415` e `500` preservam o formato OTLP aplicável e não incluem payload, SQL, credenciais ou detalhes internos.
+
 `diagnose incident` persiste o resultado depois de concluir as duas leituras limitadas e o cálculo determinístico. A escrita usa o mesmo pool do comando e uma única transação para incidente, findings e ranking. O ID determinístico torna retries idempotentes; um snapshot existente não é atualizado silenciosamente. Quando a janela do incidente não contém sinais, nenhuma transação é iniciada e o resultado não é persistido, evitando congelar uma investigação executada antes da chegada da telemetria.
 
 `incident list` consulta somente resumos persistidos e não recalcula diagnósticos. A leitura exige limite entre 1 e 1.000, seleciona apenas ID, serviço, status e janela, e ordena deterministicamente por início do incidente decrescente e ID crescente. A versão atual implementa uma página limitada dos registros mais recentes, sem cursor nem `offset`; paginação por cursor deverá ser adicionada quando o volume justificar essa evolução.
