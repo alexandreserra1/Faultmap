@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"net/http"
 )
@@ -25,6 +26,10 @@ type Repository interface {
 // Scenario controla falhas HTTP reproduzíveis sem armazenar estado no processo.
 type Scenario struct {
 	ForceHTTPStatus int
+	// ChronicErrorPercent injeta uma taxa de erro de fundo, entre 0 e 100, que
+	// existe tanto na baseline quanto no incidente. Ela serve para verificar se
+	// o diagnóstico distingue ruído permanente de uma regressão real.
+	ChronicErrorPercent int
 }
 
 // Handler valida pagamentos e delega sua persistência ao repositório.
@@ -40,6 +45,9 @@ func NewHandler(repository Repository, scenario Scenario) (*Handler, error) {
 	}
 	if scenario.ForceHTTPStatus != 0 && (scenario.ForceHTTPStatus < 400 || scenario.ForceHTTPStatus > 599) {
 		return nil, fmt.Errorf("criar handler de pagamento: status forçado deve estar entre 400 e 599")
+	}
+	if scenario.ChronicErrorPercent < 0 || scenario.ChronicErrorPercent > 100 {
+		return nil, fmt.Errorf("criar handler de pagamento: erro crônico deve estar entre 0 e 100")
 	}
 	return &Handler{repository: repository, scenario: scenario}, nil
 }
@@ -62,6 +70,10 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		http.Error(writer, "falha simulada", handler.scenario.ForceHTTPStatus)
 		return
 	}
+	if chronicFailure(payment.OrderID, handler.scenario.ChronicErrorPercent) {
+		http.Error(writer, "falha intermitente simulada", http.StatusInternalServerError)
+		return
+	}
 	if err := handler.repository.Create(request.Context(), payment); err != nil {
 		if request.Context().Err() != nil {
 			http.Error(writer, "requisição cancelada", http.StatusRequestTimeout)
@@ -75,4 +87,22 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	if _, err := writer.Write([]byte(`{"status":"created"}`)); err != nil {
 		return
 	}
+}
+
+// chronicFailure decide a falha de fundo a partir de um hash do pedido em vez
+// de um contador ou sorteio. Assim o handler continua stateless — nada é
+// compartilhado entre requisições — e o mesmo tráfego produz exatamente a mesma
+// sequência de falhas em qualquer réplica ou reexecução, o que é indispensável
+// para comparar dois diagnósticos.
+func chronicFailure(orderID string, percent int) bool {
+	if percent <= 0 {
+		return false
+	}
+	if percent >= 100 {
+		return true
+	}
+	digest := fnv.New32a()
+	// Write de hash.Hash nunca devolve erro; o retorno é ignorado deliberadamente.
+	_, _ = digest.Write([]byte(orderID))
+	return int(digest.Sum32()%100) < percent
 }

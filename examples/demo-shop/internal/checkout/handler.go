@@ -22,6 +22,11 @@ type Config struct {
 	PaymentURL      string
 	PaymentTimeout  time.Duration
 	PaymentAttempts int
+	// PaymentFanOut emite chamadas paralelas legítimas por checkout, como um
+	// serviço que consulta várias contas de uma vez. Elas repetem a mesma
+	// operação dentro do trace sem serem retry, e por isso servem para verificar
+	// se o detector de retry storm distingue repetição normal de anormal.
+	PaymentFanOut int
 }
 
 // Request representa os dados mínimos de uma compra usados pela demonstração.
@@ -50,6 +55,9 @@ func NewHandler(config Config, client *http.Client) (*Handler, error) {
 	}
 	if config.PaymentAttempts < 1 || config.PaymentAttempts > 10 {
 		return nil, errors.New("PAYMENT_MAX_ATTEMPTS deve estar entre 1 e 10")
+	}
+	if config.PaymentFanOut < 0 || config.PaymentFanOut > 10 {
+		return nil, errors.New("PAYMENT_FANOUT deve estar entre 0 e 10")
 	}
 	if client == nil {
 		return nil, errors.New("cliente HTTP é obrigatório")
@@ -83,7 +91,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	status, err := handler.sendPayment(request.Context(), payload)
+	status, err := handler.dispatchPayments(request.Context(), payload)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			http.Error(writer, "tempo do pagamento excedido", http.StatusGatewayTimeout)
@@ -101,6 +109,51 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	if _, err := writer.Write([]byte(`{"status":"created"}`)); err != nil {
 		return
 	}
+}
+
+// dispatchPayments executa o fan-out configurado em paralelo, cada ramo no
+// contexto do trace recebido. Todos os ramos precisam concluir: um único erro
+// invalida o checkout, porque um pagamento parcial não é um pagamento.
+// Sem fan-out configurado, o caminho é exatamente o de uma chamada única.
+func (handler *Handler) dispatchPayments(ctx context.Context, payload []byte) (int, error) {
+	if handler.config.PaymentFanOut <= 1 {
+		return handler.sendPayment(ctx, payload)
+	}
+
+	// Todos os ramos são aguardados. Cancelar os demais ao primeiro erro faria
+	// chamadas saudáveis abortarem e serem reportadas como timeout, escondendo a
+	// falha real; como o fan-out é pequeno e cada ramo já tem timeout próprio,
+	// esperar é mais barato do que interpretar um cancelamento nosso.
+	type result struct {
+		status int
+		err    error
+	}
+	results := make(chan result, handler.config.PaymentFanOut)
+	for branch := 0; branch < handler.config.PaymentFanOut; branch++ {
+		go func() {
+			status, err := handler.sendPayment(ctx, payload)
+			results <- result{status: status, err: err}
+		}()
+	}
+
+	worstStatus := http.StatusCreated
+	var firstErr error
+	for branch := 0; branch < handler.config.PaymentFanOut; branch++ {
+		received := <-results
+		if received.err != nil {
+			if firstErr == nil {
+				firstErr = received.err
+			}
+			continue
+		}
+		if received.status >= http.StatusMultipleChoices {
+			worstStatus = received.status
+		}
+	}
+	if firstErr != nil {
+		return 0, firstErr
+	}
+	return worstStatus, nil
 }
 
 // sendPayment limita cada tentativa separadamente e mantém todas no contexto do trace recebido.

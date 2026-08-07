@@ -33,6 +33,7 @@ type config struct {
 	connMaxIdleTime       time.Duration
 	dbDelay               time.Duration
 	forceHTTPStatus       int
+	chronicErrorPercent   int
 }
 
 // main transforma falhas de bootstrap em encerramento explícito do processo.
@@ -97,10 +98,15 @@ func loadConfig(environment demoruntime.Environment) (config, error) {
 	if forceHTTPStatus != 0 && forceHTTPStatus < 400 {
 		return config{}, errors.New("FORCE_HTTP_STATUS deve ser zero ou um status entre 400 e 599")
 	}
+	chronicErrorPercent, err := environment.Int("CHRONIC_ERROR_PERCENT", 0, 0, 100)
+	if err != nil {
+		return config{}, err
+	}
 	return config{
 		port: port, serviceVersion: serviceVersion, deploymentEnvironment: deploymentEnvironment, otelEndpoint: otelEndpoint,
 		databaseURL: databaseURL, maxOpenConns: maxOpenConns, maxIdleConns: maxIdleConns,
 		connMaxLifetime: connMaxLifetime, connMaxIdleTime: connMaxIdleTime, dbDelay: dbDelay, forceHTTPStatus: forceHTTPStatus,
+		chronicErrorPercent: chronicErrorPercent,
 	}, nil
 }
 
@@ -143,7 +149,10 @@ func run(ctx context.Context, environment demoruntime.Environment) (runErr error
 	if err != nil {
 		return fmt.Errorf("criar repositório de pagamentos: %w", err)
 	}
-	handler, err := payment.NewHandler(repository, payment.Scenario{ForceHTTPStatus: settings.forceHTTPStatus})
+	handler, err := payment.NewHandler(repository, payment.Scenario{
+		ForceHTTPStatus:     settings.forceHTTPStatus,
+		ChronicErrorPercent: settings.chronicErrorPercent,
+	})
 	if err != nil {
 		return fmt.Errorf("criar handler de pagamentos: %w", err)
 	}

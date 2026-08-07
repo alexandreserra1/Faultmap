@@ -130,3 +130,90 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 func (fn roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return fn(request)
 }
+
+// TestHandlerFanOutFazChamadasParalelasBemSucedidas cobre o fan-out legítimo:
+// várias chamadas ao pagamento no mesmo trace sem que nenhuma seja um retry.
+// É o tráfego que um detector de retry storm pode confundir com repetição
+// anormal, e por isso precisa existir na demo.
+func TestHandlerFanOutFazChamadasParalelasBemSucedidas(t *testing.T) {
+	t.Parallel()
+
+	var chamadas atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		chamadas.Add(1)
+		writer.WriteHeader(http.StatusCreated)
+	}))
+	t.Cleanup(server.Close)
+
+	handler, err := NewHandler(Config{
+		PaymentURL:      server.URL,
+		PaymentTimeout:  2 * time.Second,
+		PaymentAttempts: 1,
+		PaymentFanOut:   4,
+	}, server.Client())
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodPost, "/checkout", strings.NewReader(`{"order_id":"fan-1","amount_cents":1990}`),
+	))
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("status = %d, esperado 201; corpo = %s", recorder.Code, recorder.Body.String())
+	}
+	if total := chamadas.Load(); total != 4 {
+		t.Fatalf("chamadas ao pagamento = %d, esperado 4", total)
+	}
+}
+
+// TestHandlerFanOutFalhaQuandoUmaChamadaFalha mantém o checkout honesto: se um
+// ramo do fan-out não conclui, a compra não pode ser reportada como criada.
+func TestHandlerFanOutFalhaQuandoUmaChamadaFalha(t *testing.T) {
+	t.Parallel()
+
+	var chamadas atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		if chamadas.Add(1) == 2 {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		writer.WriteHeader(http.StatusCreated)
+	}))
+	t.Cleanup(server.Close)
+
+	handler, err := NewHandler(Config{
+		PaymentURL:      server.URL,
+		PaymentTimeout:  2 * time.Second,
+		PaymentAttempts: 1,
+		PaymentFanOut:   3,
+	}, server.Client())
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(
+		http.MethodPost, "/checkout", strings.NewReader(`{"order_id":"fan-2","amount_cents":1990}`),
+	))
+	if recorder.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, esperado 502", recorder.Code)
+	}
+}
+
+// TestNewHandlerRejeitaFanOutForaDoIntervalo evita fan-out ilimitado.
+func TestNewHandlerRejeitaFanOutForaDoIntervalo(t *testing.T) {
+	t.Parallel()
+
+	for _, fanOut := range []int{-1, 11} {
+		_, err := NewHandler(Config{
+			PaymentURL:      "http://payment.local/payment",
+			PaymentTimeout:  time.Second,
+			PaymentAttempts: 1,
+			PaymentFanOut:   fanOut,
+		}, http.DefaultClient)
+		if err == nil {
+			t.Fatalf("NewHandler() erro = nil para PaymentFanOut = %d", fanOut)
+		}
+	}
+}

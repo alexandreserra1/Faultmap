@@ -26,6 +26,7 @@ type config struct {
 	paymentURL            string
 	paymentTimeout        time.Duration
 	paymentAttempts       int
+	paymentFanOut         int
 }
 
 // main transforma falhas de bootstrap em encerramento explícito do processo.
@@ -72,9 +73,14 @@ func loadConfig(environment demoruntime.Environment) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	paymentFanOut, err := environment.Int("PAYMENT_FANOUT", 0, 0, 10)
+	if err != nil {
+		return config{}, err
+	}
 	return config{
 		port: port, serviceVersion: serviceVersion, deploymentEnvironment: deploymentEnvironment,
 		otelEndpoint: otelEndpoint, paymentURL: paymentURL, paymentTimeout: paymentTimeout, paymentAttempts: paymentAttempts,
+		paymentFanOut: paymentFanOut,
 	}, nil
 }
 
@@ -101,6 +107,7 @@ func run(ctx context.Context, environment demoruntime.Environment) (runErr error
 	defer client.CloseIdleConnections()
 	handler, err := checkout.NewHandler(checkout.Config{
 		PaymentURL: settings.paymentURL, PaymentTimeout: settings.paymentTimeout, PaymentAttempts: settings.paymentAttempts,
+		PaymentFanOut: settings.paymentFanOut,
 	}, client)
 	if err != nil {
 		return fmt.Errorf("criar checkout: %w", err)

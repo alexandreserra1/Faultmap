@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -90,4 +91,74 @@ func (stub *repositoryStub) Create(_ context.Context, payment Payment) error {
 	stub.calls.Add(1)
 	stub.last = payment
 	return stub.err
+}
+
+// TestHandlerErroCrônicoÉDeterminísticoPorPedido garante que a taxa de erro de
+// fundo depende apenas do order_id. Sem contador nem sorteio, o handler
+// permanece stateless e o mesmo pedido falha igual em qualquer execução.
+func TestHandlerErroCrônicoÉDeterminísticoPorPedido(t *testing.T) {
+	t.Parallel()
+
+	handler, err := NewHandler(&repositoryStub{}, Scenario{ChronicErrorPercent: 25})
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	primeiraPassada := make(map[string]int, 40)
+	falhas := 0
+	for index := 0; index < 40; index++ {
+		orderID := fmt.Sprintf("pedido-%d", index)
+		status := executePayment(t, handler, orderID)
+		primeiraPassada[orderID] = status
+		if status == http.StatusInternalServerError {
+			falhas++
+		}
+	}
+	// Com 25% configurados, a amostra precisa falhar de forma perceptível mas
+	// jamais integralmente: o objetivo é ruído de fundo, não indisponibilidade.
+	if falhas == 0 || falhas >= 40 {
+		t.Fatalf("falhas = %d de 40, esperado ruído parcial", falhas)
+	}
+
+	for orderID, expected := range primeiraPassada {
+		if repetido := executePayment(t, handler, orderID); repetido != expected {
+			t.Fatalf("pedido %q devolveu %d na primeira passada e %d na segunda", orderID, expected, repetido)
+		}
+	}
+}
+
+// TestHandlerSemErroCrônicoNãoFalha confirma que o padrão continua saudável.
+func TestHandlerSemErroCrônicoNãoFalha(t *testing.T) {
+	t.Parallel()
+
+	handler, err := NewHandler(&repositoryStub{}, Scenario{})
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+	for index := 0; index < 20; index++ {
+		if status := executePayment(t, handler, fmt.Sprintf("pedido-%d", index)); status != http.StatusCreated {
+			t.Fatalf("pedido %d devolveu %d, esperado 201", index, status)
+		}
+	}
+}
+
+// TestNewHandlerRejeitaErroCrônicoForaDoIntervalo mantém o cenário plausível.
+func TestNewHandlerRejeitaErroCrônicoForaDoIntervalo(t *testing.T) {
+	t.Parallel()
+
+	for _, percent := range []int{-1, 101} {
+		if _, err := NewHandler(&repositoryStub{}, Scenario{ChronicErrorPercent: percent}); err == nil {
+			t.Fatalf("NewHandler() erro = nil para ChronicErrorPercent = %d", percent)
+		}
+	}
+}
+
+func executePayment(t *testing.T, handler *Handler, orderID string) int {
+	t.Helper()
+
+	body := fmt.Sprintf(`{"order_id":%q,"amount_cents":1990}`, orderID)
+	request := httptest.NewRequest(http.MethodPost, "/payment", strings.NewReader(body))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	return recorder.Code
 }
