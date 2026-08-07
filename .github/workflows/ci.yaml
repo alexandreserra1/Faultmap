@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# O CI cobre o que o .md exige antes de uma release: testes, detector de corrida,
+# vet e os binários das plataformas suportadas. A matriz E2E depende de Docker
+# Compose e permanece um passo local documentado, não um gate automático.
+jobs:
+  test:
+    name: Testes e vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verificar formatação
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [[ -n "${unformatted}" ]]; then
+            printf 'Arquivos fora do gofmt:\n%s\n' "${unformatted}" >&2
+            exit 1
+          fi
+        shell: bash
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: go test -race
+        run: go test -race ./...
+
+  build:
+    name: Binários
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        goos: [darwin, linux]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Compilar faultmap
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: go build -o "dist/faultmap-${{ matrix.goos }}-${{ matrix.goarch }}" ./cmd/faultmap
+      - uses: actions/upload-artifact@v4
+        with:
+          name: faultmap-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/

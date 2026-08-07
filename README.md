@@ -395,10 +395,40 @@ go run ./cmd/faultmap export graph \
 
 Os identificadores Mermaid são sintéticos e os rótulos são escapados. Assim, nomes vindos da telemetria não são interpretados como sintaxe do diagrama.
 
+### Exportar a cronologia do incidente
+
+O `timeline.json` reúne, em ordem cronológica, as janelas da investigação, os findings e o registro do diagnóstico:
+
+```bash
+go run ./cmd/faultmap export timeline \
+  --config ./faultmap-volume/faultmap.yaml \
+  --incident inc_001 \
+  > ./faultmap-volume/faultmap-out/timeline.json
+```
+
+O artefato é derivado exclusivamente do snapshot persistido: ele não relê telemetria nem recalcula o diagnóstico. Como os findings não possuem instante próprio no snapshot, eles são ancorados ao início da janela do incidente e trazem `time_source` declarando essa origem — a decisão está registrada no [ADR 0004](docs/adr/0004-timeline-ancora-findings-na-janela-do-incidente.md).
+
+### Aplicar a política de retenção
+
+A limpeza é sempre explícita e nunca acontece durante a ingestão OTLP:
+
+```bash
+go run ./cmd/faultmap retention apply \
+  --config ./faultmap-volume/faultmap.yaml
+```
+
+O comando remove telemetria mais antiga que `storage.retention`, em lotes limitados por `--batch-size`, mantendo transações curtas. Snapshots de diagnóstico são preservados para que investigações antigas continuem auditáveis; o alcance e as consequências estão no [ADR 0003](docs/adr/0003-retencao-preserva-snapshots-de-diagnostico.md). Quando o teto de lotes de uma execução é atingido, a saída avisa que ainda existe telemetria expirada e basta executar o comando novamente.
+
+## Decisões arquiteturais
+
+As decisões cujo motivo não é dedutível do código estão registradas em [`docs/adr/`](docs/adr/).
+
 ## Especificação
 
 A especificação é modular e sua leitura completa é obrigatória antes de implementar ou revisar o projeto. Comece por [FAULTMAP_MVP.md](FAULTMAP_MVP.md), que direciona para todos os documentos normativos em [`docs/mvp/`](docs/mvp/).
 
 ## Estado atual
 
-O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A `demo-shop` instrumentada reproduz seis falhas controladas, e a matriz E2E automatizada cobre os seis cenários com bancos isolados, telemetria OTLP real e expectativas determinísticas; o cenário de timeout também importa commit/deployment de um mock GitHub local e comprova a correspondência com `service.version`.
+O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, gera a cronologia `timeline.json`, aplica a política de retenção, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A `demo-shop` instrumentada reproduz seis falhas controladas, e a matriz E2E automatizada cobre os seis cenários com bancos isolados, telemetria OTLP real e expectativas determinísticas; o cenário de timeout também importa commit/deployment de um mock GitHub local e comprova a correspondência com `service.version`.
+
+Cada cenário da matriz também mede as metas do MVP: top-1 e top-3 do serviço esperado, tempo de diagnóstico abaixo de 10 segundos, estabilidade do ranking entre execuções idênticas, 100% das evidências com proveniência e a geração válida de `report.json`, `report.md`, `timeline.json` e do grafo Mermaid.
