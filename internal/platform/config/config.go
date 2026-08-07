@@ -53,6 +53,17 @@ type StorageConfig struct {
 	Retention string `yaml:"retention"`
 }
 
+// RetentionDuration traduz a política textual do YAML para a duração usada pela
+// limpeza de telemetria. O valor já foi validado por Validate; o erro permanece
+// disponível para quem construir a configuração sem passar por Load.
+func (storage StorageConfig) RetentionDuration() (time.Duration, error) {
+	duration, err := parseDuration(storage.Retention)
+	if err != nil {
+		return 0, fmt.Errorf("storage.retention: %w", err)
+	}
+	return duration, nil
+}
+
 // InvestigationConfig define os valores padrão das janelas e do ranking exibido.
 type InvestigationConfig struct {
 	DefaultIncidentWindow string `yaml:"default_incident_window"`
@@ -292,8 +303,18 @@ func contextError(ctx context.Context) error {
 }
 
 func parseDuration(value string) (time.Duration, error) {
-	if strings.HasSuffix(value, "d") {
-		value = strings.TrimSuffix(value, "d") + "24h"
+	// O sufixo "d" não existe em time.ParseDuration; a conversão precisa
+	// multiplicar os dias por 24 horas em vez de concatenar o texto, que
+	// transformaria silenciosamente "7d" em 724 horas.
+	if days, found := strings.CutSuffix(value, "d"); found {
+		parsedDays, err := strconv.ParseFloat(days, 64)
+		if err != nil {
+			return 0, fmt.Errorf("a duração em dias é inválida: %w", err)
+		}
+		if parsedDays <= 0 {
+			return 0, fmt.Errorf("a duração deve ser maior que zero")
+		}
+		return time.Duration(parsedDays * float64(24*time.Hour)), nil
 	}
 	duration, err := time.ParseDuration(value)
 	if err != nil {

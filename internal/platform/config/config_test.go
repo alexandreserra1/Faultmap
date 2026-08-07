@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // TestDefaultYAMLContémTodasAsSeções impede que o init gere uma configuração parcial.
@@ -321,5 +322,50 @@ func TestLoadRespeitaCancelamento(t *testing.T) {
 	_, err := Load(ctx, filepath.Join(t.TempDir(), "faultmap.yaml"))
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Load() erro = %v, esperado context.Canceled", err)
+	}
+}
+
+// TestRetentionDurationConverteDias protege a política de retenção: um sufixo de
+// dias precisa virar múltiplo de 24 horas, e não uma concatenação textual.
+func TestRetentionDurationConverteDias(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		retention string
+		expected  time.Duration
+	}{
+		{retention: "7d", expected: 7 * 24 * time.Hour},
+		{retention: "1d", expected: 24 * time.Hour},
+		{retention: "30d", expected: 30 * 24 * time.Hour},
+		{retention: "12h", expected: 12 * time.Hour},
+		{retention: "90m", expected: 90 * time.Minute},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.retention, func(t *testing.T) {
+			t.Parallel()
+
+			configuration := Default()
+			configuration.Storage.Retention = testCase.retention
+			duration, err := configuration.Storage.RetentionDuration()
+			if err != nil {
+				t.Fatalf("RetentionDuration() erro = %v", err)
+			}
+			if duration != testCase.expected {
+				t.Fatalf("RetentionDuration() = %v, esperado %v", duration, testCase.expected)
+			}
+		})
+	}
+}
+
+// TestRetentionDurationRejeitaValorInválido mantém a falha explícita fora do YAML.
+func TestRetentionDurationRejeitaValorInválido(t *testing.T) {
+	t.Parallel()
+
+	configuration := Default()
+	configuration.Storage.Retention = "sempre"
+	if _, err := configuration.Storage.RetentionDuration(); err == nil {
+		t.Fatal("RetentionDuration() erro = nil, esperado erro")
 	}
 }
