@@ -26,6 +26,10 @@ const (
 	RuleRetryStorm = "retry_storm"
 
 	minimumSampleSize = 5
+
+	// spanKindInternal identifica spans auxiliares da instrumentação, que não
+	// representam uma requisição observada pelo sistema.
+	spanKindInternal = "SPAN_KIND_INTERNAL"
 )
 
 // Confidence expressa o nível de sustentação disponível para um Finding.
@@ -275,11 +279,32 @@ func signalsForService(serviceName string, signals []domain.Signal) []domain.Sig
 func filterHTTPSignals(signals []domain.Signal) []domain.Signal {
 	filtered := make([]domain.Signal, 0, len(signals))
 	for _, signal := range signals {
-		if _, exists := signal.Attributes["http.response.status_code"]; exists {
-			filtered = append(filtered, signal)
+		if httpStatusCode(signal.Attributes) == "" {
+			continue
 		}
+		// Instrumentações automáticas emitem spans internos por requisição — o
+		// "http send" do ASGI, por exemplo — que repetem o código de resposta do
+		// span principal. Contá-los infla o denominador e faz uma falha total
+		// aparecer como falha parcial. Só spans de servidor e de cliente
+		// representam uma requisição observada.
+		if strings.EqualFold(strings.TrimSpace(signal.Attributes["span.kind"]), spanKindInternal) {
+			continue
+		}
+		filtered = append(filtered, signal)
 	}
 	return filtered
+}
+
+// httpStatusCode aceita as duas convenções do OpenTelemetry para o código de
+// resposta. A convenção estável renomeou "http.status_code" para
+// "http.response.status_code", e instrumentações amplamente usadas ainda emitem
+// o nome anterior. Reconhecer apenas um dos dois deixa o Faultmap cego para
+// aplicações inteiras, sem qualquer sinal de erro visível ao usuário.
+func httpStatusCode(attributes map[string]string) string {
+	if value := strings.TrimSpace(attributes["http.response.status_code"]); value != "" {
+		return value
+	}
+	return strings.TrimSpace(attributes["http.status_code"])
 }
 
 // filterDatabaseSignals considera somente spans que declaram explicitamente o sistema de banco observado.
@@ -325,7 +350,7 @@ func signalsByTrace(signals []domain.Signal) map[string][]domain.Signal {
 func filterHTTPImpact(signals []domain.Signal, baselineP95 float64) []domain.Signal {
 	impacts := make([]domain.Signal, 0, len(signals))
 	for _, signal := range signals {
-		statusCode, statusErr := strconv.Atoi(signal.Attributes["http.response.status_code"])
+		statusCode, statusErr := strconv.Atoi(httpStatusCode(signal.Attributes))
 		duration, hasDuration := signal.Measurements["duration_ms"]
 		if (statusErr == nil && statusCode >= 500 && statusCode <= 599) || (hasDuration && duration > baselineP95) {
 			impacts = append(impacts, signal)
@@ -349,7 +374,7 @@ func databaseTimeoutSummary(baselineTimeouts, baselineCount, incidentTimeouts, i
 func errorRate(signals []domain.Signal) float64 {
 	errors := 0
 	for _, signal := range signals {
-		statusCode, err := strconv.Atoi(signal.Attributes["http.response.status_code"])
+		statusCode, err := strconv.Atoi(httpStatusCode(signal.Attributes))
 		if err == nil && statusCode >= 500 && statusCode <= 599 {
 			errors++
 		}
@@ -360,7 +385,7 @@ func errorRate(signals []domain.Signal) float64 {
 func httpErrorStatuses(signals []domain.Signal) []string {
 	statuses := make(map[string]struct{})
 	for _, signal := range signals {
-		statusCode := strings.TrimSpace(signal.Attributes["http.response.status_code"])
+		statusCode := httpStatusCode(signal.Attributes)
 		parsed, err := strconv.Atoi(statusCode)
 		if err == nil && parsed >= 500 && parsed <= 599 {
 			statuses[statusCode] = struct{}{}

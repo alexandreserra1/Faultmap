@@ -2,6 +2,7 @@ package detection
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -411,4 +412,93 @@ func TestErrorRateDeltaIgnoraDiferençaIrrelevanteEmVolumeAlto(t *testing.T) {
 	}); found {
 		t.Fatal("detector acusou diferença irrelevante apenas por causa do volume")
 	}
+}
+
+// TestDetectoresEntendemConvençãoAntigaDeStatusHTTP cobre o defeito encontrado
+// ao ligar o Faultmap a uma aplicação FastAPI real instrumentada
+// automaticamente: ela emite "http.status_code", o nome anterior da convenção
+// OpenTelemetry, enquanto a demo escrita por nós usa "http.response.status_code".
+// Os detectores enxergavam zero sinais HTTP e ficavam cegos para a aplicação
+// inteira, mesmo com falha total.
+func TestDetectoresEntendemConvençãoAntigaDeStatusHTTP(t *testing.T) {
+	t.Parallel()
+
+	input := Input{
+		ServiceName: "strideredge-api",
+		Baseline:    legacyHTTPSignals("baseline", 20, 0, 10),
+		Incident:    legacyHTTPSignals("incident", 20, 20, 900),
+	}
+
+	if _, found := DetectErrorRateDelta(input); !found {
+		t.Fatal("detector de erro ficou cego para spans com http.status_code")
+	}
+	if _, found := DetectLatencyDelta(input); !found {
+		t.Fatal("detector de latência ficou cego para spans com http.status_code")
+	}
+}
+
+// TestErrorRateIgnoraSpansInternosDaInstrumentação garante que a taxa de erro
+// conte requisições, não spans. A instrumentação automática do FastAPI emite um
+// span interno "http send" que também carrega o código de resposta; contá-lo
+// dobraria o denominador e faria 100% de falha ser reportado como 50%.
+func TestErrorRateIgnoraSpansInternosDaInstrumentação(t *testing.T) {
+	t.Parallel()
+
+	baseline := legacyHTTPSignals("baseline", 20, 0, 10)
+	incident := legacyHTTPSignals("incident", 20, 20, 900)
+	// Cada requisição real vem acompanhada do seu span interno correspondente.
+	incident = append(incident, internalHTTPSendSignals("incident-send", 20, 200)...)
+	baseline = append(baseline, internalHTTPSendSignals("baseline-send", 20, 200)...)
+
+	finding, found := DetectErrorRateDelta(Input{
+		ServiceName: "strideredge-api", Baseline: baseline, Incident: incident,
+	})
+	if !found {
+		t.Fatal("detector não encontrou a regressão total")
+	}
+	if finding.Evidence[0].IncidentValue != 1 {
+		t.Fatalf("taxa de erro do incidente = %.2f, esperado 1.00; spans internos diluíram a conta",
+			finding.Evidence[0].IncidentValue)
+	}
+}
+
+// legacyHTTPSignals reproduz spans de servidor na convenção anterior.
+func legacyHTTPSignals(prefix string, count, errorCount int, durationMS float64) []domain.Signal {
+	signals := make([]domain.Signal, 0, count)
+	for index := range count {
+		statusCode := "200"
+		if index < errorCount {
+			statusCode = "500"
+		}
+		signals = append(signals, domain.Signal{
+			ID:          fmt.Sprintf("%s-legacy-%d", prefix, index),
+			ServiceName: "strideredge-api",
+			Attributes: map[string]string{
+				"http.status_code": statusCode,
+				"span.kind":        "SPAN_KIND_SERVER",
+				"span.name":        "GET /api/v1/form",
+			},
+			Measurements: map[string]float64{"duration_ms": durationMS},
+		})
+	}
+	return signals
+}
+
+// internalHTTPSendSignals reproduz o span interno que a instrumentação ASGI
+// emite por requisição, carregando o mesmo código de resposta do span principal.
+func internalHTTPSendSignals(prefix string, count int, statusCode int) []domain.Signal {
+	signals := make([]domain.Signal, 0, count)
+	for index := range count {
+		signals = append(signals, domain.Signal{
+			ID:          fmt.Sprintf("%s-internal-%d", prefix, index),
+			ServiceName: "strideredge-api",
+			Attributes: map[string]string{
+				"http.status_code": strconv.Itoa(statusCode),
+				"span.kind":        "SPAN_KIND_INTERNAL",
+				"span.name":        "GET /api/v1/form http send",
+			},
+			Measurements: map[string]float64{"duration_ms": 0.02},
+		})
+	}
+	return signals
 }
