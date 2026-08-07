@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+# A release só é publicada depois que a mesma verificação do CI passa sobre o
+# commit da tag. Os binários são reproduzíveis (-trimpath, CGO desabilitado) e
+# acompanhados de checksums para que quem baixa possa conferir a origem.
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Testes e vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        run: go test ./...
+      - name: go test -race
+        run: go test -race ./...
+
+  publish:
+    name: Publicar binários
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Compilar binários
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          version="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            name="faultmap-${version}-${goos}-${goarch}"
+            GOOS="${goos}" GOARCH="${goarch}" go build \
+              -trimpath -ldflags="-s -w" -o "dist/${name}" ./cmd/faultmap
+            (cd dist && tar -czf "${name}.tar.gz" "${name}" && rm "${name}")
+          done
+          (cd dist && shasum -a 256 ./*.tar.gz > checksums.txt)
+          cat dist/checksums.txt
+        shell: bash
+      - name: Criar release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
