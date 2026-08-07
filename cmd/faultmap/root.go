@@ -19,6 +19,7 @@ import (
 	"github.com/faultmap/faultmap/internal/reporting/markdown"
 	"github.com/faultmap/faultmap/internal/reporting/mermaid"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
+	"github.com/faultmap/faultmap/internal/reporting/timeline"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,85 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newIncidentCommand())
 	root.AddCommand(newBlameCommand())
 	root.AddCommand(newExportCommand())
+	root.AddCommand(newRetentionCommand())
 	return root
+}
+
+// newRetentionCommand agrupa a manutenção explícita do banco local.
+func newRetentionCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "retention",
+		Short: "Aplica a política de retenção do banco local",
+	}
+	command.AddCommand(newRetentionApplyCommand())
+	return command
+}
+
+// newRetentionApplyCommand executa a limpeza sob controle explícito do operador.
+// A retenção nunca roda durante a ingestão OTLP: o receiver precisa continuar
+// previsível, e apagar dados é uma decisão que merece um comando próprio.
+func newRetentionApplyCommand() *cobra.Command {
+	var configPath string
+	var batchSize int
+
+	command := &cobra.Command{
+		Use:   "apply",
+		Short: "Remove telemetria mais antiga que storage.retention",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			retention, err := loadedConfig.Storage.RetentionDuration()
+			if err != nil {
+				return fmt.Errorf("aplicar retenção: %w", err)
+			}
+
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			result, err := application.ApplyRetention(
+				command.Context(),
+				application.RetentionRequest{
+					Retention: retention,
+					Now:       time.Now().UTC(),
+					BatchSize: batchSize,
+				},
+				storage.NewRetentionRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			if _, err := fmt.Fprintf(
+				command.OutOrStdout(),
+				"Retenção aplicada: %d sinais removidos anteriores a %s.\n",
+				result.SignalsRemoved,
+				result.Cutoff.Format(time.RFC3339),
+			); err != nil {
+				return err
+			}
+			if result.Truncated {
+				_, err = fmt.Fprintln(
+					command.OutOrStdout(),
+					"Ainda existe telemetria expirada: execute o comando novamente.",
+				)
+			}
+			return err
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().IntVar(&batchSize, "batch-size", application.DefaultRetentionBatchSize, "quantidade máxima de sinais por transação")
+	return command
 }
 
 // newIncidentCommand agrupa consultas de snapshots de diagnósticos já persistidos.
@@ -153,6 +232,60 @@ func newExportCommand() *cobra.Command {
 	}
 	command.AddCommand(newExportReportCommand())
 	command.AddCommand(newExportGraphCommand())
+	command.AddCommand(newExportTimelineCommand())
+	return command
+}
+
+// newExportTimelineCommand reconstrói a cronologia do incidente a partir do
+// snapshot já gravado. Ele não relê telemetria nem recalcula o diagnóstico: o
+// artefato precisa refletir exatamente a investigação que foi publicada.
+func newExportTimelineCommand() *cobra.Command {
+	var configPath string
+	var incidentID string
+	var format string
+
+	command := &cobra.Command{
+		Use:   "timeline",
+		Short: "Exporta a cronologia de um diagnóstico persistido",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(incidentID) == "" {
+				return fmt.Errorf("exportar timeline: --incident é obrigatório")
+			}
+			if strings.ToLower(strings.TrimSpace(format)) != "json" {
+				return fmt.Errorf("exportar timeline: --format deve ser json")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.GetIncident(
+				command.Context(),
+				incidentID,
+				storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			return timeline.Render(command.OutOrStdout(), diagnosis)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&format, "format", "json", "formato da cronologia")
+	command.Flags().StringVar(&incidentID, "incident", "", "identificador do incidente persistido")
 	return command
 }
 

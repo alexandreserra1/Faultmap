@@ -1200,3 +1200,131 @@ func preparePersistedIncident(t *testing.T) (configPath string, incidentID strin
 	}
 	return configPath, incidentID
 }
+
+// TestRetentionApplyCommandRemoveTelemetriaExpirada cobre a política de retenção
+// contra banco real: sinais antigos saem, sinais dentro da janela permanecem.
+func TestRetentionApplyCommandRemoveTelemetriaExpirada(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
+	now := time.Now().UTC()
+	for _, signal := range []struct {
+		id        string
+		timestamp time.Time
+	}{
+		{id: "expirado", timestamp: now.Add(-30 * 24 * time.Hour)},
+		{id: "vigente", timestamp: now.Add(-time.Hour)},
+	} {
+		if _, err := database.Exec(`
+			INSERT INTO signals (
+				id, signal_type, service_name, timestamp, trace_id, span_id, severity,
+				attributes_json, measurements_json
+			) VALUES (?, 'span', 'checkout', ?, 'trace-1', 'span-1', 'error', '{}', '{}')
+		`, signal.id, signal.timestamp); err != nil {
+			t.Fatalf("inserir sinal %q: %v", signal.id, err)
+		}
+	}
+
+	var output bytes.Buffer
+	command := newRootCommand()
+	command.SetArgs([]string{"retention", "apply", "--config", configPath})
+	command.SetOut(&output)
+	command.SetErr(io.Discard)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("retention apply erro = %v", err)
+	}
+	if got := output.String(); !strings.Contains(got, "1 sinais removidos") {
+		t.Fatalf("saída = %q, esperado resumo com 1 sinal removido", got)
+	}
+
+	var remaining string
+	if err := database.QueryRow(`SELECT id FROM signals`).Scan(&remaining); err != nil {
+		t.Fatalf("consultar sinal restante: %v", err)
+	}
+	if remaining != "vigente" {
+		t.Fatalf("sinal restante = %q, esperado \"vigente\"", remaining)
+	}
+}
+
+// TestExportTimelineCommandGeraCronologiaDoSnapshot garante que o artefato
+// timeline.json nasce do snapshot persistido, em ordem cronológica e com as
+// limitações declaradas.
+func TestExportTimelineCommandGeraCronologiaDoSnapshot(t *testing.T) {
+	t.Parallel()
+
+	configPath, incidentID := preparePersistedIncident(t)
+
+	var output bytes.Buffer
+	command := newRootCommand()
+	command.SetArgs([]string{"export", "timeline", "--config", configPath, "--incident", incidentID})
+	command.SetOut(&output)
+	command.SetErr(io.Discard)
+	if err := command.Execute(); err != nil {
+		t.Fatalf("export timeline erro = %v", err)
+	}
+
+	var document struct {
+		SchemaVersion string `json:"schema_version"`
+		IncidentID    string `json:"incident_id"`
+		ServiceName   string `json:"service_name"`
+		Events        []struct {
+			At   string `json:"at"`
+			Type string `json:"type"`
+		} `json:"events"`
+		Limitations []string `json:"limitations"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &document); err != nil {
+		t.Fatalf("decodificar timeline: %v\n%s", err, output.String())
+	}
+	if document.SchemaVersion != "1" || document.IncidentID != incidentID || document.ServiceName != "checkout-service" {
+		t.Fatalf("cabeçalho do timeline inesperado: %#v", document)
+	}
+	if len(document.Events) < 5 {
+		t.Fatalf("eventos = %d, esperado ao menos 5:\n%s", len(document.Events), output.String())
+	}
+	previous := time.Time{}
+	for index, event := range document.Events {
+		at, err := time.Parse(time.RFC3339Nano, event.At)
+		if err != nil {
+			t.Fatalf("evento %d com instante inválido %q: %v", index, event.At, err)
+		}
+		if at.Before(previous) {
+			t.Fatalf("timeline fora de ordem no evento %d", index)
+		}
+		previous = at
+	}
+	if len(document.Limitations) == 0 {
+		t.Fatal("timeline sem limitações declaradas")
+	}
+}
+
+// TestExportTimelineCommandValidaEntradaAntesDoBanco evita I/O com entrada inválida.
+func TestExportTimelineCommandValidaEntradaAntesDoBanco(t *testing.T) {
+	t.Parallel()
+
+	command := newRootCommand()
+	command.SetArgs([]string{"export", "timeline", "--config", "inexistente.yaml", "--incident", " "})
+	command.SetOut(io.Discard)
+	command.SetErr(io.Discard)
+	if err := command.Execute(); err == nil || !strings.Contains(err.Error(), "--incident") {
+		t.Fatalf("export timeline erro = %v, esperado --incident obrigatório", err)
+	}
+}
