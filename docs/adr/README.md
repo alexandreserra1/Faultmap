@@ -9,3 +9,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0002](0002-ingestao-github-sem-n-mais-1.md) | Ingestão do GitHub limitada a uma página, sem N+1 |
 | [0003](0003-retencao-preserva-snapshots-de-diagnostico.md) | Retenção apaga telemetria e preserva snapshots |
 | [0004](0004-timeline-ancora-findings-na-janela-do-incidente.md) | `timeline.json` ancora findings na janela do incidente |
+| [0005](0005-error-rate-delta-ignora-ruido-de-amostragem.md) | `error_rate_delta` ignora variação de amostragem |

@@ -336,3 +336,79 @@ func contains(values []string, want string) bool {
 	}
 	return false
 }
+
+// TestErrorRateDeltaIgnoraVariaçãoDeAmostragem reproduz o falso positivo
+// encontrado no modo difícil: com 25% de erro permanente, uma janela sorteou 3
+// falhas em 16 e a outra 4 em 16. O sistema não mudou; só a amostra mudou.
+// Uma falha a mais em dezesseis não pode virar hipótese de regressão.
+func TestErrorRateDeltaIgnoraVariaçãoDeAmostragem(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectErrorRateDelta(Input{
+		ServiceName: "checkout-service",
+		Baseline:    httpSignals("baseline", 16, 3, 100),
+		Incident:    httpSignals("incident", 16, 4, 100),
+	})
+	if found {
+		t.Fatalf("detector acusou ruído de amostragem: %s", finding.Evidence[0].Summary)
+	}
+}
+
+// TestErrorRateDeltaIgnoraUmaFalhaIsolada cobre o caso mais comum de ruído:
+// uma janela perfeita e um único erro na outra.
+func TestErrorRateDeltaIgnoraUmaFalhaIsolada(t *testing.T) {
+	t.Parallel()
+
+	if _, found := DetectErrorRateDelta(Input{
+		ServiceName: "checkout-service",
+		Baseline:    httpSignals("baseline", 20, 0, 100),
+		Incident:    httpSignals("incident", 20, 1, 100),
+	}); found {
+		t.Fatal("detector acusou regressão a partir de uma única falha isolada")
+	}
+}
+
+// TestErrorRateDeltaAcusaRegressãoReal garante que a proteção contra ruído não
+// silenciou o que o produto existe para encontrar.
+func TestErrorRateDeltaAcusaRegressãoReal(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name                       string
+		baselineCount, baselineErr int
+		incidentCount, incidentErr int
+	}{
+		{name: "saudável para totalmente quebrado", baselineCount: 16, baselineErr: 0, incidentCount: 16, incidentErr: 16},
+		{name: "saudável para metade falhando", baselineCount: 20, baselineErr: 0, incidentCount: 20, incidentErr: 10},
+		{name: "ruído baixo para maioria falhando", baselineCount: 20, baselineErr: 1, incidentCount: 20, incidentErr: 15},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			if _, found := DetectErrorRateDelta(Input{
+				ServiceName: "checkout-service",
+				Baseline:    httpSignals("baseline", testCase.baselineCount, testCase.baselineErr, 100),
+				Incident:    httpSignals("incident", testCase.incidentCount, testCase.incidentErr, 100),
+			}); !found {
+				t.Fatal("detector silenciou uma regressão real")
+			}
+		})
+	}
+}
+
+// TestErrorRateDeltaIgnoraDiferençaIrrelevanteEmVolumeAlto evita o alarme que
+// só existe porque há muitos dados: meio ponto percentual não muda a operação.
+func TestErrorRateDeltaIgnoraDiferençaIrrelevanteEmVolumeAlto(t *testing.T) {
+	t.Parallel()
+
+	if _, found := DetectErrorRateDelta(Input{
+		ServiceName: "checkout-service",
+		Baseline:    httpSignals("baseline", 20_000, 200, 100),
+		Incident:    httpSignals("incident", 20_000, 280, 100),
+	}); found {
+		t.Fatal("detector acusou diferença irrelevante apenas por causa do volume")
+	}
+}

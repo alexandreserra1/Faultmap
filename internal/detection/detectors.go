@@ -102,6 +102,9 @@ func DetectErrorRateDelta(input Input) (Finding, bool) {
 	if delta <= 0 {
 		return Finding{}, false
 	}
+	if !exceedsSamplingNoise(baselineRate, len(baseline), incidentRate, len(incident), delta) {
+		return Finding{}, false
+	}
 
 	return newFinding(
 		RuleErrorRateDelta,
@@ -436,4 +439,51 @@ func signalIDs(signals []domain.Signal) []string {
 // clamp garante o contrato de score mesmo se uma regra futura alterar sua fórmula interna.
 func clamp(value float64) float64 {
 	return math.Max(0, math.Min(1, value))
+}
+
+const (
+	// minimumErrorRateDelta é o menor aumento que ainda interessa a quem opera o
+	// sistema. Com volume muito alto, diferenças minúsculas viram
+	// estatisticamente detectáveis sem mudar nada na prática; este piso evita
+	// transformar precisão de medição em alarme.
+	minimumErrorRateDelta = 0.02
+	// samplingNoiseMultiplier define quantos desvios padrão o aumento precisa
+	// superar. Dois é a convenção usual para tratar uma diferença como algo além
+	// da variação natural da amostra.
+	samplingNoiseMultiplier = 2.0
+)
+
+// exceedsSamplingNoise decide se o aumento observado é grande demais para ser
+// explicado apenas pelo acaso de quais requisições caíram em cada janela.
+//
+// Duas janelas do mesmo sistema estável quase nunca produzem taxas idênticas:
+// se 25% das requisições falham, uma amostra de dezesseis pode trazer três
+// falhas e a seguinte trazer quatro sem que nada tenha mudado. Comparar as
+// taxas diretamente faz esse ruído virar hipótese de regressão.
+//
+// A verificação usa o erro padrão da diferença entre duas proporções e exige
+// que o aumento o supere por uma margem. O cálculo é aritmético e determinístico
+// — não há sorteio nem amostragem —, então o mesmo par de janelas sempre produz
+// a mesma decisão, preservando a reprodutibilidade do diagnóstico.
+//
+// A escolha é deliberadamente conservadora: ela prefere silenciar um aumento
+// pequeno e duvidoso a apresentar ruído como evidência. Uma regressão real e
+// pequena, em volume baixo, pode passar despercebida por isso.
+func exceedsSamplingNoise(
+	baselineRate float64,
+	baselineCount int,
+	incidentRate float64,
+	incidentCount int,
+	delta float64,
+) bool {
+	if delta < minimumErrorRateDelta {
+		return false
+	}
+	if baselineCount <= 0 || incidentCount <= 0 {
+		return false
+	}
+	baselineVariance := baselineRate * (1 - baselineRate) / float64(baselineCount)
+	incidentVariance := incidentRate * (1 - incidentRate) / float64(incidentCount)
+	standardError := math.Sqrt(baselineVariance + incidentVariance)
+	return delta > samplingNoiseMultiplier*standardError
 }
