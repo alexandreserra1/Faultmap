@@ -139,6 +139,9 @@ func DetectLatencyDelta(input Input) (Finding, bool) {
 	if !baselineOK || !incidentOK || incidentP95 <= baselineP95 {
 		return Finding{}, false
 	}
+	if !exceedsLatencyNoise(baselineP95, incidentP95) {
+		return Finding{}, false
+	}
 
 	deltaScore := (incidentP95 - baselineP95) / incidentP95
 	return newFinding(
@@ -556,4 +559,38 @@ func exceedsSamplingNoise(
 	incidentVariance := incidentRate * (1 - incidentRate) / float64(incidentCount)
 	standardError := math.Sqrt(baselineVariance + incidentVariance)
 	return delta > samplingNoiseMultiplier*standardError
+}
+
+const (
+	// minimumLatencyDeltaMilliseconds é o menor aumento de p95 que ainda muda a
+	// experiência de quem usa o sistema. Serviços rápidos oscilam frações de
+	// milissegundo entre duas janelas sem que nada tenha mudado.
+	minimumLatencyDeltaMilliseconds = 5
+	// minimumLatencyRatio exige que o aumento também seja relevante em proporção,
+	// impedindo que um serviço lento acuse regressão por uma variação que é
+	// ruído na sua própria escala.
+	minimumLatencyRatio = 0.20
+)
+
+// exceedsLatencyNoise decide se o aumento de p95 é grande o bastante, em valor
+// absoluto e em proporção, para ser tratado como regressão.
+//
+// As duas barreiras se complementam: sozinha, a absoluta acusaria um serviço
+// lento que variou 6 ms em 800 ms; sozinha, a proporcional acusaria um serviço
+// rápido que foi de 0,2 ms para 0,3 ms. Um sistema saudável chegou a produzir
+// "aumentou de 3 ms para 3 ms" antes desta verificação.
+//
+// A escolha é conservadora e tem custo: uma regressão real e pequena em um
+// serviço muito rápido — de 2 ms para 6 ms, por exemplo — passa despercebida.
+// Preferimos perder esse sinal fraco a apresentar oscilação normal como
+// evidência.
+func exceedsLatencyNoise(baselineP95, incidentP95 float64) bool {
+	delta := incidentP95 - baselineP95
+	if delta < minimumLatencyDeltaMilliseconds {
+		return false
+	}
+	if baselineP95 <= 0 {
+		return true
+	}
+	return delta/baselineP95 >= minimumLatencyRatio
 }

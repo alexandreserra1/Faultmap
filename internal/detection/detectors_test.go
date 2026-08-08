@@ -502,3 +502,65 @@ func internalHTTPSendSignals(prefix string, count int, statusCode int) []domain.
 	}
 	return signals
 }
+
+// TestLatencyDeltaIgnoraOscilaçãoIrrelevante cobre um falso positivo observado
+// em um sistema saudável: o p95 subiu fração de milissegundo e o Faultmap
+// relatou "aumentou de 3 ms para 3 ms". A oscilação normal de um serviço rápido
+// não é regressão.
+func TestLatencyDeltaIgnoraOscilaçãoIrrelevante(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name               string
+		baseline, incident float64
+	}{
+		{name: "fração de milissegundo", baseline: 2.6, incident: 3.1},
+		{name: "um milissegundo em serviço rápido", baseline: 3, incident: 4},
+		{name: "aumento pequeno em serviço lento", baseline: 300, incident: 303},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			if finding, found := DetectLatencyDelta(Input{
+				ServiceName: "checkout-service",
+				Baseline:    httpSignals("baseline", 20, 0, testCase.baseline),
+				Incident:    httpSignals("incident", 20, 0, testCase.incident),
+			}); found {
+				t.Fatalf("detector acusou oscilação irrelevante: %s", finding.Evidence[0].Summary)
+			}
+		})
+	}
+}
+
+// TestLatencyDeltaAcusaRegressãoReal garante que o piso não silenciou o que o
+// detector existe para encontrar.
+func TestLatencyDeltaAcusaRegressãoReal(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name               string
+		baseline, incident float64
+	}{
+		{name: "dezenas de vezes mais lento", baseline: 9, incident: 158},
+		{name: "serviço rápido que dobra com folga", baseline: 4, incident: 40},
+		{name: "serviço lento que piora muito", baseline: 300, incident: 900},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			if _, found := DetectLatencyDelta(Input{
+				ServiceName: "checkout-service",
+				Baseline:    httpSignals("baseline", 20, 0, testCase.baseline),
+				Incident:    httpSignals("incident", 20, 0, testCase.incident),
+			}); !found {
+				t.Fatal("detector silenciou uma regressão real de latência")
+			}
+		})
+	}
+}
