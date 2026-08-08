@@ -419,6 +419,21 @@ go run ./cmd/faultmap retention apply \
 
 O comando remove telemetria mais antiga que `storage.retention`, em lotes limitados por `--batch-size`, mantendo transações curtas. Snapshots de diagnóstico são preservados para que investigações antigas continuem auditáveis; o alcance e as consequências estão no [ADR 0003](docs/adr/0003-retencao-preserva-snapshots-de-diagnostico.md). Quando o teto de lotes de uma execução é atingido, a saída avisa que ainda existe telemetria expirada e basta executar o comando novamente.
 
+## Compatibilidade com instrumentação real
+
+Os detectores reconhecem as duas convenções do OpenTelemetry para cada atributo
+— a estável e a anterior — porque quem escolhe o nome é a biblioteca de
+instrumentação, não a aplicação. Reconhecer apenas uma delas deixava o Faultmap
+cego para aplicações inteiras, sem erro e sem aviso.
+
+O reconhecimento de banco não cita nenhum motor: qualquer sistema declarado pela
+instrumentação é aceito, de PostgreSQL a SQLite e DuckDB.
+
+As fixtures em [`fixtures/otel/real/`](fixtures/otel/real/) são capturas de
+instrumentação de terceiros e sustentam os testes que impedem essa classe de
+regressão. As fixtures em `fixtures/otel/` são escritas por nós e provam apenas
+que o produto funciona contra si mesmo.
+
 ## Decisões arquiteturais
 
 As decisões cujo motivo não é dedutível do código estão registradas em [`docs/adr/`](docs/adr/).

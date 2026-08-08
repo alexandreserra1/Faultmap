@@ -1,5 +1,58 @@
 # Changelog
 
+## v0.1.2 — 2026-08-08
+
+Release de correção. A v0.1.1 corrigiu a cegueira para HTTP mas continuava cega
+para **banco de dados**, e nunca aplicava a política de privacidade configurada.
+**Recomendamos atualizar.**
+
+### Corrigido
+
+- **Cegueira para banco de dados.** Os detectores exigiam `db.system.name`,
+  enquanto as instrumentações oficiais emitem `db.system`. Contra qualquer
+  aplicação instrumentada automaticamente, todo span de banco era lido como zero
+  sinais e `database_timeout` e `database_http_trace_correlation` nunca
+  disparavam. A correção é por convenção, não por motor: **PostgreSQL, MySQL,
+  SQLite, DuckDB e outros passam a funcionar juntos**, sem código específico.
+- **Falha de banco invisível.** Instrumentações reais sinalizam falha pelo status
+  do span e por evento de exceção, não pelo atributo `error.type` que a nossa
+  demo escreve à mão. O status passa a ser considerado.
+- **Causa do erro descartada.** O normalizador ignorava os eventos do span, onde
+  as instrumentações registram `exception.type` e `exception.message`. Agora eles
+  são preservados; `exception.stacktrace` é descartado por carregar caminhos
+  absolutos da máquina sem sustentar nenhuma decisão.
+- **Política de privacidade nunca aplicada.** `privacy.blocked_attributes` e
+  `privacy.max_attribute_length` eram validados no YAML e não consultados por
+  nenhum ponto do código. Ao ingerir telemetria de uma aplicação real, o texto
+  completo das consultas era gravado no banco local. A política passa a ser
+  aplicada entre a normalização e a persistência, cobrindo tanto a ingestão de
+  arquivo quanto o receiver OTLP. `db.query.text` entra na lista bloqueada ao
+  lado de `db.statement`.
+
+### Adicionado
+
+- `fixtures/otel/real/` — telemetria capturada de instrumentação de terceiros
+  (PostgreSQL via psycopg2, SQLite, DuckDB e FastAPI de uma aplicação real), com
+  testes que falham se o Faultmap voltar a contar zero sinais. É a rede de
+  proteção que faltava: as fixtures anteriores eram escritas por nós, no mesmo
+  dialeto do código que deveriam verificar.
+
+### Verificação
+
+- Sobre a mesma captura real de PostgreSQL e a mesma janela, a v0.1.1 responde
+  "nenhuma anomalia" e esta versão relata "12 de 24 operações PostgreSQL tiveram
+  timeout".
+- Matriz E2E: 6 de 6. Modo difícil: 5 de 5.
+
+### Limitações conhecidas que permanecem
+
+- Bancos criados antes desta versão podem conter atributos que a política agora
+  bloquearia; a limpeza retroativa não é automática.
+- A cobertura de convenções vem das instrumentações Python capturadas.
+  Instrumentações de Go, Java e Node podem emitir combinações ainda não vistas.
+- `diagnose --service X` analisa um serviço por vez, então o ranking nunca tem
+  mais de um suspeito e a métrica de top-3 não mede nada.
+
 ## v0.1.1 — 2026-08-07
 
 Release de correção. A v0.1.0 não enxergava aplicações instrumentadas
