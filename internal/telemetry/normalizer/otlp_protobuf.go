@@ -71,6 +71,7 @@ func protobufSpan(source *tracev1.Span) span {
 		StartTimeUnixNano: json.RawMessage(strconv.FormatUint(source.GetStartTimeUnixNano(), 10)),
 		EndTimeUnixNano:   json.RawMessage(strconv.FormatUint(source.GetEndTimeUnixNano(), 10)),
 		Attributes:        protobufAttributes(source.GetAttributes()),
+		Events:            protobufEvents(source.GetEvents()),
 	}
 	if source.GetStatus() != nil {
 		converted.Status = status{
@@ -167,4 +168,24 @@ func marshalProtoValue(value any) json.RawMessage {
 		return nil
 	}
 	return encoded
+}
+
+// protobufEvents converte os eventos do span para a mesma representação usada
+// pelo caminho JSON, de modo que a promoção da causa da exceção funcione
+// independentemente do formato em que a telemetria chegou.
+func protobufEvents(source []*tracev1.Span_Event) []spanEvent {
+	if len(source) == 0 {
+		return nil
+	}
+	events := make([]spanEvent, 0, len(source))
+	for _, event := range source {
+		if event == nil {
+			continue
+		}
+		events = append(events, spanEvent{
+			Name:       event.GetName(),
+			Attributes: protobufAttributes(event.GetAttributes()),
+		})
+	}
+	return events
 }

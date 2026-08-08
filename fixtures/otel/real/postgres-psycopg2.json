@@ -1,0 +1,3124 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.41.1"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "captura-postgres"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "1.0.0"
+            }
+          },
+          {
+            "key": "deployment.environment",
+            "value": {
+              "stringValue": "captura"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "opentelemetry.instrumentation.psycopg2",
+            "version": "0.62b1"
+          },
+          "spans": [
+            {
+              "traceId": "7a4a396d7869b101da3b7956e922b495",
+              "spanId": "f407e3d0c47dffe1",
+              "flags": 256,
+              "name": "CREATE",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168695763000",
+              "endTimeUnixNano": "1786206168696561000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "CREATE TABLE IF NOT EXISTS pedidos (id SERIAL PRIMARY KEY, valor INTEGER)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "96c3dc7b13ec50e43daea0e2bf65ca06",
+              "spanId": "ab95ef8f8f38009c",
+              "parentSpanId": "251b3780facb3713",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168696673000",
+              "endTimeUnixNano": "1786206168698029000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "96c3dc7b13ec50e43daea0e2bf65ca06",
+              "spanId": "658e4a423f18b2f7",
+              "parentSpanId": "251b3780facb3713",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168698085000",
+              "endTimeUnixNano": "1786206168698665000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2e417fb5b8d790e1fb46496327f09af1",
+              "spanId": "1cd5f9073faad1e5",
+              "parentSpanId": "3c758f82d55c911d",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168698737000",
+              "endTimeUnixNano": "1786206168699185000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2e417fb5b8d790e1fb46496327f09af1",
+              "spanId": "fd1de6c9dd8fe47a",
+              "parentSpanId": "3c758f82d55c911d",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168699232000",
+              "endTimeUnixNano": "1786206168699599000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f4422dd51599a5efa257a0e5c1dae93b",
+              "spanId": "92af762dff89a6ba",
+              "parentSpanId": "ed7defc808486e4a",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168699666000",
+              "endTimeUnixNano": "1786206168700064000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f4422dd51599a5efa257a0e5c1dae93b",
+              "spanId": "27cdce5f75471c73",
+              "parentSpanId": "ed7defc808486e4a",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168700098000",
+              "endTimeUnixNano": "1786206168700438000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "aafc674ca189b2fcb0a049a04269d880",
+              "spanId": "7ecf3f38edcdbb6f",
+              "parentSpanId": "e787703e8ff237de",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168700526000",
+              "endTimeUnixNano": "1786206168700949000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "aafc674ca189b2fcb0a049a04269d880",
+              "spanId": "92c8f670b9ef2fad",
+              "parentSpanId": "e787703e8ff237de",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168700981000",
+              "endTimeUnixNano": "1786206168701294000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c4b38c192cb6f8afd1ad043daa2ab1e1",
+              "spanId": "694509ee7996b4b4",
+              "parentSpanId": "f4832305ee4fae94",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168701351000",
+              "endTimeUnixNano": "1786206168701759000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c4b38c192cb6f8afd1ad043daa2ab1e1",
+              "spanId": "e25a1463643e91b6",
+              "parentSpanId": "f4832305ee4fae94",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168701786000",
+              "endTimeUnixNano": "1786206168702077000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "df3c8de93795d526e92195c93adf84ef",
+              "spanId": "591b74f7d6c9cb95",
+              "parentSpanId": "39bd8eda1d63596e",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168702135000",
+              "endTimeUnixNano": "1786206168702549000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "df3c8de93795d526e92195c93adf84ef",
+              "spanId": "59657792d9f00fbe",
+              "parentSpanId": "39bd8eda1d63596e",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168702575000",
+              "endTimeUnixNano": "1786206168702874000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "adc9f303292fcbcc3300c82f4cad58ac",
+              "spanId": "78205691b8e6577b",
+              "parentSpanId": "9cada1083f99f67f",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168702926000",
+              "endTimeUnixNano": "1786206168703316000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "adc9f303292fcbcc3300c82f4cad58ac",
+              "spanId": "696117d4f23ae433",
+              "parentSpanId": "9cada1083f99f67f",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168703342000",
+              "endTimeUnixNano": "1786206168703626000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e14c187ea6b2b05fa0dfd9f13f1c8474",
+              "spanId": "32992b038947dde6",
+              "parentSpanId": "30721485da1ece8c",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168703736000",
+              "endTimeUnixNano": "1786206168704134000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e14c187ea6b2b05fa0dfd9f13f1c8474",
+              "spanId": "1cfb0128595d3d60",
+              "parentSpanId": "30721485da1ece8c",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168704162000",
+              "endTimeUnixNano": "1786206168704453000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b111bacf4ec65a780bb0d0c5be164e65",
+              "spanId": "53127cdf53c6aa65",
+              "parentSpanId": "51f709c87fcb3ab7",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168704528000",
+              "endTimeUnixNano": "1786206168704949000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "b111bacf4ec65a780bb0d0c5be164e65",
+              "spanId": "ac46dcc6009c24e6",
+              "parentSpanId": "51f709c87fcb3ab7",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168704976000",
+              "endTimeUnixNano": "1786206168705274000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39f94d018b696b2885b872abd8d8342f",
+              "spanId": "7d4668567a5e9738",
+              "parentSpanId": "df16e58182416ea9",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168705325000",
+              "endTimeUnixNano": "1786206168705941000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39f94d018b696b2885b872abd8d8342f",
+              "spanId": "70b8c56c384a98b3",
+              "parentSpanId": "df16e58182416ea9",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168705967000",
+              "endTimeUnixNano": "1786206168706296000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f1e81e67c3a6797c8c280be9abac6132",
+              "spanId": "ad9ba0b0918a7003",
+              "parentSpanId": "782fd39fb77d0725",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168706347000",
+              "endTimeUnixNano": "1786206168706783000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f1e81e67c3a6797c8c280be9abac6132",
+              "spanId": "82077be34288a2e4",
+              "parentSpanId": "782fd39fb77d0725",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168706818000",
+              "endTimeUnixNano": "1786206168707131000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e581d9839f3e973dfa4305ae8255edf2",
+              "spanId": "ee642672ce517edc",
+              "parentSpanId": "81b0ce07a5f7a5e3",
+              "flags": 256,
+              "name": "INSERT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168707183000",
+              "endTimeUnixNano": "1786206168707656000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos (valor) VALUES (%s)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e581d9839f3e973dfa4305ae8255edf2",
+              "spanId": "2e4d8cb71c819fff",
+              "parentSpanId": "81b0ce07a5f7a5e3",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206168707691000",
+              "endTimeUnixNano": "1786206168708003000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4ec4d6a5141ac0dbf8081059bdf530b8",
+              "spanId": "47e61790349ec611",
+              "parentSpanId": "48d8063f7ba0d827",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170711397000",
+              "endTimeUnixNano": "1786206170713370000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4ec4d6a5141ac0dbf8081059bdf530b8",
+              "spanId": "e49da6ce6698a60b",
+              "parentSpanId": "48d8063f7ba0d827",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170713455000",
+              "endTimeUnixNano": "1786206170770933000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206170770899000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "bfac2dc96b7052f4049be817374ccc13",
+              "spanId": "742f54d355f87399",
+              "parentSpanId": "45dc425051cf1dac",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170771106000",
+              "endTimeUnixNano": "1786206170772515000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bfac2dc96b7052f4049be817374ccc13",
+              "spanId": "36716746678c0757",
+              "parentSpanId": "45dc425051cf1dac",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170772632000",
+              "endTimeUnixNano": "1786206170830680000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206170830662000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ef1a0fd5786aba8a49aee0c45bdb0d09",
+              "spanId": "24fdd3024fd1617f",
+              "parentSpanId": "161de805b10054e6",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170830867000",
+              "endTimeUnixNano": "1786206170833396000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "ef1a0fd5786aba8a49aee0c45bdb0d09",
+              "spanId": "e885432cb1de3785",
+              "parentSpanId": "161de805b10054e6",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170833472000",
+              "endTimeUnixNano": "1786206170890189000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206170890173000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "33de00dd28952a6f3107d303b2c849a3",
+              "spanId": "442cc8c48514fb62",
+              "parentSpanId": "245e8d4e442caaf9",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170890376000",
+              "endTimeUnixNano": "1786206170892819000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "33de00dd28952a6f3107d303b2c849a3",
+              "spanId": "336b3fbd9a6072aa",
+              "parentSpanId": "245e8d4e442caaf9",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170892878000",
+              "endTimeUnixNano": "1786206170950311000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206170950283000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "59da90289e8c92b81426913dee90dbdd",
+              "spanId": "64b5dd372746dfef",
+              "parentSpanId": "4c3e2106502a8788",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170950601000",
+              "endTimeUnixNano": "1786206170951995000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "59da90289e8c92b81426913dee90dbdd",
+              "spanId": "246978b060706c66",
+              "parentSpanId": "4c3e2106502a8788",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206170952088000",
+              "endTimeUnixNano": "1786206171008185000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171008165000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "96220fd107104365bab502d2618319e9",
+              "spanId": "5d33a4a300ab8476",
+              "parentSpanId": "747fed89b41c3405",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171008424000",
+              "endTimeUnixNano": "1786206171009476000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "96220fd107104365bab502d2618319e9",
+              "spanId": "3766558cd2e1bf51",
+              "parentSpanId": "747fed89b41c3405",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171009603000",
+              "endTimeUnixNano": "1786206171071744000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171071729000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "383565156e61a0b515c11cac25532ec4",
+              "spanId": "1b76ae790844ad9a",
+              "parentSpanId": "f2b671fae340174b",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171071888000",
+              "endTimeUnixNano": "1786206171072907000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "383565156e61a0b515c11cac25532ec4",
+              "spanId": "de9dfb8eb30b303b",
+              "parentSpanId": "f2b671fae340174b",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171073044000",
+              "endTimeUnixNano": "1786206171129888000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171129867000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ab6d76c8f4e868fa64f8d3a28a313e29",
+              "spanId": "554999ec7ae4e601",
+              "parentSpanId": "018131c218a9d9da",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171130106000",
+              "endTimeUnixNano": "1786206171131280000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "ab6d76c8f4e868fa64f8d3a28a313e29",
+              "spanId": "fe423c12a870a4d1",
+              "parentSpanId": "018131c218a9d9da",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171131402000",
+              "endTimeUnixNano": "1786206171186635000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171186609000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "3f25f4d4c833a7081b557a131b9b8ed6",
+              "spanId": "cb768d58810d619a",
+              "parentSpanId": "06bfde7aa5201ead",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171186928000",
+              "endTimeUnixNano": "1786206171189100000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "3f25f4d4c833a7081b557a131b9b8ed6",
+              "spanId": "6028bc6865de569c",
+              "parentSpanId": "06bfde7aa5201ead",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171189173000",
+              "endTimeUnixNano": "1786206171247157000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171247124000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "9dbfcf8da2b344c781c91a5032808a49",
+              "spanId": "c05e17e11b3762e2",
+              "parentSpanId": "6df15104668c6348",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171247452000",
+              "endTimeUnixNano": "1786206171249651000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9dbfcf8da2b344c781c91a5032808a49",
+              "spanId": "87cf47f869e0face",
+              "parentSpanId": "6df15104668c6348",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171249746000",
+              "endTimeUnixNano": "1786206171303347000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171303314000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "8c8e0f1e948b1f4332dead5e4c6f3bd4",
+              "spanId": "65c47ced9659f1a4",
+              "parentSpanId": "996992e78188513b",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171303884000",
+              "endTimeUnixNano": "1786206171304919000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "8c8e0f1e948b1f4332dead5e4c6f3bd4",
+              "spanId": "a0098e560103cc2e",
+              "parentSpanId": "996992e78188513b",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171305012000",
+              "endTimeUnixNano": "1786206171364006000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171363966000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            },
+            {
+              "traceId": "147d616de70137aabefa0466f88a3c87",
+              "spanId": "830833e37732bd6e",
+              "parentSpanId": "55e3903ab453c986",
+              "flags": 256,
+              "name": "SET",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171364357000",
+              "endTimeUnixNano": "1786206171366077000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "147d616de70137aabefa0466f88a3c87",
+              "spanId": "1324160492e72d56",
+              "parentSpanId": "55e3903ab453c986",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786206171366170000",
+              "endTimeUnixNano": "1786206171424011000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                },
+                {
+                  "key": "db.user",
+                  "value": {
+                    "stringValue": "captura"
+                  }
+                },
+                {
+                  "key": "net.peer.name",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "55432"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786206171423974000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "psycopg2.errors.QueryCanceled"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "canceling statement due to statement timeout\n"
+                      }
+                    },
+                    {
+                      "key": "exception.stacktrace",
+                      "value": {
+                        "stringValue": "<truncado na captura>"
+                      }
+                    },
+                    {
+                      "key": "exception.escaped",
+                      "value": {
+                        "stringValue": "False"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "message": "QueryCanceled: canceling statement due to statement timeout\n",
+                "code": 2
+              }
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.11.0"
+        },
+        {
+          "scope": {
+            "name": "captura"
+          },
+          "spans": [
+            {
+              "traceId": "96c3dc7b13ec50e43daea0e2bf65ca06",
+              "spanId": "251b3780facb3713",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168696620000",
+              "endTimeUnixNano": "1786206168698678000",
+              "status": {}
+            },
+            {
+              "traceId": "2e417fb5b8d790e1fb46496327f09af1",
+              "spanId": "3c758f82d55c911d",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168698704000",
+              "endTimeUnixNano": "1786206168699609000",
+              "status": {}
+            },
+            {
+              "traceId": "f4422dd51599a5efa257a0e5c1dae93b",
+              "spanId": "ed7defc808486e4a",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168699634000",
+              "endTimeUnixNano": "1786206168700453000",
+              "status": {}
+            },
+            {
+              "traceId": "aafc674ca189b2fcb0a049a04269d880",
+              "spanId": "e787703e8ff237de",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168700483000",
+              "endTimeUnixNano": "1786206168701303000",
+              "status": {}
+            },
+            {
+              "traceId": "c4b38c192cb6f8afd1ad043daa2ab1e1",
+              "spanId": "f4832305ee4fae94",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168701325000",
+              "endTimeUnixNano": "1786206168702085000",
+              "status": {}
+            },
+            {
+              "traceId": "df3c8de93795d526e92195c93adf84ef",
+              "spanId": "39bd8eda1d63596e",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168702105000",
+              "endTimeUnixNano": "1786206168702882000",
+              "status": {}
+            },
+            {
+              "traceId": "adc9f303292fcbcc3300c82f4cad58ac",
+              "spanId": "9cada1083f99f67f",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168702902000",
+              "endTimeUnixNano": "1786206168703634000",
+              "status": {}
+            },
+            {
+              "traceId": "e14c187ea6b2b05fa0dfd9f13f1c8474",
+              "spanId": "30721485da1ece8c",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168703653000",
+              "endTimeUnixNano": "1786206168704466000",
+              "status": {}
+            },
+            {
+              "traceId": "b111bacf4ec65a780bb0d0c5be164e65",
+              "spanId": "51f709c87fcb3ab7",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168704495000",
+              "endTimeUnixNano": "1786206168705281000",
+              "status": {}
+            },
+            {
+              "traceId": "39f94d018b696b2885b872abd8d8342f",
+              "spanId": "df16e58182416ea9",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168705302000",
+              "endTimeUnixNano": "1786206168706304000",
+              "status": {}
+            },
+            {
+              "traceId": "f1e81e67c3a6797c8c280be9abac6132",
+              "spanId": "782fd39fb77d0725",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168706324000",
+              "endTimeUnixNano": "1786206168707139000",
+              "status": {}
+            },
+            {
+              "traceId": "e581d9839f3e973dfa4305ae8255edf2",
+              "spanId": "81b0ce07a5f7a5e3",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206168707159000",
+              "endTimeUnixNano": "1786206168708011000",
+              "status": {}
+            },
+            {
+              "traceId": "4ec4d6a5141ac0dbf8081059bdf530b8",
+              "spanId": "48d8063f7ba0d827",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206170711309000",
+              "endTimeUnixNano": "1786206170770977000",
+              "status": {}
+            },
+            {
+              "traceId": "bfac2dc96b7052f4049be817374ccc13",
+              "spanId": "45dc425051cf1dac",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206170771051000",
+              "endTimeUnixNano": "1786206170830722000",
+              "status": {}
+            },
+            {
+              "traceId": "ef1a0fd5786aba8a49aee0c45bdb0d09",
+              "spanId": "161de805b10054e6",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206170830790000",
+              "endTimeUnixNano": "1786206170890226000",
+              "status": {}
+            },
+            {
+              "traceId": "33de00dd28952a6f3107d303b2c849a3",
+              "spanId": "245e8d4e442caaf9",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206170890307000",
+              "endTimeUnixNano": "1786206170950375000",
+              "status": {}
+            },
+            {
+              "traceId": "59da90289e8c92b81426913dee90dbdd",
+              "spanId": "4c3e2106502a8788",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206170950481000",
+              "endTimeUnixNano": "1786206171008233000",
+              "status": {}
+            },
+            {
+              "traceId": "96220fd107104365bab502d2618319e9",
+              "spanId": "747fed89b41c3405",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171008317000",
+              "endTimeUnixNano": "1786206171071777000",
+              "status": {}
+            },
+            {
+              "traceId": "383565156e61a0b515c11cac25532ec4",
+              "spanId": "f2b671fae340174b",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171071833000",
+              "endTimeUnixNano": "1786206171129935000",
+              "status": {}
+            },
+            {
+              "traceId": "ab6d76c8f4e868fa64f8d3a28a313e29",
+              "spanId": "018131c218a9d9da",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171130022000",
+              "endTimeUnixNano": "1786206171186698000",
+              "status": {}
+            },
+            {
+              "traceId": "3f25f4d4c833a7081b557a131b9b8ed6",
+              "spanId": "06bfde7aa5201ead",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171186813000",
+              "endTimeUnixNano": "1786206171247244000",
+              "status": {}
+            },
+            {
+              "traceId": "9dbfcf8da2b344c781c91a5032808a49",
+              "spanId": "6df15104668c6348",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171247337000",
+              "endTimeUnixNano": "1786206171303428000",
+              "status": {}
+            },
+            {
+              "traceId": "8c8e0f1e948b1f4332dead5e4c6f3bd4",
+              "spanId": "996992e78188513b",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171303558000",
+              "endTimeUnixNano": "1786206171364078000",
+              "status": {}
+            },
+            {
+              "traceId": "147d616de70137aabefa0466f88a3c87",
+              "spanId": "55e3903ab453c986",
+              "flags": 256,
+              "name": "POST /pedido",
+              "kind": 1,
+              "startTimeUnixNano": "1786206171364229000",
+              "endTimeUnixNano": "1786206171424095000",
+              "status": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

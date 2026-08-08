@@ -10,6 +10,7 @@ import (
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 	"github.com/faultmap/faultmap/internal/telemetry/normalizer"
+	"github.com/faultmap/faultmap/internal/telemetry/privacy"
 )
 
 // TestIngestTelemetryFileNormalizaEPersiste garante a primeira fatia completa de ingestão.
@@ -35,7 +36,7 @@ func TestIngestTelemetryFileNormalizaEPersiste(t *testing.T) {
 	}
 
 	store := &signalStoreFake{}
-	result, err := IngestTelemetryFile(context.Background(), fixturePath, store)
+	result, err := IngestTelemetryFile(context.Background(), fixturePath, privacy.Policy{}, store)
 	if err != nil {
 		t.Fatalf("IngestTelemetryFile() erro = %v", err)
 	}
@@ -55,7 +56,7 @@ func TestIngestTelemetryReaderNormalizaEPersiste(t *testing.T) {
 	const payload = `{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"checkout"}}]},"scopeSpans":[{"spans":[{"traceId":"00112233445566778899aabbccddeeff","spanId":"0011223344556677","startTimeUnixNano":"1720000000000000000","endTimeUnixNano":"1720000000250000000"}]}]}]}`
 	store := &signalStoreFake{}
 
-	result, err := IngestTelemetry(context.Background(), strings.NewReader(payload), normalizer.OTLPEncodingJSON, store)
+	result, err := IngestTelemetry(context.Background(), strings.NewReader(payload), normalizer.OTLPEncodingJSON, privacy.Policy{}, store)
 	if err != nil {
 		t.Fatalf("IngestTelemetry() erro = %v", err)
 	}
@@ -73,7 +74,7 @@ func TestIngestTelemetryPreservaClassificacaoDePayloadInvalido(t *testing.T) {
 	t.Parallel()
 
 	store := &signalStoreFake{}
-	_, err := IngestTelemetry(context.Background(), strings.NewReader(`{"resourceSpans":`), normalizer.OTLPEncodingJSON, store)
+	_, err := IngestTelemetry(context.Background(), strings.NewReader(`{"resourceSpans":`), normalizer.OTLPEncodingJSON, privacy.Policy{}, store)
 	if !errors.Is(err, normalizer.ErrInvalidOTLP) {
 		t.Fatalf("IngestTelemetry() erro = %v, esperado ErrInvalidOTLP", err)
 	}

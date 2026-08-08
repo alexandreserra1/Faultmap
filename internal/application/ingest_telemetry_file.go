@@ -9,6 +9,7 @@ import (
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 	"github.com/faultmap/faultmap/internal/telemetry/normalizer"
+	"github.com/faultmap/faultmap/internal/telemetry/privacy"
 )
 
 // SignalStore define a persistência mínima necessária para o caso de uso de ingestão.
@@ -24,7 +25,16 @@ type IngestionResult struct {
 
 // IngestTelemetry normaliza traces OTLP recebidos de qualquer transporte e os
 // persiste de forma idempotente usando o repositório compartilhado da aplicação.
-func IngestTelemetry(ctx context.Context, reader io.Reader, encoding normalizer.OTLPEncoding, store SignalStore) (IngestionResult, error) {
+// IngestTelemetry aplica a política de privacidade entre a normalização e a
+// persistência, de modo que nenhum caminho de ingestão possa gravar atributos
+// bloqueados — nem o arquivo, nem o receiver OTLP.
+func IngestTelemetry(
+	ctx context.Context,
+	reader io.Reader,
+	encoding normalizer.OTLPEncoding,
+	policy privacy.Policy,
+	store SignalStore,
+) (IngestionResult, error) {
 	if err := contextError(ctx); err != nil {
 		return IngestionResult{}, err
 	}
@@ -42,6 +52,7 @@ func IngestTelemetry(ctx context.Context, reader io.Reader, encoding normalizer.
 	if err := contextError(ctx); err != nil {
 		return IngestionResult{}, err
 	}
+	signals = policy.Apply(signals)
 
 	persisted, err := store.Save(ctx, signals)
 	if err != nil {
@@ -51,7 +62,7 @@ func IngestTelemetry(ctx context.Context, reader io.Reader, encoding normalizer.
 }
 
 // IngestTelemetryFile normaliza um arquivo OTLP JSON e persiste seus sinais de forma idempotente.
-func IngestTelemetryFile(ctx context.Context, inputPath string, store SignalStore) (IngestionResult, error) {
+func IngestTelemetryFile(ctx context.Context, inputPath string, policy privacy.Policy, store SignalStore) (IngestionResult, error) {
 	if err := contextError(ctx); err != nil {
 		return IngestionResult{}, err
 	}
@@ -67,7 +78,7 @@ func IngestTelemetryFile(ctx context.Context, inputPath string, store SignalStor
 		return IngestionResult{}, fmt.Errorf("abrir arquivo de telemetria %q: %w", inputPath, err)
 	}
 
-	result, ingestErr := IngestTelemetry(ctx, input, normalizer.OTLPEncodingJSON, store)
+	result, ingestErr := IngestTelemetry(ctx, input, normalizer.OTLPEncodingJSON, policy, store)
 	closeErr := input.Close()
 	if ingestErr != nil {
 		return IngestionResult{}, fmt.Errorf("ingerir arquivo de telemetria %q: %w", inputPath, ingestErr)

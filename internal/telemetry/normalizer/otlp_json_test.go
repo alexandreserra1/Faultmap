@@ -271,3 +271,57 @@ func assertSignalEqual(t *testing.T, got, want domain.Signal) {
 		}
 	}
 }
+
+// TestParseOTLPJSONPreservaExceçãoESuprimeStacktrace cobre o modo como as
+// instrumentações reais registram a causa de uma falha: em um evento de span,
+// não em atributos. Sem ler os eventos, o Faultmap recebe o span marcado como
+// erro sem nenhuma pista do que aconteceu.
+//
+// O stacktrace é deliberadamente descartado: ele carrega caminhos absolutos da
+// máquina e trechos de código, tem alta cardinalidade e não sustenta nenhuma
+// decisão do diagnóstico.
+func TestParseOTLPJSONPreservaExceçãoESuprimeStacktrace(t *testing.T) {
+	t.Parallel()
+
+	payload := `{
+	  "resourceSpans": [{
+	    "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "captura"}}]},
+	    "scopeSpans": [{
+	      "spans": [{
+	        "traceId": "3f0a", "spanId": "1b2c", "name": "SELECT", "kind": 3,
+	        "startTimeUnixNano": "1700000000000000000",
+	        "endTimeUnixNano": "1700000000500000000",
+	        "attributes": [{"key": "db.system", "value": {"stringValue": "postgresql"}}],
+	        "status": {"code": 2, "message": "QueryCanceled"},
+	        "events": [{
+	          "name": "exception",
+	          "attributes": [
+	            {"key": "exception.type", "value": {"stringValue": "psycopg2.errors.QueryCanceled"}},
+	            {"key": "exception.message", "value": {"stringValue": "canceling statement due to statement timeout"}},
+	            {"key": "exception.stacktrace", "value": {"stringValue": "Traceback: /Users/alguem/segredo/app.py"}}
+	          ]
+	        }]
+	      }]
+	    }]
+	  }]
+	}`
+
+	signals, err := ParseOTLPJSON(context.Background(), strings.NewReader(payload))
+	if err != nil {
+		t.Fatalf("ParseOTLPJSON() erro = %v", err)
+	}
+	if len(signals) != 1 {
+		t.Fatalf("sinais = %d, esperado 1", len(signals))
+	}
+	signal := signals[0]
+
+	if signal.Attributes["exception.type"] != "psycopg2.errors.QueryCanceled" {
+		t.Fatalf("exception.type = %q, esperado o tipo da exceção", signal.Attributes["exception.type"])
+	}
+	if signal.Attributes["exception.message"] != "canceling statement due to statement timeout" {
+		t.Fatalf("exception.message = %q", signal.Attributes["exception.message"])
+	}
+	if _, presente := signal.Attributes["exception.stacktrace"]; presente {
+		t.Fatal("exception.stacktrace foi armazenado: caminhos da máquina não devem ser persistidos")
+	}
+}

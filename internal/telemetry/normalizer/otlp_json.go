@@ -89,7 +89,15 @@ type span struct {
 	StartTimeUnixNano json.RawMessage `json:"startTimeUnixNano"`
 	EndTimeUnixNano   json.RawMessage `json:"endTimeUnixNano"`
 	Attributes        []keyValue      `json:"attributes"`
+	Events            []spanEvent     `json:"events"`
 	Status            status          `json:"status"`
+}
+
+// spanEvent representa um evento anexado ao span. As instrumentações registram
+// nele a causa das falhas, via evento "exception".
+type spanEvent struct {
+	Name       string     `json:"name"`
+	Attributes []keyValue `json:"attributes"`
 }
 
 type status struct {
@@ -188,6 +196,9 @@ func normalizeSpan(serviceName string, resourceAttributes map[string]string, sou
 	}
 	if source.Status.Message != "" {
 		attributes["status.message"] = source.Status.Message
+	}
+	for key, value := range exceptionAttributes(source.Events) {
+		attributes[key] = value
 	}
 
 	return domain.Signal{
@@ -339,4 +350,29 @@ func (reader contextReader) Read(content []byte) (int, error) {
 		return 0, err
 	}
 	return reader.reader.Read(content)
+}
+
+// exceptionAttributes promove o tipo e a mensagem do evento "exception" a
+// atributos do sinal. É lá que as instrumentações reais registram a causa de uma
+// falha; sem isso, o Faultmap recebe um span marcado como erro sem nenhuma pista
+// do que aconteceu.
+//
+// O stacktrace é descartado de propósito: ele carrega caminhos absolutos da
+// máquina e trechos de código, tem cardinalidade alta e não sustenta nenhuma
+// decisão do diagnóstico. Manter a supressão aqui, e não apenas na configuração
+// de privacidade, garante que ele jamais chegue à persistência.
+func exceptionAttributes(events []spanEvent) map[string]string {
+	promoted := make(map[string]string, 2)
+	for _, event := range events {
+		if !strings.EqualFold(strings.TrimSpace(event.Name), "exception") {
+			continue
+		}
+		for key, value := range normalizeAttributes(event.Attributes) {
+			if key == "exception.stacktrace" {
+				continue
+			}
+			promoted[key] = value
+		}
+	}
+	return promoted
 }

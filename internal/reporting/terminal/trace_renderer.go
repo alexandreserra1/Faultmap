@@ -80,7 +80,7 @@ func traceDetails(signal domain.Signal) []string {
 	if system := displayDatabaseSystem(firstAttribute(signal.Attributes, "db.system.name", "db.system")); system != "" {
 		details = append(details, system)
 	}
-	if operation := firstAttribute(signal.Attributes, "db.operation.name"); operation != "" {
+	if operation := firstAttribute(signal.Attributes, "db.operation.name", "db.operation"); operation != "" {
 		details = append(details, "operação "+operation)
 	}
 	if errorType := firstAttribute(signal.Attributes, "error.type", "exception.type"); errorType != "" {

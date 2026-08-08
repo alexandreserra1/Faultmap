@@ -295,23 +295,48 @@ func filterHTTPSignals(signals []domain.Signal) []domain.Signal {
 	return filtered
 }
 
-// httpStatusCode aceita as duas convenções do OpenTelemetry para o código de
-// resposta. A convenção estável renomeou "http.status_code" para
-// "http.response.status_code", e instrumentações amplamente usadas ainda emitem
-// o nome anterior. Reconhecer apenas um dos dois deixa o Faultmap cego para
-// aplicações inteiras, sem qualquer sinal de erro visível ao usuário.
-func httpStatusCode(attributes map[string]string) string {
-	if value := strings.TrimSpace(attributes["http.response.status_code"]); value != "" {
-		return value
+// O OpenTelemetry renomeou vários atributos ao estabilizar suas convenções, mas
+// as instrumentações mais usadas continuam emitindo os nomes anteriores. Como
+// quem escolhe o nome é a biblioteca de instrumentação, e não a aplicação,
+// reconhecer apenas a convenção nova deixa o Faultmap cego para aplicações
+// inteiras — sem erro, sem aviso, apenas "nenhuma anomalia encontrada".
+//
+// A ordem é sempre estável primeiro, legada depois: quando um span traz as duas,
+// vence a convenção atual. Esta é a única lista de precedência do projeto; os
+// renderizadores usam a mesma, para que a tela e os detectores nunca discordem.
+// Foi exatamente essa divergência que escondeu a cegueira de HTTP até a v0.1.1.
+var attributeConventions = map[string][]string{
+	"http.status":     {"http.response.status_code", "http.status_code"},
+	"db.system":       {"db.system.name", "db.system"},
+	"db.operation":    {"db.operation.name", "db.operation"},
+	"failure.type":    {"error.type", "exception.type"},
+	"failure.message": {"status.message", "exception.message"},
+}
+
+// attributeValue devolve o primeiro valor não vazio entre as convenções
+// conhecidas para o conceito solicitado.
+func attributeValue(attributes map[string]string, concept string) string {
+	for _, key := range attributeConventions[concept] {
+		if value := strings.TrimSpace(attributes[key]); value != "" {
+			return value
+		}
 	}
-	return strings.TrimSpace(attributes["http.status_code"])
+	return ""
+}
+
+func httpStatusCode(attributes map[string]string) string {
+	return attributeValue(attributes, "http.status")
+}
+
+func databaseSystem(attributes map[string]string) string {
+	return attributeValue(attributes, "db.system")
 }
 
 // filterDatabaseSignals considera somente spans que declaram explicitamente o sistema de banco observado.
 func filterDatabaseSignals(signals []domain.Signal) []domain.Signal {
 	filtered := make([]domain.Signal, 0, len(signals))
 	for _, signal := range signals {
-		if strings.TrimSpace(signal.Attributes["db.system.name"]) != "" {
+		if databaseSystem(signal.Attributes) != "" {
 			filtered = append(filtered, signal)
 		}
 	}
@@ -319,12 +344,32 @@ func filterDatabaseSignals(signals []domain.Signal) []domain.Signal {
 }
 
 // databaseTimeouts seleciona somente timeouts explicitamente sinalizados, sem inspecionar SQL bruto.
+// databaseFailures reúne operações de banco que falharam, por qualquer motivo.
+//
+// A nossa demo marca a falha em um atributo error.type escrito à mão, mas as
+// instrumentações reais não fazem isso: elas registram o status do span como
+// erro e anexam um evento de exceção. Ignorar o status tornava toda falha real
+// de banco invisível, mesmo depois de o span ser reconhecido como sendo de banco.
+func databaseFailures(signals []domain.Signal) []domain.Signal {
+	failures := make([]domain.Signal, 0, len(signals))
+	for _, signal := range signals {
+		if strings.EqualFold(strings.TrimSpace(signal.Severity), "error") ||
+			attributeValue(signal.Attributes, "failure.type") != "" {
+			failures = append(failures, signal)
+		}
+	}
+	return failures
+}
+
+// databaseTimeouts restringe as falhas àquelas com evidência textual de timeout,
+// para que a evidência apresentada continue descrevendo o que foi de fato
+// observado em vez de generalizar qualquer erro como esgotamento de tempo.
 func databaseTimeouts(signals []domain.Signal) []domain.Signal {
 	timeouts := make([]domain.Signal, 0, len(signals))
-	for _, signal := range signals {
-		errorType := strings.ToLower(signal.Attributes["error.type"])
-		statusMessage := strings.ToLower(signal.Attributes["status.message"])
-		if strings.Contains(errorType, "timeout") || strings.Contains(statusMessage, "timeout") {
+	for _, signal := range databaseFailures(signals) {
+		failureType := strings.ToLower(attributeValue(signal.Attributes, "failure.type"))
+		failureMessage := strings.ToLower(attributeValue(signal.Attributes, "failure.message"))
+		if strings.Contains(failureType, "timeout") || strings.Contains(failureMessage, "timeout") {
 			timeouts = append(timeouts, signal)
 		}
 	}
@@ -402,7 +447,7 @@ func httpErrorStatuses(signals []domain.Signal) []string {
 func databaseSystems(signals []domain.Signal) []string {
 	systems := make(map[string]struct{})
 	for _, signal := range signals {
-		system := strings.TrimSpace(signal.Attributes["db.system.name"])
+		system := databaseSystem(signal.Attributes)
 		if system == "" {
 			continue
 		}

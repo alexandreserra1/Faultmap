@@ -11,3 +11,5 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0004](0004-timeline-ancora-findings-na-janela-do-incidente.md) | `timeline.json` ancora findings na janela do incidente |
 | [0005](0005-error-rate-delta-ignora-ruido-de-amostragem.md) | `error_rate_delta` ignora variação de amostragem |
 | [0006](0006-detectores-aceitam-duas-convencoes-http.md) | Detectores aceitam as duas convenções HTTP e ignoram spans internos |
+| [0007](0007-telemetria-real-como-base-de-teste.md) | Telemetria de instrumentação real como base de teste |
+| [0008](0008-politica-de-privacidade-aplicada-na-ingestao.md) | Política de privacidade aplicada na ingestão |

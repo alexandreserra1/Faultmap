@@ -135,7 +135,12 @@ func Default() Config {
 		GitHub: GitHubConfig{APIURL: "https://api.github.com", Environment: "staging"},
 		Privacy: PrivacyConfig{
 			MaxAttributeLength: 512,
-			BlockedAttributes:  []string{"http.request.body", "db.statement"},
+			BlockedAttributes: []string{
+				// db.statement é o nome anterior; db.query.text é o atual. Bloquear
+				// apenas um deles deixaria SQL bruto ser gravado conforme a
+				// instrumentação usada pela aplicação.
+				"http.request.body", "db.statement", "db.query.text",
+			},
 		},
 	}
 }

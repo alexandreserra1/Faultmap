@@ -1,0 +1,4575 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "telemetry.sdk.language",
+            "value": {
+              "stringValue": "python"
+            }
+          },
+          {
+            "key": "telemetry.sdk.name",
+            "value": {
+              "stringValue": "opentelemetry"
+            }
+          },
+          {
+            "key": "telemetry.sdk.version",
+            "value": {
+              "stringValue": "1.41.1"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "2.0.0"
+            }
+          },
+          {
+            "key": "deployment.environment",
+            "value": {
+              "stringValue": "local"
+            }
+          },
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "strideredge-api"
+            }
+          },
+          {
+            "key": "telemetry.auto.version",
+            "value": {
+              "stringValue": "0.62b1"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "opentelemetry.instrumentation.fastapi",
+            "version": "0.62b1"
+          },
+          "spans": [
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "a561cd54c235b2ef",
+              "parentSpanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "POST /api/v1/auth/login http receive",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802551885000",
+              "endTimeUnixNano": "1786207802551937000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.request"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "6af03481f9854186",
+              "parentSpanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "POST /api/v1/auth/login http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802748604000",
+              "endTimeUnixNano": "1786207802748640000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "6459b1015d27ef12",
+              "parentSpanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "POST /api/v1/auth/login http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802749087000",
+              "endTimeUnixNano": "1786207802749096000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "59980722fe41dbaf",
+              "parentSpanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "POST /api/v1/auth/login http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802749136000",
+              "endTimeUnixNano": "1786207802749143000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "POST /api/v1/auth/login",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802545185000",
+              "endTimeUnixNano": "1786207802749166000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/auth/login"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/auth/login"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "POST"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59067"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/auth/login"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "7771194f20549f14",
+              "parentSpanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802766312000",
+              "endTimeUnixNano": "1786207802766331000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "1206bfd2652d4ac1",
+              "parentSpanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802766526000",
+              "endTimeUnixNano": "1786207802766534000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "ace01d3b52387637",
+              "parentSpanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802766574000",
+              "endTimeUnixNano": "1786207802766580000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802763224000",
+              "endTimeUnixNano": "1786207802766599000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59068"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "48b1674f0e5aeb85",
+              "parentSpanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802777123000",
+              "endTimeUnixNano": "1786207802777147000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "f8107dce9733cd1b",
+              "parentSpanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802777424000",
+              "endTimeUnixNano": "1786207802777439000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "0a16d4a5a5991e4a",
+              "parentSpanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802777484000",
+              "endTimeUnixNano": "1786207802777491000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802774906000",
+              "endTimeUnixNano": "1786207802777511000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59069"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "d5fb1a0e5f2751b2",
+              "parentSpanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802788637000",
+              "endTimeUnixNano": "1786207802788660000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "a3df0da5cf456c06",
+              "parentSpanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802788874000",
+              "endTimeUnixNano": "1786207802788883000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "d6ccadc216fb57cf",
+              "parentSpanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802788922000",
+              "endTimeUnixNano": "1786207802788928000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802786686000",
+              "endTimeUnixNano": "1786207802788946000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59070"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "f18bedd8125288ce",
+              "parentSpanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802799870000",
+              "endTimeUnixNano": "1786207802799889000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "a9a5c13d7bbdc34c",
+              "parentSpanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802800085000",
+              "endTimeUnixNano": "1786207802800093000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "9eabdf1958cfff41",
+              "parentSpanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802800132000",
+              "endTimeUnixNano": "1786207802800138000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802797817000",
+              "endTimeUnixNano": "1786207802800156000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59071"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "77841435b61d23a8",
+              "parentSpanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802811218000",
+              "endTimeUnixNano": "1786207802811239000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "82c5fd9ce737c207",
+              "parentSpanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802811472000",
+              "endTimeUnixNano": "1786207802811480000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "6cbd814f9c701b5e",
+              "parentSpanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802811520000",
+              "endTimeUnixNano": "1786207802811527000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802809199000",
+              "endTimeUnixNano": "1786207802811549000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59072"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "588052953fe461ea",
+              "parentSpanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802822797000",
+              "endTimeUnixNano": "1786207802822815000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "f45cf704475e6c16",
+              "parentSpanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802823016000",
+              "endTimeUnixNano": "1786207802823024000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "7b8a3eacc90bad1e",
+              "parentSpanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802823064000",
+              "endTimeUnixNano": "1786207802823071000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802820945000",
+              "endTimeUnixNano": "1786207802823089000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59073"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "3ece9d3efe43264a",
+              "parentSpanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802833458000",
+              "endTimeUnixNano": "1786207802833474000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "881c364d15f76164",
+              "parentSpanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802833654000",
+              "endTimeUnixNano": "1786207802833662000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "b8357e73c86268dd",
+              "parentSpanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802833701000",
+              "endTimeUnixNano": "1786207802833707000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802831735000",
+              "endTimeUnixNano": "1786207802833724000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59074"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "a13c65a5bd6c80f1",
+              "parentSpanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802844211000",
+              "endTimeUnixNano": "1786207802844228000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "d5bcb9859e2e2a85",
+              "parentSpanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802844424000",
+              "endTimeUnixNano": "1786207802844432000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "2cb9e708914479a9",
+              "parentSpanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802844471000",
+              "endTimeUnixNano": "1786207802844477000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802842412000",
+              "endTimeUnixNano": "1786207802844495000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59075"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "7ffc7e7c25a03108",
+              "parentSpanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802854760000",
+              "endTimeUnixNano": "1786207802854776000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "86a3c777b018194a",
+              "parentSpanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802854942000",
+              "endTimeUnixNano": "1786207802854949000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "e098cd18165c1ec1",
+              "parentSpanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802854996000",
+              "endTimeUnixNano": "1786207802855003000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802852972000",
+              "endTimeUnixNano": "1786207802855019000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59076"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "705cf6e3fa7e6ebf",
+              "parentSpanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802864898000",
+              "endTimeUnixNano": "1786207802864915000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "90c89834a9aacd2a",
+              "parentSpanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802865100000",
+              "endTimeUnixNano": "1786207802865107000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "df7115b519d99bbe",
+              "parentSpanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802865148000",
+              "endTimeUnixNano": "1786207802865156000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802863007000",
+              "endTimeUnixNano": "1786207802865177000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59077"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "4c8d12981bdc1863",
+              "parentSpanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802875262000",
+              "endTimeUnixNano": "1786207802875279000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "c379e8e38c75ec3c",
+              "parentSpanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802875469000",
+              "endTimeUnixNano": "1786207802875477000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "08e3e2e5e8874d93",
+              "parentSpanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802875517000",
+              "endTimeUnixNano": "1786207802875524000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802873455000",
+              "endTimeUnixNano": "1786207802875543000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59078"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "50e46fa4becf0010",
+              "parentSpanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802887629000",
+              "endTimeUnixNano": "1786207802887647000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "70b07c598738acfa",
+              "parentSpanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802887907000",
+              "endTimeUnixNano": "1786207802887917000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "737948e5f78322ff",
+              "parentSpanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802887959000",
+              "endTimeUnixNano": "1786207802887966000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802885689000",
+              "endTimeUnixNano": "1786207802887984000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59079"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "bf1ca2278b3f0204",
+              "parentSpanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802900226000",
+              "endTimeUnixNano": "1786207802900245000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "bac00945cb2807b4",
+              "parentSpanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802900436000",
+              "endTimeUnixNano": "1786207802900445000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "a45aea69f4c7dd11",
+              "parentSpanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802900486000",
+              "endTimeUnixNano": "1786207802900493000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802898233000",
+              "endTimeUnixNano": "1786207802900512000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59080"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "ba49a1fe996b4593",
+              "parentSpanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802911964000",
+              "endTimeUnixNano": "1786207802911982000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "69994b5e787d8303",
+              "parentSpanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802912178000",
+              "endTimeUnixNano": "1786207802912186000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "831b9a4938c58b33",
+              "parentSpanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802912224000",
+              "endTimeUnixNano": "1786207802912231000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802909851000",
+              "endTimeUnixNano": "1786207802912249000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59081"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "e11326b1a510f306",
+              "parentSpanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802923854000",
+              "endTimeUnixNano": "1786207802923877000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "375d6502b0988fb0",
+              "parentSpanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802924080000",
+              "endTimeUnixNano": "1786207802924088000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "94bc34b086435e82",
+              "parentSpanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802924126000",
+              "endTimeUnixNano": "1786207802924132000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802921890000",
+              "endTimeUnixNano": "1786207802924151000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59082"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "a7d3365b1f5ce7ab",
+              "parentSpanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802934554000",
+              "endTimeUnixNano": "1786207802934571000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "78d9a33c7acc8b17",
+              "parentSpanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802934763000",
+              "endTimeUnixNano": "1786207802934771000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "0f3a569c4ebd6c62",
+              "parentSpanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802934812000",
+              "endTimeUnixNano": "1786207802934819000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802932751000",
+              "endTimeUnixNano": "1786207802934837000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59083"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "6f9655378f521206",
+              "parentSpanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802945055000",
+              "endTimeUnixNano": "1786207802945072000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "1b175ff0f92da1e0",
+              "parentSpanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802945264000",
+              "endTimeUnixNano": "1786207802945271000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "1367cd6163634c49",
+              "parentSpanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802945309000",
+              "endTimeUnixNano": "1786207802945315000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802943244000",
+              "endTimeUnixNano": "1786207802945333000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59084"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "ff79a57309b9bca5",
+              "parentSpanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802955395000",
+              "endTimeUnixNano": "1786207802955411000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "25c3386247f79f2a",
+              "parentSpanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802955596000",
+              "endTimeUnixNano": "1786207802955603000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "e3ca19bda149b0e7",
+              "parentSpanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802955641000",
+              "endTimeUnixNano": "1786207802955648000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802953731000",
+              "endTimeUnixNano": "1786207802955666000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59085"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "970bb7f54c20e42b",
+              "parentSpanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802966254000",
+              "endTimeUnixNano": "1786207802966271000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "ebfaff2b8d0008b6",
+              "parentSpanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802966465000",
+              "endTimeUnixNano": "1786207802966473000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "b1eb2f97d7597640",
+              "parentSpanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802966510000",
+              "endTimeUnixNano": "1786207802966516000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802964488000",
+              "endTimeUnixNano": "1786207802966533000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59086"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "b1c8aff006ad0f9b",
+              "parentSpanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802976578000",
+              "endTimeUnixNano": "1786207802976594000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.start"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "95a333160b36fb17",
+              "parentSpanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802976772000",
+              "endTimeUnixNano": "1786207802976779000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "c2b88569d6c6c933",
+              "parentSpanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "GET /api/v1/injuries http send",
+              "kind": 1,
+              "startTimeUnixNano": "1786207802976825000",
+              "endTimeUnixNano": "1786207802976831000",
+              "attributes": [
+                {
+                  "key": "asgi.event.type",
+                  "value": {
+                    "stringValue": "http.response.body"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "GET /api/v1/injuries",
+              "kind": 2,
+              "startTimeUnixNano": "1786207802974849000",
+              "endTimeUnixNano": "1786207802976849000",
+              "attributes": [
+                {
+                  "key": "http.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "http.host",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "net.host.port",
+                  "value": {
+                    "intValue": "8099"
+                  }
+                },
+                {
+                  "key": "http.flavor",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.target",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.url",
+                  "value": {
+                    "stringValue": "http://127.0.0.1:8099/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "http.server_name",
+                  "value": {
+                    "stringValue": "127.0.0.1:8099"
+                  }
+                },
+                {
+                  "key": "http.user_agent",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "net.peer.ip",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "net.peer.port",
+                  "value": {
+                    "intValue": "59087"
+                  }
+                },
+                {
+                  "key": "http.route",
+                  "value": {
+                    "stringValue": "/api/v1/injuries"
+                  }
+                },
+                {
+                  "key": "http.status_code",
+                  "value": {
+                    "intValue": "200"
+                  }
+                }
+              ],
+              "status": {}
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.11.0"
+        },
+        {
+          "scope": {
+            "name": "opentelemetry.instrumentation.dbapi",
+            "version": "0.62b1"
+          },
+          "spans": [
+            {
+              "traceId": "53cbee0b75772057ca94755966931019",
+              "spanId": "5fde989691ebb9d4",
+              "parentSpanId": "46c72d44bde4197f",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802556368000",
+              "endTimeUnixNano": "1786207802558591000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, password_hash FROM auth_users WHERE email = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "5a10982fecb786ae",
+              "parentSpanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802764687000",
+              "endTimeUnixNano": "1786207802765505000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "911fdcfea88a434ebf002c1ea3507720",
+              "spanId": "ac63aee2edbda9cd",
+              "parentSpanId": "83121f8f08773e32",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802765597000",
+              "endTimeUnixNano": "1786207802766006000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "f4a4dedfccf22887",
+              "parentSpanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802775827000",
+              "endTimeUnixNano": "1786207802776224000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dc8889d47fd8e5ca051cfb6aab9c4790",
+              "spanId": "71414d799ce51f90",
+              "parentSpanId": "1e61dce99ad98098",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802776297000",
+              "endTimeUnixNano": "1786207802776706000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "032cc6d38cbc3844",
+              "parentSpanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802787537000",
+              "endTimeUnixNano": "1786207802787957000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "44cd8abe6b56369c0b2e24b693c9ee2c",
+              "spanId": "827f67f7de0f7882",
+              "parentSpanId": "6ffe2ccea6aedb4c",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802788029000",
+              "endTimeUnixNano": "1786207802788367000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "27ef659b6ad5f277",
+              "parentSpanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802798779000",
+              "endTimeUnixNano": "1786207802799189000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e0ae86c75003982c9791574de2fd0368",
+              "spanId": "ceefa52e7828f235",
+              "parentSpanId": "c640725d931f7f5d",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802799262000",
+              "endTimeUnixNano": "1786207802799580000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "f0bfa867af81b113",
+              "parentSpanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802810043000",
+              "endTimeUnixNano": "1786207802810433000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eac58d0fef3d7c29d4b2d802670549d3",
+              "spanId": "bb9bf654ca63ec5e",
+              "parentSpanId": "718ae9d89a4b1552",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802810506000",
+              "endTimeUnixNano": "1786207802810861000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "921ccc4a556f2f3f",
+              "parentSpanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802821742000",
+              "endTimeUnixNano": "1786207802822132000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "444916130f1caab9ecf57994afbe577c",
+              "spanId": "a874d7c4c1ec5306",
+              "parentSpanId": "4e84062bbe37b1c0",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802822202000",
+              "endTimeUnixNano": "1786207802822521000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "4e3cea6d726cb67f",
+              "parentSpanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802832467000",
+              "endTimeUnixNano": "1786207802832817000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "6a319a05e4e847870d8bc56634df1e66",
+              "spanId": "35334bcf3d8e3e87",
+              "parentSpanId": "a455f8d6f2ea52aa",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802832884000",
+              "endTimeUnixNano": "1786207802833189000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "8562e39446a5640b",
+              "parentSpanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802843146000",
+              "endTimeUnixNano": "1786207802843529000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1a25e0eb88d7005a56ad3e38335b2175",
+              "spanId": "ca7e594314d8402a",
+              "parentSpanId": "1c6e2d0fbb493ca0",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802843606000",
+              "endTimeUnixNano": "1786207802843923000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "9022ed0f2990be0e",
+              "parentSpanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802853740000",
+              "endTimeUnixNano": "1786207802854068000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "4db9d0f51348d835864343cd0eff0c4c",
+              "spanId": "e5c24410f6fcc634",
+              "parentSpanId": "ce49e8881755b789",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802854138000",
+              "endTimeUnixNano": "1786207802854466000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "11dbd0719b5c89f2",
+              "parentSpanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802863703000",
+              "endTimeUnixNano": "1786207802864004000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c6d0b9c15b9049d7fe6cedb3ce5d2cec",
+              "spanId": "c2e5a525d95b1c97",
+              "parentSpanId": "5ecaff8d00acbefb",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802864067000",
+              "endTimeUnixNano": "1786207802864472000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "6306061eec95d867",
+              "parentSpanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802874191000",
+              "endTimeUnixNano": "1786207802874565000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "fc40ed05ae1f99f870b78848337a2afc",
+              "spanId": "c8e55661b83ca68c",
+              "parentSpanId": "3f30ee6ca4c22e53",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802874635000",
+              "endTimeUnixNano": "1786207802874969000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "f6108ca0f9b9f84b",
+              "parentSpanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802886528000",
+              "endTimeUnixNano": "1786207802886930000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5a48b66aa01571870a076c68a797616c",
+              "spanId": "e55e5b50a915b3ad",
+              "parentSpanId": "af841e1ef109719a",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802887001000",
+              "endTimeUnixNano": "1786207802887327000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "299ba73df57f2b40",
+              "parentSpanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802899107000",
+              "endTimeUnixNano": "1786207802899523000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0be9ca1e74893a3b3c90733b8262d18b",
+              "spanId": "82a29aa074d0675f",
+              "parentSpanId": "cc0df66e7a1cf4f6",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802899601000",
+              "endTimeUnixNano": "1786207802899932000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "ae5ffdf7c344e38b",
+              "parentSpanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802910854000",
+              "endTimeUnixNano": "1786207802911304000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d3bfef139dd190241c262b5a4ea5ad84",
+              "spanId": "10a0988e6a9bc368",
+              "parentSpanId": "61daec273a8330de",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802911375000",
+              "endTimeUnixNano": "1786207802911689000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "cca73d3d987f09a3",
+              "parentSpanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802922726000",
+              "endTimeUnixNano": "1786207802923145000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9de619cc5c2587e278638c963ff3105",
+              "spanId": "9951e4fca8435760",
+              "parentSpanId": "63ab4cae611c7095",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802923220000",
+              "endTimeUnixNano": "1786207802923570000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "3754ba72f7e7dcb3",
+              "parentSpanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802933541000",
+              "endTimeUnixNano": "1786207802933898000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "f9956029b22acf4a286e838a70becc36",
+              "spanId": "3a8891670f38da76",
+              "parentSpanId": "13e78a9247cc7580",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802933971000",
+              "endTimeUnixNano": "1786207802934284000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "aa5a837b6dd3def2",
+              "parentSpanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802943993000",
+              "endTimeUnixNano": "1786207802944356000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d4f33f39e97d0b0b97755a1054e8854e",
+              "spanId": "1a94b2b82223ab74",
+              "parentSpanId": "249c3944ee5bdb13",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802944434000",
+              "endTimeUnixNano": "1786207802944789000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "071d8ef2dbfcc58b",
+              "parentSpanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802954456000",
+              "endTimeUnixNano": "1786207802954786000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c28f559197dd5d2dd3604b9262544a91",
+              "spanId": "1b2c119611161702",
+              "parentSpanId": "ad15d788e9799132",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802954847000",
+              "endTimeUnixNano": "1786207802955141000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "b17ac13e8e15daa9",
+              "parentSpanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802965251000",
+              "endTimeUnixNano": "1786207802965604000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d56f1db000e3c34b8acd4b62ad42e629",
+              "spanId": "5213240cb4487993",
+              "parentSpanId": "ac007e8f422f9a50",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802965672000",
+              "endTimeUnixNano": "1786207802965991000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "33419f089508d655",
+              "parentSpanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802975611000",
+              "endTimeUnixNano": "1786207802975951000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT user_id, name, email FROM auth_users WHERE user_id = ?"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "15111cdf759e5764e18b699a79aa7045",
+              "spanId": "d05ffeb939bf06a1",
+              "parentSpanId": "7498fad02ec1d061",
+              "flags": 256,
+              "name": "SELECT",
+              "kind": 3,
+              "startTimeUnixNano": "1786207802976016000",
+              "endTimeUnixNano": "1786207802976316000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "duckdb"
+                  }
+                },
+                {
+                  "key": "db.name",
+                  "value": {
+                    "stringValue": ""
+                  }
+                },
+                {
+                  "key": "db.statement",
+                  "value": {
+                    "stringValue": "SELECT id, user_id, region, diagnosis, side, onset_date, q_participation, q_volume, q_performance, q_pain, notes, symptom_text, reported_at FROM injury_reports WHERE user_id = ? ORDER BY onset_date DESC NULLS LAST"
+                  }
+                }
+              ],
+              "status": {}
+            }
+          ],
+          "schemaUrl": "https://opentelemetry.io/schemas/1.11.0"
+        }
+      ]
+    }
+  ]
+}
