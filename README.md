@@ -419,6 +419,38 @@ go run ./cmd/faultmap retention apply \
 
 O comando remove telemetria mais antiga que `storage.retention`, em lotes limitados por `--batch-size`, mantendo transações curtas. Snapshots de diagnóstico são preservados para que investigações antigas continuem auditáveis; o alcance e as consequências estão no [ADR 0003](docs/adr/0003-retencao-preserva-snapshots-de-diagnostico.md). Quando o teto de lotes de uma execução é atingido, a saída avisa que ainda existe telemetria expirada e basta executar o comando novamente.
 
+## Comparação entre serviços
+
+O diagnóstico compara serviços em vez de analisar um por vez. A partir do
+serviço informado, o Faultmap descobre quem participou dos mesmos traces durante
+o incidente e ranqueia todos juntos:
+
+```bash
+go run ./cmd/faultmap diagnose incident \
+  --config ./faultmap-local/faultmap.yaml \
+  --service checkout-service \
+  --since 30m --baseline 60m
+```
+
+A saída declara de onde veio o escopo, para que a comparação possa ser julgada:
+
+```text
+Escopo da investigação:
+  2 serviço(s) comparado(s): checkout-service, payment-service
+  Origem: expansão pelos traces do serviço de entrada
+  Traces que sustentaram a expansão: 20
+```
+
+Use `--no-expand` para investigar apenas o serviço informado, `--all` para
+comparar todos os serviços com telemetria na janela, ou uma lista separada por
+vírgula em `--service`. `--max-services` limita o tamanho do escopo.
+
+Quando dois serviços empatam em score — o caso comum de um falhar e o outro
+falhar junto por consequência — vem primeiro quem está mais fundo na cadeia da
+requisição. É um desempate heurístico sobre a topologia observada, descrito no
+[ADR 0009](docs/adr/0009-investigacao-compara-servicos-por-escopo-de-traces.md),
+e nunca altera a ordem de suspeitos com pontuações diferentes.
+
 ## Compatibilidade com instrumentação real
 
 Os detectores reconhecem as duas convenções do OpenTelemetry para cada atributo
