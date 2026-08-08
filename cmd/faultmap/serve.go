@@ -52,12 +52,15 @@ func newServeCommand() *cobra.Command {
 			}
 
 			repository := storage.NewSignalRepository(database)
+			// A política é construída uma vez no bootstrap e reutilizada por todas
+			// as requisições; o receiver permanece stateless.
+			privacyPolicy := privacyPolicyFrom(loadedConfig)
 			ingester := otlphttp.IngestFunc(func(ctx context.Context, reader io.Reader, encoding otlphttp.Encoding) error {
 				normalizerEncoding, err := mapOTLPEncoding(encoding)
 				if err != nil {
 					return errors.Join(otlphttp.ErrInvalidPayload, err)
 				}
-				_, err = application.IngestTelemetry(ctx, reader, normalizerEncoding, repository)
+				_, err = application.IngestTelemetry(ctx, reader, normalizerEncoding, privacyPolicy, repository)
 				if errors.Is(err, normalizer.ErrInvalidOTLP) {
 					return errors.Join(otlphttp.ErrInvalidPayload, err)
 				}

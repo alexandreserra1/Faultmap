@@ -21,6 +21,7 @@ import (
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	"github.com/faultmap/faultmap/internal/reporting/timeline"
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
+	"github.com/faultmap/faultmap/internal/telemetry/privacy"
 	"github.com/spf13/cobra"
 )
 
@@ -673,6 +674,7 @@ func newIngestFileCommand() *cobra.Command {
 			result, err := application.IngestTelemetryFile(
 				command.Context(),
 				inputPath,
+				privacyPolicyFrom(loadedConfig),
 				storage.NewSignalRepository(database),
 			)
 			if err != nil {
@@ -685,6 +687,16 @@ func newIngestFileCommand() *cobra.Command {
 	command.Flags().StringVar(&inputPath, "input", "", "caminho do arquivo OTLP JSON")
 	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
 	return command
+}
+
+// privacyPolicyFrom traduz a configuração validada para a política aplicada
+// antes da persistência, mantendo um único ponto de tradução para todos os
+// caminhos de ingestão.
+func privacyPolicyFrom(configuration config.Config) privacy.Policy {
+	return privacy.NewPolicy(
+		configuration.Privacy.BlockedAttributes,
+		configuration.Privacy.MaxAttributeLength,
+	)
 }
 
 // resolveStoragePath interpreta caminhos relativos do banco a partir do diretório do YAML.

@@ -1328,3 +1328,68 @@ func TestExportTimelineCommandValidaEntradaAntesDoBanco(t *testing.T) {
 		t.Fatalf("export timeline erro = %v, esperado --incident obrigatório", err)
 	}
 }
+
+// TestIngestFileNãoPersisteSQLBruto cobre um defeito encontrado com telemetria
+// real: a lista de atributos bloqueados existia na configuração e não era
+// aplicada em lugar nenhum, então o SQL das consultas de uma aplicação de
+// terceiros era gravado por inteiro no banco local.
+func TestIngestFileNãoPersisteSQLBruto(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "real", "duckdb-strideredge.json"))
+	if err != nil {
+		t.Fatalf("resolver fixture: %v", err)
+	}
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{
+		"ingest", "file",
+		"--config", filepath.Join(projectDir, "faultmap.yaml"),
+		"--input", fixturePath,
+	})
+	ingest.SetOut(io.Discard)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingest file erro = %v", err)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
+
+	var comSQL int
+	if err := database.QueryRow(
+		`SELECT COUNT(*) FROM signals WHERE attributes_json LIKE '%db.statement%'`,
+	).Scan(&comSQL); err != nil {
+		t.Fatalf("consultar sinais: %v", err)
+	}
+	if comSQL != 0 {
+		t.Fatalf("%d sinais gravaram SQL bruto apesar da política de privacidade", comSQL)
+	}
+
+	// A telemetria precisa continuar útil: o sistema de banco não é sensível e
+	// sustenta as evidências do diagnóstico.
+	var comSistema int
+	if err := database.QueryRow(
+		`SELECT COUNT(*) FROM signals WHERE attributes_json LIKE '%db.system%'`,
+	).Scan(&comSistema); err != nil {
+		t.Fatalf("consultar sinais de banco: %v", err)
+	}
+	if comSistema == 0 {
+		t.Fatal("nenhum sinal de banco persistido: a política removeu telemetria legítima")
+	}
+}
