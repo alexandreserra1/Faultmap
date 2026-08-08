@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.1.1 — 2026-08-07
+
+Release de correção. A v0.1.0 não enxergava aplicações instrumentadas
+automaticamente — que provavelmente são a maioria das aplicações reais.
+**Recomendamos atualizar; a v0.1.0 não deve ser usada.**
+
+### Corrigido
+
+- **Cegueira para a convenção HTTP anterior.** Os detectores reconheciam apenas
+  `http.response.status_code`. Instrumentações automáticas amplamente usadas,
+  como a do FastAPI/Python, emitem `http.status_code` — o nome anterior da
+  convenção OpenTelemetry. Contra essas aplicações, todos os spans HTTP eram
+  lidos como zero sinais e o Faultmap respondia "nenhuma anomalia" mesmo diante
+  de falha total, sem qualquer aviso. Os renderizadores já aceitavam os dois
+  nomes, então a saída parecia correta e escondia o problema. Ver ADR 0006.
+- **Spans internos contados como requisições.** A instrumentação ASGI emite um
+  span `http send` por requisição, repetindo o código de resposta do span
+  principal. Contá-lo dobrava o denominador da taxa de erro: uma falha de 100%
+  seria reportada como 50%. Spans `SPAN_KIND_INTERNAL` passam a ser ignorados.
+- **Ruído de amostragem virando evidência.** `error_rate_delta` acusava
+  regressão com qualquer aumento acima de zero. Num serviço com falha
+  intermitente crônica, 3 falhas em 16 na baseline e 4 em 16 no incidente eram
+  apresentadas como "taxa de erro aumentou de 18,75% para 25,00%", com confiança
+  alta, sem que nada tivesse mudado. O aumento agora precisa superar um piso de
+  2 pontos percentuais e o dobro do erro padrão da diferença. Ver ADR 0005.
+
+### Verificação
+
+- Verificado contra uma aplicação FastAPI real, instrumentada sem alteração de
+  código: no mesmo banco e na mesma janela, a v0.1.0 responde "nenhuma anomalia"
+  e esta versão identifica o p95 subindo de 1 ms para 15 ms sob concorrência.
+- Novo modo difícil da demo (`run-hard-mode.sh`), com cinco cenários que
+  verificam se o Faultmap **se cala** quando não há regressão: ruído crônico
+  idêntico nas duas janelas, sistema saudável, tráfego irregular, fan-out
+  legítimo e duas causas verdadeiras competindo.
+- Matriz E2E: 6 de 6. Modo difícil: 5 de 5.
+
+### Limitação conhecida que permanece
+
+Os atributos de banco de dados ainda não foram exercitados fora da demo e podem
+conter o mesmo tipo de desencontro de convenção. A demo prova que o produto
+funciona contra telemetria que nós mesmos escrevemos; ela não prova
+compatibilidade com instrumentações de terceiros.
+
 ## v0.1.0 — 2026-08-07
 
 Primeira release do MVP: um binário único em Go que ingere telemetria
