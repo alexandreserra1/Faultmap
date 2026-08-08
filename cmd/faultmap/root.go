@@ -790,20 +790,26 @@ func newDiagnoseCommand() *cobra.Command {
 
 // newDiagnoseIncidentCommand compara baseline e incidente e apresenta findings determinísticos.
 func newDiagnoseIncidentCommand() *cobra.Command {
+	var allServices bool
 	var baseline string
 	var configPath string
 	var environment string
 	var incidentDuration string
 	var limit int
+	var maxServices int
+	var noExpand bool
 	var serviceName string
 	var until string
 
 	command := &cobra.Command{
 		Use:   "incident",
-		Short: "Diagnostica um incidente de um serviço",
+		Short: "Diagnostica um incidente e compara os serviços envolvidos",
 		RunE: func(command *cobra.Command, _ []string) (runErr error) {
-			if strings.TrimSpace(serviceName) == "" {
-				return fmt.Errorf("diagnosticar incidente: --service é obrigatório")
+			if strings.TrimSpace(serviceName) == "" && !allServices {
+				return fmt.Errorf("diagnosticar incidente: informe --service ou --all")
+			}
+			if maxServices <= 0 {
+				return fmt.Errorf("diagnosticar incidente: --max-services deve ser maior que zero")
 			}
 			incidentWindowDuration, err := time.ParseDuration(incidentDuration)
 			if err != nil {
@@ -854,19 +860,30 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			if diagnosisEnvironment == "" && loadedConfig.GitHub.Enabled {
 				diagnosisEnvironment = strings.TrimSpace(loadedConfig.GitHub.Environment)
 			}
-			var diagnosis application.Diagnosis
-			if diagnosisEnvironment == "" {
-				diagnosis, err = application.DiagnoseIncident(
-					command.Context(), serviceName, windows, limit,
-					rankingConfig(loadedConfig), storage.NewSignalRepository(database),
-				)
-			} else {
-				diagnosis, err = application.DiagnoseIncidentWithDeployments(
-					command.Context(), serviceName, diagnosisEnvironment, windows, limit,
-					rankingConfig(loadedConfig), storage.NewSignalRepository(database),
-					storage.NewChangeRepository(database),
-				)
+			// A investigação compara serviços: o escopo nasce dos traces que
+			// atravessaram o serviço de entrada, e não de um palpite de quem
+			// investiga. --no-expand preserva o modo focado de um serviço só.
+			request := application.ScopedDiagnosisRequest{
+				EntryService: serviceName,
+				Services:     splitServiceList(serviceName),
+				Environment:  diagnosisEnvironment,
+				Windows:      windows,
+				Limit:        limit,
+				MaxServices:  maxServices,
+				NoExpand:     noExpand,
+				AllServices:  allServices,
+				Ranking:      rankingConfig(loadedConfig),
 			}
+			var deploymentReader application.ScopedDeploymentReader
+			if diagnosisEnvironment != "" {
+				deploymentReader = storage.NewChangeRepository(database)
+			}
+			diagnosis, err := application.DiagnoseIncidentInScope(
+				command.Context(), request,
+				storage.NewScopeRepository(database),
+				storage.NewSignalRepository(database),
+				deploymentReader,
+			)
 			if err != nil {
 				return err
 			}
@@ -889,6 +906,9 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			); err != nil {
 				return err
 			}
+			if err := terminal.RenderScopeSummary(command.OutOrStdout(), diagnosis.Scope); err != nil {
+				return err
+			}
 			if skippedEmptyIncident {
 				_, err = fmt.Fprintln(command.OutOrStdout(), "\nDiagnóstico não salvo: janela do incidente sem sinais.")
 			} else if created {
@@ -899,6 +919,9 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			return err
 		},
 	}
+	command.Flags().BoolVar(&allServices, "all", false, "comparar todos os serviços com telemetria na janela")
+	command.Flags().BoolVar(&noExpand, "no-expand", false, "investigar somente o serviço informado, sem expandir pelos traces")
+	command.Flags().IntVar(&maxServices, "max-services", application.DefaultMaxScopeServices, "quantidade máxima de serviços comparados")
 	command.Flags().StringVar(&baseline, "baseline", "60m", "duração da janela baseline")
 	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
 	command.Flags().StringVar(&environment, "environment", "", "ambiente usado para correlacionar deployments")
@@ -907,6 +930,23 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 	command.Flags().StringVar(&serviceName, "service", "", "nome do serviço")
 	command.Flags().StringVar(&until, "until", "", "fim da janela de incidente em RFC 3339")
 	return command
+}
+
+// splitServiceList aceita vários serviços separados por vírgula em --service.
+// Um único nome não vira lista explícita: ele permanece o serviço de entrada da
+// expansão, que é o comportamento padrão.
+func splitServiceList(value string) []string {
+	parts := strings.Split(value, ",")
+	if len(parts) < 2 {
+		return nil
+	}
+	services := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			services = append(services, trimmed)
+		}
+	}
+	return services
 }
 
 // rankingConfig traduz somente opções validadas do bootstrap para o contrato

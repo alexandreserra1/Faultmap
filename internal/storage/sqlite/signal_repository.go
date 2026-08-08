@@ -224,3 +224,74 @@ func rollbackSignalTransaction(transaction *sql.Tx, cause error) error {
 	}
 	return fmt.Errorf("save signals failed: %w", cause)
 }
+
+// maxScopeServices limita quantos serviços uma investigação pode carregar de
+// uma vez, protegendo a consulta contra excesso de parâmetros e a memória
+// contra um escopo grande demais para ser útil.
+const maxScopeServices = 50
+
+// ListByServicesAndWindow carrega, em uma única consulta, os sinais de todos os
+// serviços do escopo dentro da janela.
+//
+// A alternativa — uma consulta por serviço — seria um N+1 disfarçado, que
+// cresceria junto com o raio do incidente exatamente quando ele é maior. O
+// limite se aplica ao total de sinais e a ordenação é estável, para que duas
+// execuções da mesma investigação leiam o mesmo conjunto.
+func (repository *SignalRepository) ListByServicesAndWindow(
+	ctx context.Context,
+	serviceNames []string,
+	start time.Time,
+	end time.Time,
+	limit int,
+) ([]domain.Signal, error) {
+	if len(serviceNames) == 0 {
+		return nil, fmt.Errorf("signal scope must contain at least one service")
+	}
+	if len(serviceNames) > maxScopeServices {
+		return nil, fmt.Errorf("signal scope must contain at most %d services", maxScopeServices)
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("signal list limit must be greater than zero")
+	}
+	if !start.Before(end) {
+		return nil, fmt.Errorf("signal window start must be before end")
+	}
+
+	// Os nomes entram como parâmetros posicionais; nada é concatenado no SQL.
+	placeholders := make([]string, 0, len(serviceNames))
+	arguments := make([]any, 0, len(serviceNames)+3)
+	for _, serviceName := range serviceNames {
+		placeholders = append(placeholders, "?")
+		arguments = append(arguments, serviceName)
+	}
+	arguments = append(arguments, start.UTC(), end.UTC(), limit)
+
+	query := `
+		SELECT
+			id, signal_type, service_name, timestamp, trace_id, span_id, severity,
+			attributes_json, measurements_json
+		FROM signals
+		WHERE service_name IN (` + strings.Join(placeholders, ", ") + `)
+			AND timestamp >= ? AND timestamp < ?
+		ORDER BY timestamp ASC, id ASC
+		LIMIT ?
+	`
+	rows, err := repository.database.QueryContext(ctx, query, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("list signals for service scope: %w", err)
+	}
+	defer rows.Close()
+
+	signals := make([]domain.Signal, 0)
+	for rows.Next() {
+		signal, err := scanSignal(rows)
+		if err != nil {
+			return nil, err
+		}
+		signals = append(signals, signal)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate signals for service scope: %w", err)
+	}
+	return signals, nil
+}

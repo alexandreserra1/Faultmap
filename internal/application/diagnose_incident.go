@@ -24,6 +24,9 @@ type Diagnosis struct {
 	IncidentSignalCount int
 	Findings            []detection.Finding
 	Suspects            []ranking.Suspect
+	// Scope registra quais serviços foram comparados e como foram descobertos.
+	// Fica vazio nas investigações de serviço único anteriores à expansão.
+	Scope DiagnosisScope
 }
 
 // DiagnoseIncident compara sinais das janelas baseline e incidente sem acessar infraestrutura diretamente.

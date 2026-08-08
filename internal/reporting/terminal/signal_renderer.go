@@ -75,11 +75,37 @@ func displaySeverity(severity string) string {
 	return strings.ToUpper(severity)
 }
 
+// spanName escolhe um rótulo legível para o span.
+//
+// A instrumentação de banco nomeia o span com a primeira palavra da consulta.
+// Quando a consulta começa com um comentário SQL, o nome vira "--", que é fiel
+// ao recebido e inútil para quem investiga. Nesses casos o rótulo é reconstruído
+// a partir da operação e do sistema de banco, que são atributos legítimos e não
+// sensíveis. O nome original nunca é alterado na persistência: a substituição
+// existe apenas na apresentação.
 func spanName(signal domain.Signal) string {
-	if name := strings.TrimSpace(signal.Attributes["span.name"]); name != "" {
+	name := strings.TrimSpace(signal.Attributes["span.name"])
+	if name != "" && !isUninformativeSpanName(name) {
 		return name
 	}
+
+	system := displayDatabaseSystem(firstAttribute(signal.Attributes, "db.system.name", "db.system"))
+	operation := firstAttribute(signal.Attributes, "db.operation.name", "db.operation")
+	switch {
+	case operation != "" && system != "":
+		return operation + " (" + system + ")"
+	case operation != "":
+		return operation
+	case system != "":
+		return "operação " + system
+	}
 	return "span sem nome"
+}
+
+// isUninformativeSpanName identifica rótulos que não carregam informação por
+// serem apenas pontuação, como o comentário SQL que abre algumas consultas.
+func isUninformativeSpanName(name string) bool {
+	return strings.TrimLeft(name, "-/*# \t") == ""
 }
 
 func signalDetails(signal domain.Signal) []string {

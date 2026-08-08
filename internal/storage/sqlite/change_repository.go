@@ -195,3 +195,75 @@ func rollbackChangeTransaction(transaction *sql.Tx, cause error) error {
 	}
 	return cause
 }
+
+// ListDeploymentsForServices carrega os deployments de todos os serviços do
+// escopo em uma única consulta.
+//
+// Com a investigação passando a comparar vários serviços, consultar um por vez
+// seria um N+1 que cresce junto com o raio do incidente. Os nomes entram como
+// parâmetros posicionais; nada é concatenado no SQL.
+func (repository *ChangeRepository) ListDeploymentsForServices(
+	ctx context.Context,
+	serviceNames []string,
+	environment string,
+	start time.Time,
+	end time.Time,
+	limit int,
+) ([]changedomain.Deployment, error) {
+	environment = strings.TrimSpace(environment)
+	if len(serviceNames) == 0 || environment == "" {
+		return nil, fmt.Errorf("listar deployments: escopo de serviços e ambiente são obrigatórios")
+	}
+	if !start.Before(end) {
+		return nil, fmt.Errorf("listar deployments: janela inválida")
+	}
+	if limit <= 0 || limit > maxDeploymentsPerQuery {
+		return nil, fmt.Errorf("listar deployments: limite deve estar entre 1 e %d", maxDeploymentsPerQuery)
+	}
+
+	placeholders := make([]string, 0, len(serviceNames))
+	arguments := make([]any, 0, len(serviceNames)+4)
+	for _, serviceName := range serviceNames {
+		placeholders = append(placeholders, "?")
+		arguments = append(arguments, serviceName)
+	}
+	arguments = append(arguments, environment, start.UTC(), end.UTC(), limit)
+
+	rows, err := repository.database.QueryContext(ctx, `
+		SELECT id, repository, environment, service_name, commit_sha, deployed_at, metadata_json
+		FROM deployments
+		WHERE service_name IN (`+strings.Join(placeholders, ", ")+`)
+			AND environment = ? AND deployed_at >= ? AND deployed_at < ?
+		ORDER BY deployed_at DESC, id ASC
+		LIMIT ?
+	`, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("listar deployments do escopo: %w", err)
+	}
+	defer rows.Close()
+
+	deployments := make([]changedomain.Deployment, 0)
+	for rows.Next() {
+		var deployment changedomain.Deployment
+		var metadataJSON string
+		if err := rows.Scan(
+			&deployment.ID, &deployment.Repository, &deployment.Environment,
+			&deployment.ServiceName, &deployment.CommitSHA, &deployment.DeployedAt, &metadataJSON,
+		); err != nil {
+			return nil, fmt.Errorf("ler deployment do escopo: %w", err)
+		}
+		var metadata deploymentMetadata
+		if err := json.Unmarshal([]byte(metadataJSON), &metadata); err != nil {
+			return nil, fmt.Errorf("interpretar metadata do deployment %q: %w", deployment.ID, err)
+		}
+		deployment.Ref = metadata.Ref
+		deployment.Task = metadata.Task
+		deployment.State = metadata.State
+		deployment.DeployedAt = deployment.DeployedAt.UTC()
+		deployments = append(deployments, deployment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("percorrer deployments do escopo: %w", err)
+	}
+	return deployments, nil
+}

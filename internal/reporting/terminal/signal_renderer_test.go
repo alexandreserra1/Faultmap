@@ -87,3 +87,61 @@ type failingWriter struct {
 func (writer failingWriter) Write([]byte) (int, error) {
 	return 0, writer.err
 }
+
+// TestSpanNameSubstituiNomeInútilPorOperaçãoDeBanco cobre um caso observado com
+// telemetria real: a instrumentação nomeia o span com a primeira palavra da
+// consulta, e uma consulta que começa com comentário SQL vira um span chamado
+// "--". O nome é fiel ao recebido, mas não ajuda quem investiga.
+func TestSpanNameSubstituiNomeInútilPorOperaçãoDeBanco(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name       string
+		attributes map[string]string
+		esperado   string
+	}{
+		{
+			name: "comentário SQL como nome",
+			attributes: map[string]string{
+				"span.name": "--", "db.system": "duckdb", "db.operation": "SELECT",
+			},
+			esperado: "SELECT (duckdb)",
+		},
+		{
+			name: "nome útil é preservado",
+			attributes: map[string]string{
+				"span.name": "SELECT", "db.system": "duckdb",
+			},
+			esperado: "SELECT",
+		},
+		{
+			name: "sem operação usa o sistema",
+			attributes: map[string]string{
+				"span.name": "--", "db.system.name": "postgresql",
+			},
+			esperado: "operação PostgreSQL",
+		},
+		{
+			name:       "nome inútil sem contexto de banco",
+			attributes: map[string]string{"span.name": "--"},
+			esperado:   "span sem nome",
+		},
+		{
+			name:       "rota HTTP é preservada",
+			attributes: map[string]string{"span.name": "GET /api/v1/injuries"},
+			esperado:   "GET /api/v1/injuries",
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			obtido := spanName(domain.Signal{Attributes: testCase.attributes})
+			if obtido != testCase.esperado {
+				t.Fatalf("spanName() = %q, esperado %q", obtido, testCase.esperado)
+			}
+		})
+	}
+}

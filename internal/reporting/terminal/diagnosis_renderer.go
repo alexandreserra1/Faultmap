@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/faultmap/faultmap/internal/application"
 	"github.com/faultmap/faultmap/internal/detection"
 	"github.com/faultmap/faultmap/internal/ranking"
 )
@@ -166,4 +167,28 @@ func findingSortKey(finding detection.Finding) string {
 	parts = append(parts, finding.Limitations...)
 	sort.Strings(parts[2:])
 	return strings.Join(parts, "\x00")
+}
+
+// RenderScopeSummary declara quais serviços foram comparados e de onde o escopo
+// veio. Sem isso, o ranking apresentaria serviços sem explicar por que eles
+// estão ali — e quem lê não teria como julgar se a comparação faz sentido.
+func RenderScopeSummary(writer io.Writer, scope application.DiagnosisScope) error {
+	if len(scope.Services) == 0 {
+		return nil
+	}
+	var output strings.Builder
+	output.WriteString("\nEscopo da investigação:\n")
+	fmt.Fprintf(&output, "  %d serviço(s) comparado(s): %s\n",
+		len(scope.Services), strings.Join(scope.Services, ", "))
+	fmt.Fprintf(&output, "  Origem: %s\n", scope.Discovery)
+	if scope.TraceCount > 0 {
+		fmt.Fprintf(&output, "  Traces que sustentaram a expansão: %d\n", scope.TraceCount)
+	}
+	if scope.Truncated {
+		output.WriteString("  Limitação: o escopo atingiu o máximo de serviços e foi truncado.\n")
+	}
+	if _, err := io.WriteString(writer, output.String()); err != nil {
+		return fmt.Errorf("escrever escopo no terminal: %w", err)
+	}
+	return nil
 }
