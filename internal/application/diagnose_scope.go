@@ -14,8 +14,16 @@ import (
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 )
 
-// DefaultMaxScopeServices limita quantos serviços uma investigação compara.
-const DefaultMaxScopeServices = 20
+const (
+	// DefaultMaxScopeServices limita quantos serviços uma investigação compara.
+	DefaultMaxScopeServices = 20
+	// DefaultScopeDepth mantém a expansão em um salto por padrão. Dentro de um
+	// mesmo trace a cadeia inteira já é alcançada nesse nível; saltos adicionais
+	// servem para serviços ligados por outros traces.
+	DefaultScopeDepth = 1
+	// MaxScopeDepth impede que a expansão percorra o sistema inteiro.
+	MaxScopeDepth = 5
+)
 
 // ScopeDiscovery descreve como o conjunto de serviços investigados foi obtido,
 // para que a saída possa declarar a origem do escopo em vez de apresentá-lo
@@ -39,6 +47,13 @@ type DiagnosisScope struct {
 	TraceCount int
 	Discovery  ScopeDiscovery
 	Truncated  bool
+	// Distances registra a quantos saltos de trace cada serviço está do serviço
+	// de entrada. Zero é a própria entrada. A distância explica por que um
+	// serviço entrou na comparação e permite julgar o quanto ele é próximo.
+	Distances map[string]int
+	// Depth é a profundidade efetivamente percorrida, que pode ser menor que a
+	// pedida quando a topologia se esgota antes.
+	Depth int
 }
 
 // ScopedDiagnosisRequest descreve uma investigação que compara serviços.
@@ -51,6 +66,7 @@ type ScopedDiagnosisRequest struct {
 	MaxServices  int
 	NoExpand     bool
 	AllServices  bool
+	Depth        int
 	Ranking      ranking.Config
 }
 
@@ -59,6 +75,9 @@ type ScopeReader interface {
 	ListServicesSharingTraces(
 		ctx context.Context, entryService string, start time.Time, end time.Time, limit int,
 	) ([]string, int, error)
+	ListServicesSharingTracesWithAny(
+		ctx context.Context, serviceNames []string, start time.Time, end time.Time, limit int,
+	) ([]string, error)
 	ListServicesInWindow(ctx context.Context, start time.Time, end time.Time, limit int) ([]string, error)
 }
 
@@ -227,23 +246,102 @@ func resolveScope(
 		}, nil
 
 	default:
-		services, traceCount, err := scopeReader.ListServicesSharingTraces(
-			ctx, request.EntryService,
-			request.Windows.Incident.Start, request.Windows.Incident.End,
-			request.MaxServices+1,
-		)
+		return expandScopeByTraces(ctx, request, scopeReader)
+	}
+}
+
+// expandScopeByTraces percorre a topologia em níveis, a partir do serviço de
+// entrada, registrando a distância de cada serviço descoberto.
+//
+// Cada nível é uma consulta em lote sobre os serviços recém-encontrados; a
+// busca para assim que um nível não traz ninguém novo, para não gastar consultas
+// depois que a topologia se esgotou.
+func expandScopeByTraces(
+	ctx context.Context,
+	request ScopedDiagnosisRequest,
+	scopeReader ScopeReader,
+) (DiagnosisScope, error) {
+	entryService := strings.TrimSpace(request.EntryService)
+	depth := request.Depth
+	if depth <= 0 {
+		depth = DefaultScopeDepth
+	}
+	if depth > MaxScopeDepth {
+		depth = MaxScopeDepth
+	}
+
+	distances := map[string]int{entryService: 0}
+	discovered := []string{entryService}
+	frontier := []string{entryService}
+	traceCount := 0
+	reachedDepth := 0
+	truncated := false
+
+	for level := 1; level <= depth; level++ {
+		var neighbours []string
+		var err error
+		if level == 1 {
+			neighbours, traceCount, err = scopeReader.ListServicesSharingTraces(
+				ctx, entryService,
+				request.Windows.Incident.Start, request.Windows.Incident.End,
+				request.MaxServices+1,
+			)
+		} else {
+			neighbours, err = scopeReader.ListServicesSharingTracesWithAny(
+				ctx, frontier,
+				request.Windows.Incident.Start, request.Windows.Incident.End,
+				request.MaxServices+1,
+			)
+		}
 		if err != nil {
 			return DiagnosisScope{}, fmt.Errorf("diagnosticar incidente: descobrir escopo: %w", err)
 		}
-		services = normalizeServices(append(services, request.EntryService))
-		services, truncated := limitServices(services, request.MaxServices)
-		return DiagnosisScope{
-			Services:   services,
-			TraceCount: traceCount,
-			Discovery:  ScopeFromTraces,
-			Truncated:  truncated,
-		}, nil
+
+		nextFrontier := make([]string, 0, len(neighbours))
+		for _, neighbour := range normalizeServices(neighbours) {
+			if _, known := distances[neighbour]; known {
+				continue
+			}
+			if len(discovered) >= request.MaxServices {
+				truncated = true
+				break
+			}
+			distances[neighbour] = level
+			discovered = append(discovered, neighbour)
+			nextFrontier = append(nextFrontier, neighbour)
+		}
+		if len(nextFrontier) == 0 {
+			break
+		}
+		reachedDepth = level
+		frontier = nextFrontier
 	}
+
+	services := normalizeServices(discovered)
+	// Serviços cortados pelo limite não podem permanecer no mapa de distâncias,
+	// que precisa descrever exatamente o escopo apresentado.
+	for service := range distances {
+		if !containsService(services, service) {
+			delete(distances, service)
+		}
+	}
+	return DiagnosisScope{
+		Services:   services,
+		TraceCount: traceCount,
+		Discovery:  ScopeFromTraces,
+		Truncated:  truncated,
+		Distances:  distances,
+		Depth:      reachedDepth,
+	}, nil
+}
+
+func containsService(services []string, candidate string) bool {
+	for _, service := range services {
+		if service == candidate {
+			return true
+		}
+	}
+	return false
 }
 
 // loadScopeDeployments busca as mudanças de todo o escopo em uma única consulta.

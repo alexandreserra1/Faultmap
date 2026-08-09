@@ -445,6 +445,24 @@ Use `--no-expand` para investigar apenas o serviço informado, `--all` para
 comparar todos os serviços com telemetria na janela, ou uma lista separada por
 vírgula em `--service`. `--max-services` limita o tamanho do escopo.
 
+### Saltos de trace
+
+Dentro de um mesmo trace a cadeia inteira já é alcançada no primeiro nível: se a
+requisição passa por `checkout → payment → banco`, todos entram com o padrão. Os
+saltos de `--depth` servem para o caso diferente — um serviço que **nunca**
+aparece nos traces do serviço de entrada, mas divide traces com um vizinho:
+
+```text
+salto 1:  checkout → payment    (trace do usuário)
+salto 2:  payment  → ledger     (trace de uma rotina interna)
+```
+
+Com `--depth 2`, o `ledger` entra na comparação mesmo sem nunca ter participado
+de um trace do checkout. Cada salto adicional traz serviços mais distantes do
+incidente e aumenta o risco de falso positivo, por isso o padrão é um salto e o
+máximo são cinco. A expansão para sozinha quando um nível não descobre ninguém
+novo.
+
 Quando dois serviços empatam em score — o caso comum de um falhar e o outro
 falhar junto por consequência — vem primeiro quem está mais fundo na cadeia da
 requisição. É um desempate heurístico sobre a topologia observada, descrito no

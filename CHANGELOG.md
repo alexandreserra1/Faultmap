@@ -1,5 +1,75 @@
 # Changelog
 
+## v0.2.0 — 2026-08-09
+
+O diagnóstico passa a **comparar serviços** em vez de analisar um por vez. É
+mudança de comportamento, não correção: a saída de `diagnose incident` muda para
+quem já usa o Faultmap.
+
+### O defeito de projeto que isto corrige
+
+`diagnose incident --service X` lia sinais apenas de X, os detectores filtravam
+para X e o ranking agrupava por serviço. O resultado é que **nunca havia mais de
+um suspeito**: a lista tinha sempre um nome, e a meta de "top-3 ≥ 80%" era
+verdadeira por vacuidade — posição 1 de 1, em todos os cenários.
+
+Pior que a métrica vazia era o comportamento. O produto promete responder "por
+onde começo a investigar", mas exigia que a pessoa já soubesse a resposta ao
+escolher o serviço. Num incidente em que o `payment` quebra e o `checkout` fica
+lento por consequência, investigar o `checkout` produzia um diagnóstico correto
+sobre a vítima e silencioso sobre a origem.
+
+### Adicionado
+
+- **Escopo descoberto pelos traces.** A partir do serviço informado, o Faultmap
+  identifica quem participou dos mesmos traces durante o incidente e ranqueia
+  todos juntos. É a topologia observada, não um palpite.
+- **`--depth`** percorre saltos adicionais de trace. Dentro de um mesmo trace a
+  cadeia inteira já é alcançada no primeiro nível; os saltos servem para
+  serviços ligados por **outros** traces — uma rotina interna que usa a mesma
+  dependência do fluxo do usuário, por exemplo. Padrão 1, máximo 5.
+- **`--all`** compara todos os serviços com telemetria na janela, para quem não
+  tem por onde começar. **`--no-expand`** preserva o modo focado anterior.
+  `--service` aceita lista separada por vírgula. **`--max-services`** limita o
+  escopo.
+- **A saída declara o escopo**: quais serviços foram comparados, a quantos
+  saltos cada um está, de onde o escopo veio e quantos traces o sustentaram.
+  Sem isso o ranking apresentaria serviços sem explicar por que estão ali.
+
+### Corrigido
+
+- **Desempate premiava a vítima.** Quando um serviço falha, quem o chamou tende
+  a falhar junto: ambos chegam a 100% de erro e empatam em score. O desempate
+  alfabético colocava a vítima em primeiro — flagrado pela matriz E2E, com o
+  `checkout-service` à frente do `payment-service`. Suspeitos empatados passam a
+  ser ordenados pela profundidade na cadeia da requisição. É desempate, não
+  score, e não prova causalidade.
+- **Oscilação de latência virando evidência.** Em um sistema saudável nas duas
+  janelas, o detector relatou "a duração p95 aumentou de 3 ms para 3 ms". O
+  aumento agora precisa ser relevante nas duas escalas: ao menos 5 ms e ao menos
+  20%. O custo é declarado — uma piora real e pequena em um serviço muito rápido
+  passa despercebida.
+- **Nome de span inútil.** A instrumentação de banco nomeia o span com a
+  primeira palavra da consulta; consultas que começam com comentário SQL viravam
+  spans chamados `--`. A apresentação passa a reconstruir o rótulo a partir da
+  operação e do sistema de banco. O dado armazenado não é alterado.
+
+### Mudança de comportamento
+
+- `--service X` passa a comparar X com os serviços vizinhos. Use `--no-expand`
+  para o comportamento anterior.
+- **`--limit` agora vale para o total de sinais da janela, não por serviço.** Um
+  escopo grande divide o mesmo orçamento entre mais serviços; investigações
+  amplas devem aumentar o limite.
+
+### Limitações conhecidas
+
+- O desempate por profundidade depende de `span.parent_id`. Uma cadeia
+  instrumentada parcialmente deixa todos na profundidade zero e o desempate
+  volta a ser alfabético.
+- Cada salto adicional traz serviços mais distantes do incidente e aumenta o
+  risco de falso positivo. O padrão continua em um salto por isso.
+
 ## v0.1.2 — 2026-08-08
 
 Release de correção. A v0.1.1 corrigiu a cegueira para HTTP mas continuava cega

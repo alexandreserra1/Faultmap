@@ -166,3 +166,75 @@ func (repository *ScopeRepository) ListServicesInWindow(
 	}
 	return services, nil
 }
+
+// ListServicesSharingTracesWithAny devolve os serviços que compartilham algum
+// trace com qualquer um dos serviços informados.
+//
+// É o passo que alcança além do primeiro nível. Dentro de um mesmo trace, toda a
+// cadeia já é encontrada de uma vez; este salto serve para o caso diferente —
+// um serviço que nunca aparece nos traces do serviço de entrada, mas divide
+// traces com alguém que aparece, como uma rotina que usa a mesma dependência.
+//
+// Assim como o primeiro nível, a descoberta acontece em uma consulta só, com os
+// nomes como parâmetros posicionais e ordenação estável.
+func (repository *ScopeRepository) ListServicesSharingTracesWithAny(
+	ctx context.Context,
+	serviceNames []string,
+	start time.Time,
+	end time.Time,
+	limit int,
+) ([]string, error) {
+	if len(serviceNames) == 0 {
+		return nil, fmt.Errorf("descobrir escopo: informe ao menos um serviço de origem")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("descobrir escopo: limite deve ser maior que zero")
+	}
+	if !start.Before(end) {
+		return nil, fmt.Errorf("descobrir escopo: início da janela deve preceder o fim")
+	}
+
+	const maxScopeTraces = 1_000
+
+	placeholders := make([]string, 0, len(serviceNames))
+	arguments := make([]any, 0, len(serviceNames)+4)
+	for _, serviceName := range serviceNames {
+		placeholders = append(placeholders, "?")
+		arguments = append(arguments, serviceName)
+	}
+	arguments = append(arguments, start.UTC(), end.UTC(), maxScopeTraces, limit)
+
+	rows, err := repository.database.QueryContext(ctx, `
+		SELECT DISTINCT service_name
+		FROM signals
+		WHERE service_name IS NOT NULL AND service_name != ''
+			AND trace_id IN (
+				SELECT DISTINCT trace_id
+				FROM signals
+				WHERE service_name IN (`+strings.Join(placeholders, ", ")+`)
+					AND timestamp >= ? AND timestamp < ?
+					AND trace_id IS NOT NULL AND trace_id != ''
+				ORDER BY trace_id ASC
+				LIMIT ?
+			)
+		ORDER BY service_name ASC
+		LIMIT ?
+	`, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("descobrir escopo adjacente: %w", err)
+	}
+	defer rows.Close()
+
+	services := make([]string, 0, limit)
+	for rows.Next() {
+		var service string
+		if err := rows.Scan(&service); err != nil {
+			return nil, fmt.Errorf("ler serviço adjacente: %w", err)
+		}
+		services = append(services, service)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterar serviços adjacentes: %w", err)
+	}
+	return services, nil
+}

@@ -178,8 +178,20 @@ func RenderScopeSummary(writer io.Writer, scope application.DiagnosisScope) erro
 	}
 	var output strings.Builder
 	output.WriteString("\nEscopo da investigação:\n")
-	fmt.Fprintf(&output, "  %d serviço(s) comparado(s): %s\n",
-		len(scope.Services), strings.Join(scope.Services, ", "))
+	fmt.Fprintf(&output, "  %d serviço(s) comparado(s):\n", len(scope.Services))
+	for _, service := range scope.Services {
+		distance, known := scope.Distances[service]
+		switch {
+		case !known:
+			fmt.Fprintf(&output, "    - %s\n", service)
+		case distance == 0:
+			fmt.Fprintf(&output, "    - %s (serviço de entrada)\n", service)
+		case distance == 1:
+			fmt.Fprintf(&output, "    - %s (1 salto)\n", service)
+		default:
+			fmt.Fprintf(&output, "    - %s (%d saltos)\n", service, distance)
+		}
+	}
 	fmt.Fprintf(&output, "  Origem: %s\n", scope.Discovery)
 	if scope.TraceCount > 0 {
 		fmt.Fprintf(&output, "  Traces que sustentaram a expansão: %d\n", scope.TraceCount)

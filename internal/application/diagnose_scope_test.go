@@ -28,6 +28,16 @@ func (fake *scopeReaderFake) ListServicesSharingTraces(
 	return fake.vizinhos, fake.traceCount, nil
 }
 
+// ListServicesSharingTracesWithAny não descobre nada além do primeiro nível
+// neste fake: os testes que exercitam saltos usam scopeReaderNiveis.
+func (fake *scopeReaderFake) ListServicesSharingTracesWithAny(
+	_ context.Context, serviceNames []string, _ time.Time, _ time.Time, _ int,
+) ([]string, error) {
+	fake.chamadas++
+	fake.escopoPedido = append([]string(nil), serviceNames...)
+	return nil, nil
+}
+
 func (fake *scopeReaderFake) ListServicesInWindow(
 	_ context.Context, _ time.Time, _ time.Time, _ int,
 ) ([]string, error) {
@@ -311,4 +321,136 @@ func cadeiaSignal(
 		signal.Attributes["span.parent_id"] = parentID
 	}
 	return signal
+}
+
+type scopeReaderNiveis struct {
+	// porOrigem devolve, para cada serviço consultado, os que dividem traces com ele.
+	porOrigem map[string][]string
+	rodadas   int
+}
+
+func (fake *scopeReaderNiveis) ListServicesSharingTraces(
+	_ context.Context, entryService string, _ time.Time, _ time.Time, _ int,
+) ([]string, int, error) {
+	fake.rodadas++
+	return fake.porOrigem[entryService], 7, nil
+}
+
+func (fake *scopeReaderNiveis) ListServicesSharingTracesWithAny(
+	_ context.Context, serviceNames []string, _ time.Time, _ time.Time, _ int,
+) ([]string, error) {
+	fake.rodadas++
+	descobertos := make([]string, 0)
+	visto := make(map[string]struct{})
+	for _, servico := range serviceNames {
+		for _, vizinho := range fake.porOrigem[servico] {
+			if _, repetido := visto[vizinho]; repetido {
+				continue
+			}
+			visto[vizinho] = struct{}{}
+			descobertos = append(descobertos, vizinho)
+		}
+	}
+	return descobertos, nil
+}
+
+func (fake *scopeReaderNiveis) ListServicesInWindow(
+	_ context.Context, _ time.Time, _ time.Time, _ int,
+) ([]string, error) {
+	return nil, nil
+}
+
+// TestDiagnoseScopeAlcançaSegundoSalto cobre o serviço que nunca aparece nos
+// traces do serviço de entrada mas divide traces com um vizinho — como uma
+// rotina que usa a mesma dependência do fluxo do usuário.
+func TestDiagnoseScopeAlcançaSegundoSalto(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.August, 9, 10, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	topologia := map[string][]string{
+		"checkout-service": {"checkout-service", "payment-service"},
+		"payment-service":  {"checkout-service", "payment-service", "ledger-service"},
+		"ledger-service":   {"payment-service", "ledger-service"},
+	}
+
+	umSalto, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "checkout-service", Windows: windows, Limit: 500,
+		MaxServices: 10, Depth: 1, Ranking: testRankingConfig(),
+	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil)
+	if err != nil {
+		t.Fatalf("um salto erro = %v", err)
+	}
+	for _, servico := range umSalto.Scope.Services {
+		if servico == "ledger-service" {
+			t.Fatal("ledger não deveria ser alcançado a um salto")
+		}
+	}
+
+	doisSaltos, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "checkout-service", Windows: windows, Limit: 500,
+		MaxServices: 10, Depth: 2, Ranking: testRankingConfig(),
+	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil)
+	if err != nil {
+		t.Fatalf("dois saltos erro = %v", err)
+	}
+
+	encontrouLedger := false
+	for _, servico := range doisSaltos.Scope.Services {
+		if servico == "ledger-service" {
+			encontrouLedger = true
+		}
+	}
+	if !encontrouLedger {
+		t.Fatalf("escopo com dois saltos = %v, esperado conter ledger-service", doisSaltos.Scope.Services)
+	}
+
+	// A distância precisa ser registrada para que a saída possa explicá-la.
+	if doisSaltos.Scope.Distances["checkout-service"] != 0 {
+		t.Fatalf("distância da entrada = %d, esperado 0", doisSaltos.Scope.Distances["checkout-service"])
+	}
+	if doisSaltos.Scope.Distances["payment-service"] != 1 {
+		t.Fatalf("distância do payment = %d, esperado 1", doisSaltos.Scope.Distances["payment-service"])
+	}
+	if doisSaltos.Scope.Distances["ledger-service"] != 2 {
+		t.Fatalf("distância do ledger = %d, esperado 2", doisSaltos.Scope.Distances["ledger-service"])
+	}
+}
+
+// TestDiagnoseScopeParaQuandoNãoHáNovosServiços evita rodadas inúteis de
+// consulta quando a topologia já foi coberta antes de atingir a profundidade.
+func TestDiagnoseScopeParaQuandoNãoHáNovosServiços(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.August, 9, 10, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	// Topologia fechada: a partir do primeiro nível não há nada novo a descobrir.
+	fake := &scopeReaderNiveis{porOrigem: map[string][]string{
+		"a-service": {"a-service", "b-service"},
+		"b-service": {"a-service", "b-service"},
+	}}
+
+	if _, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "a-service", Windows: windows, Limit: 500,
+		MaxServices: 10, Depth: 5, Ranking: testRankingConfig(),
+	}, fake, &scopedSignalReaderFake{}, nil); err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	// Uma rodada para o primeiro nível e uma que não trouxe novidade; nunca cinco.
+	if fake.rodadas > 2 {
+		t.Fatalf("rodadas de descoberta = %d, esperado parar ao esgotar a topologia", fake.rodadas)
+	}
 }

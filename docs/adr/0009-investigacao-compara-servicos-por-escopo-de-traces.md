@@ -60,6 +60,15 @@ requisição: o mais distante da borda vem primeiro.
 - A saída passa a declarar quantos serviços foram comparados, de onde o escopo
   veio e quantos traces o sustentaram. Sem isso, o ranking apresentaria serviços
   sem explicar por que estão ali.
-- A expansão vai a **um nível**: todo serviço descoberto compartilha um trace
-  com o de entrada. Cadeias mais longas ficam de fora, e uma expansão com
-  profundidade configurável é uma evolução possível.
+- A expansão vai a **um nível por padrão**, e `--depth` percorre saltos
+  adicionais. Vale entender o que o salto significa: dentro de um mesmo trace a
+  cadeia inteira já é alcançada no primeiro nível, porque todos os seus serviços
+  compartilham aquele trace. Os saltos servem para o caso diferente — um serviço
+  que nunca aparece nos traces do serviço de entrada mas divide traces com um
+  vizinho, como uma rotina interna que usa a mesma dependência do fluxo do
+  usuário.
+- Cada salto adicional é mais uma consulta e traz serviços mais distantes do
+  incidente, o que aumenta o risco de falso positivo. Por isso o padrão continua
+  em um salto e o máximo são cinco; além disso a expansão viraria a varredura
+  que `--all` já oferece. A busca encerra sozinha quando um nível não descobre
+  ninguém novo.

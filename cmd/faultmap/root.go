@@ -798,6 +798,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 	var limit int
 	var maxServices int
 	var noExpand bool
+	var depth int
 	var serviceName string
 	var until string
 
@@ -810,6 +811,9 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			}
 			if maxServices <= 0 {
 				return fmt.Errorf("diagnosticar incidente: --max-services deve ser maior que zero")
+			}
+			if depth < 1 || depth > application.MaxScopeDepth {
+				return fmt.Errorf("diagnosticar incidente: --depth deve estar entre 1 e %d", application.MaxScopeDepth)
 			}
 			incidentWindowDuration, err := time.ParseDuration(incidentDuration)
 			if err != nil {
@@ -872,6 +876,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 				MaxServices:  maxServices,
 				NoExpand:     noExpand,
 				AllServices:  allServices,
+				Depth:        depth,
 				Ranking:      rankingConfig(loadedConfig),
 			}
 			var deploymentReader application.ScopedDeploymentReader
@@ -922,6 +927,7 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 	command.Flags().BoolVar(&allServices, "all", false, "comparar todos os serviços com telemetria na janela")
 	command.Flags().BoolVar(&noExpand, "no-expand", false, "investigar somente o serviço informado, sem expandir pelos traces")
 	command.Flags().IntVar(&maxServices, "max-services", application.DefaultMaxScopeServices, "quantidade máxima de serviços comparados")
+	command.Flags().IntVar(&depth, "depth", application.DefaultScopeDepth, "saltos de trace percorridos ao expandir o escopo")
 	command.Flags().StringVar(&baseline, "baseline", "60m", "duração da janela baseline")
 	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
 	command.Flags().StringVar(&environment, "environment", "", "ambiente usado para correlacionar deployments")

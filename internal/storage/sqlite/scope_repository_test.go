@@ -163,3 +163,59 @@ func signalNoTrace(id, serviceName, traceID string, timestamp time.Time) domain.
 	signal.TraceID = traceID
 	return signal
 }
+
+// TestListServicesSharingTracesWithAnyAlcançaOutrosTraces cobre o salto além do
+// primeiro nível: um serviço que nunca aparece nos traces do serviço de entrada,
+// mas compartilha traces com alguém que aparece.
+func TestListServicesSharingTracesWithAnyAlcançaOutrosTraces(t *testing.T) {
+	t.Parallel()
+
+	database := openRetentionDatabase(t)
+	repository := NewScopeRepository(database)
+	base := time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)
+
+	if _, err := NewSignalRepository(database).Save(context.Background(), []domain.Signal{
+		// Trace do usuário: checkout chama payment.
+		signalNoTrace("ck-1", "checkout-service", "trace-usuario", base),
+		signalNoTrace("pm-1", "payment-service", "trace-usuario", base.Add(time.Second)),
+		// Trace da rotina noturna: payment conversa com o ledger. O checkout não
+		// participa, então o ledger é invisível a um salto.
+		signalNoTrace("pm-2", "payment-service", "trace-rotina", base.Add(2*time.Second)),
+		signalNoTrace("lg-1", "ledger-service", "trace-rotina", base.Add(3*time.Second)),
+		// Sem relação alguma com os anteriores.
+		signalNoTrace("iso-1", "isolado-service", "trace-isolado", base.Add(4*time.Second)),
+	}); err != nil {
+		t.Fatalf("Save() erro = %v", err)
+	}
+
+	primeiroNivel, _, err := repository.ListServicesSharingTraces(
+		context.Background(), "checkout-service", base, base.Add(time.Minute), 50,
+	)
+	if err != nil {
+		t.Fatalf("ListServicesSharingTraces() erro = %v", err)
+	}
+	for _, servico := range primeiroNivel {
+		if servico == "ledger-service" {
+			t.Fatal("ledger não deveria ser alcançado a um salto")
+		}
+	}
+
+	segundoNivel, err := repository.ListServicesSharingTracesWithAny(
+		context.Background(), primeiroNivel, base, base.Add(time.Minute), 50,
+	)
+	if err != nil {
+		t.Fatalf("ListServicesSharingTracesWithAny() erro = %v", err)
+	}
+	encontrouLedger := false
+	for _, servico := range segundoNivel {
+		if servico == "ledger-service" {
+			encontrouLedger = true
+		}
+		if servico == "isolado-service" {
+			t.Fatal("serviço sem relação alguma entrou no escopo")
+		}
+	}
+	if !encontrouLedger {
+		t.Fatalf("segundo nível = %v, esperado conter ledger-service", segundoNivel)
+	}
+}
