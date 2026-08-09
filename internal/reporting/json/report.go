@@ -117,17 +117,21 @@ func newReport(diagnosis application.PersistedDiagnosis) report {
 		document.Findings = append(document.Findings, reportFinding(source))
 	}
 
-	orderedSuspects := append([]ranking.Suspect(nil), diagnosis.Suspects...)
-	sort.Slice(orderedSuspects, func(first, second int) bool {
-		if orderedSuspects[first].Score != orderedSuspects[second].Score {
-			return orderedSuspects[first].Score > orderedSuspects[second].Score
-		}
-		return orderedSuspects[first].ID < orderedSuspects[second].ID
-	})
-	for _, source := range orderedSuspects {
+	for _, source := range orderedSuspects(diagnosis.Suspects) {
 		document.Ranking = append(document.Ranking, reportSuspect(source))
 	}
 	return document
+}
+
+// orderedSuspects devolve uma cópia dos suspeitos preservando a ordem gravada.
+//
+// A ordem persistida É o ranking: ela já vem do motor com o desempate aplicado,
+// que coloca a origem provável à frente da vítima quando os scores empatam.
+// Reordenar aqui por score e ID desfazia esse desempate e fazia a exportação
+// contradizer o que o terminal mostrava para o mesmo incidente. A cópia existe
+// apenas para não expor o slice do chamador.
+func orderedSuspects(suspects []ranking.Suspect) []ranking.Suspect {
+	return append([]ranking.Suspect(nil), suspects...)
 }
 
 func reportFinding(source detection.Finding) finding {

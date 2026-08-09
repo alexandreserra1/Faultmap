@@ -15,6 +15,7 @@ import (
 	githubintegration "github.com/faultmap/faultmap/internal/integrations/github"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	"github.com/faultmap/faultmap/internal/ranking"
+	"github.com/faultmap/faultmap/internal/reporting/artifacts"
 	jsonreport "github.com/faultmap/faultmap/internal/reporting/json"
 	"github.com/faultmap/faultmap/internal/reporting/markdown"
 	"github.com/faultmap/faultmap/internal/reporting/mermaid"
@@ -38,6 +39,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newDiagnoseCommand())
 	root.AddCommand(newIncidentCommand())
 	root.AddCommand(newBlameCommand())
+	root.AddCommand(newExplainCommand())
 	root.AddCommand(newExportCommand())
 	root.AddCommand(newRetentionCommand())
 	return root
@@ -225,6 +227,71 @@ func newIncidentShowCommand() *cobra.Command {
 	return command
 }
 
+// newExplainCommand agrupa as explicações detalhadas de um diagnóstico gravado.
+func newExplainCommand() *cobra.Command {
+	command := &cobra.Command{
+		Use:   "explain",
+		Short: "Explica em detalhe um resultado do diagnóstico",
+	}
+	command.AddCommand(newExplainSuspectCommand())
+	return command
+}
+
+// newExplainSuspectCommand detalha as contribuições de um suspeito a partir do
+// snapshot gravado. Assim como incident show, ele não reexecuta detectores nem
+// ranking: a explicação precisa descrever a investigação publicada, e não uma
+// nova leitura da telemetria que pode ter mudado desde então.
+func newExplainSuspectCommand() *cobra.Command {
+	var configPath string
+	var incidentID string
+
+	command := &cobra.Command{
+		Use:   "suspect <serviço>",
+		Short: "Explica por que um suspeito foi apontado",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(command *cobra.Command, args []string) (runErr error) {
+			if strings.TrimSpace(incidentID) == "" {
+				return fmt.Errorf("explicar suspeito: --incident é obrigatório")
+			}
+			if strings.TrimSpace(args[0]) == "" {
+				return fmt.Errorf("explicar suspeito: informe o nome do serviço")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.GetIncident(
+				command.Context(), incidentID, storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			explanation, err := application.ExplainSuspect(diagnosis, args[0])
+			if err != nil {
+				return err
+			}
+			return terminal.RenderSuspectExplanation(command.OutOrStdout(), explanation)
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&incidentID, "incident", "", "identificador do incidente persistido")
+	return command
+}
+
 // newExportCommand agrupa formatos estruturados derivados das evidências persistidas.
 func newExportCommand() *cobra.Command {
 	command := &cobra.Command{
@@ -234,6 +301,70 @@ func newExportCommand() *cobra.Command {
 	command.AddCommand(newExportReportCommand())
 	command.AddCommand(newExportGraphCommand())
 	command.AddCommand(newExportTimelineCommand())
+	command.AddCommand(newExportArtifactsCommand())
+	return command
+}
+
+// newExportArtifactsCommand grava de uma vez os cinco artefatos previstos para
+// o diretório de saída, em vez de exigir um redirecionamento manual por formato.
+// O diretório precisa existir: criá-lo aqui esconderia um caminho digitado
+// errado e espalharia arquivos fora do workspace.
+func newExportArtifactsCommand() *cobra.Command {
+	var configPath string
+	var incidentID string
+	var outputDir string
+
+	command := &cobra.Command{
+		Use:   "artifacts",
+		Short: "Grava os artefatos do incidente em faultmap-out/",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			if strings.TrimSpace(incidentID) == "" {
+				return fmt.Errorf("exportar artefatos: --incident é obrigatório")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			diagnosis, err := application.GetIncident(
+				command.Context(), incidentID, storage.NewDiagnosisRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+
+			destination := strings.TrimSpace(outputDir)
+			if destination == "" {
+				destination = filepath.Join(filepath.Dir(configPath), "faultmap-out")
+			}
+			// O instante fica na borda: os renderizadores o recebem pronto para
+			// que a mesma investigação produza artefatos comparáveis em testes.
+			if err := artifacts.Write(destination, diagnosis, nil, time.Now().UTC()); err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(
+				command.OutOrStdout(),
+				"Artefatos de %s gravados em %s.\n", diagnosis.Incident.ID, destination,
+			)
+			return err
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	command.Flags().StringVar(&incidentID, "incident", "", "identificador do incidente persistido")
+	command.Flags().StringVar(&outputDir, "output", "", "diretório de saída (padrão: faultmap-out/ ao lado da configuração)")
 	return command
 }
 
