@@ -16,6 +16,19 @@
 
 ### Corrigido
 
+- **Grafo de evidências cego para a convenção anterior de HTTP.** Terceira
+  aparição do mesmo defeito: a classificação de spans no grafo reconhecia apenas
+  `http.response.status_code`, então uma aplicação instrumentada automaticamente
+  tinha seus spans HTTP ignorados ali enquanto os detectores, já corrigidos, os
+  enxergavam. As listas de convenções estavam copiadas em cinco lugares e três já
+  haviam divergido — uma com a precedência invertida, outra sem a convenção
+  anterior de operação de banco. Todas passam a viver em
+  `internal/telemetry/semconv`.
+- **Artefatos discordavam sobre a ordem dos suspeitos.** O `report.md`
+  reordenava por score e ID, então em um empate ele podia eleger um primeiro
+  suspeito diferente do `ranking.json` gravado no mesmo diretório. Um teste novo
+  amarra os três artefatos e falha se qualquer um voltar a inventar a própria
+  ordem.
 - **Exportação contradizia o terminal.** Os renderizadores JSON reordenavam os
   suspeitos por score e ID, enquanto o terminal preservava a ordem gravada. Em
   um empate isso desfazia o desempate por profundidade na cadeia e colocava a

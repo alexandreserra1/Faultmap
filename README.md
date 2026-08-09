@@ -60,14 +60,20 @@ Não é necessário instalar o binário globalmente para trabalhar no projeto. O
 
 ### Verificações de qualidade
 
-Execute estes comandos na raiz do repositório:
+Execute na raiz do repositório:
 
 ```bash
-make fmt
-make test
-make test-race
-make vet
+make verify
 ```
+
+O alvo encadeia formatação, `go vet`, a suíte de testes e o detector de corrida,
+interrompendo no primeiro que falhar. Cada etapa decide pelo próprio código de
+saída — filtrar a saída de `go test` com `grep` para enxugar a leitura descarta
+justamente esse código e inverte o resultado, porque o `grep` devolve sucesso
+quando encontra linhas, ou seja, quando há falhas.
+
+Os alvos individuais continuam disponíveis: `make fmt`, `make fmt-check`,
+`make test`, `make test-race` e `make vet`.
 
 - `make fmt` aplica a formatação padrão do Go;
 - `make test` executa a suíte de testes;
