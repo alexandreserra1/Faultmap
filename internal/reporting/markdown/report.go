@@ -62,14 +62,11 @@ func renderRanking(output *strings.Builder, suspects []ranking.Suspect) {
 		output.WriteString("\nNenhum suspeito ranqueado.\n")
 		return
 	}
-	ordered := append([]ranking.Suspect(nil), suspects...)
-	sort.Slice(ordered, func(first, second int) bool {
-		if ordered[first].Score != ordered[second].Score {
-			return ordered[first].Score > ordered[second].Score
-		}
-		return ordered[first].ID < ordered[second].ID
-	})
-	for index, suspect := range ordered {
+	// A ordem gravada no snapshot É o ranking: ela já vem do motor com o
+	// desempate aplicado, que coloca a origem provável à frente da vítima quando
+	// os scores empatam. Recalcular aqui fazia este relatório discordar do
+	// terminal e dos demais artefatos sobre o mesmo incidente.
+	for index, suspect := range suspects {
 		fmt.Fprintf(output, "\n### %d. %s\n\n", index+1, markdownText(suspect.Label))
 		fmt.Fprintf(output, "- **Score agregado:** %.2f\n", suspect.Score)
 		fmt.Fprintf(output, "- **Confiança:** %s\n", markdownText(string(suspect.Confidence)))

@@ -1,6 +1,7 @@
 package artifacts_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,5 +188,71 @@ func TestWriteSobrescreveArtefatosAnteriores(t *testing.T) {
 	}
 	if strings.Contains(string(conteudo), "conteúdo antigo") {
 		t.Error("o artefato anterior deveria ter sido truncado")
+	}
+}
+
+// TestArtefatosConcordamSobreAOrdemDosSuspeitos amarra os renderizadores entre
+// si. Cada um mantinha sua própria regra de ordenação, e a divergência só
+// aparece no empate: quando um serviço falha e outro falha junto por
+// consequência, os dois chegam ao mesmo score e cada arquivo podia eleger um
+// primeiro suspeito diferente.
+//
+// É a mesma armadilha que já custou caro neste projeto — dois pedaços do código
+// respondendo diferente sobre o mesmo dado, sem ninguém perceber. A ordem
+// gravada no snapshot é a única fonte: nenhum artefato pode recalculá-la.
+func TestArtefatosConcordamSobreAOrdemDosSuspeitos(t *testing.T) {
+	t.Parallel()
+
+	empatado := snapshot()
+	empatado.Suspects = []ranking.Suspect{
+		// Ordem gravada pelo motor: a origem antes da vítima. O desempate
+		// alfabético colocaria "checkout-service" na frente.
+		{ID: "payment-service", Label: "payment-service", Score: 0.25, Confidence: detection.ConfidenceHigh},
+		{ID: "checkout-service", Label: "checkout-service", Score: 0.25, Confidence: detection.ConfidenceHigh},
+	}
+
+	directory := t.TempDir()
+	if err := artifacts.Write(directory, empatado, nil, time.Date(2026, time.August, 9, 12, 0, 0, 0, time.UTC)); err != nil {
+		t.Fatalf("Write() erro = %v", err)
+	}
+
+	relatorio, err := os.ReadFile(filepath.Join(directory, artifacts.ReportFileName))
+	if err != nil {
+		t.Fatalf("ler report.md: %v", err)
+	}
+	if !strings.Contains(string(relatorio), "### 1. payment-service") {
+		t.Fatalf("report.md elegeu outro primeiro suspeito:\n%s", relatorio)
+	}
+
+	rankingBytes, err := os.ReadFile(filepath.Join(directory, artifacts.RankingFileName))
+	if err != nil {
+		t.Fatalf("ler ranking.json: %v", err)
+	}
+	var rankingDocument struct {
+		Suspects []struct {
+			ID string `json:"id"`
+		} `json:"suspects"`
+	}
+	if err := json.Unmarshal(rankingBytes, &rankingDocument); err != nil {
+		t.Fatalf("decodificar ranking.json: %v\n%s", err, rankingBytes)
+	}
+	if len(rankingDocument.Suspects) == 0 || rankingDocument.Suspects[0].ID != "payment-service" {
+		t.Fatalf("ranking.json elegeu outro primeiro suspeito:\n%s", rankingBytes)
+	}
+
+	resumoBytes, err := os.ReadFile(filepath.Join(directory, artifacts.IncidentSummaryFileName))
+	if err != nil {
+		t.Fatalf("ler incident-summary.json: %v", err)
+	}
+	var resumoDocument struct {
+		PrimarySuspect *struct {
+			ID string `json:"id"`
+		} `json:"primary_suspect"`
+	}
+	if err := json.Unmarshal(resumoBytes, &resumoDocument); err != nil {
+		t.Fatalf("decodificar incident-summary.json: %v\n%s", err, resumoBytes)
+	}
+	if resumoDocument.PrimarySuspect == nil || resumoDocument.PrimarySuspect.ID != "payment-service" {
+		t.Fatalf("incident-summary.json elegeu outro suspeito principal:\n%s", resumoBytes)
 	}
 }
