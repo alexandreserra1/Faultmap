@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 // NodeKind identifica a função de um nó no grafo de evidências.
@@ -214,10 +215,13 @@ func spanLabel(signal domain.Signal) string {
 	return signal.SpanID
 }
 
+// A classificação usa a lista única de convenções em telemetry/semconv. Manter
+// cópias aqui já fez o grafo ignorar spans que os renderizadores reconheciam.
 func isHTTPSignal(signal domain.Signal) bool {
-	return strings.TrimSpace(signal.Attributes["http.request.method"]) != "" || strings.TrimSpace(signal.Attributes["http.response.status_code"]) != ""
+	return semconv.HTTPMethod(signal.Attributes) != "" ||
+		semconv.HTTPStatusCode(signal.Attributes) != ""
 }
 
 func isDatabaseSignal(signal domain.Signal) bool {
-	return strings.TrimSpace(signal.Attributes["db.system.name"]) != "" || strings.TrimSpace(signal.Attributes["db.system"]) != ""
+	return semconv.DatabaseSystem(signal.Attributes) != ""
 }

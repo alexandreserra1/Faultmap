@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 const (
@@ -298,41 +299,15 @@ func filterHTTPSignals(signals []domain.Signal) []domain.Signal {
 	return filtered
 }
 
-// O OpenTelemetry renomeou vários atributos ao estabilizar suas convenções, mas
-// as instrumentações mais usadas continuam emitindo os nomes anteriores. Como
-// quem escolhe o nome é a biblioteca de instrumentação, e não a aplicação,
-// reconhecer apenas a convenção nova deixa o Faultmap cego para aplicações
-// inteiras — sem erro, sem aviso, apenas "nenhuma anomalia encontrada".
-//
-// A ordem é sempre estável primeiro, legada depois: quando um span traz as duas,
-// vence a convenção atual. Esta é a única lista de precedência do projeto; os
-// renderizadores usam a mesma, para que a tela e os detectores nunca discordem.
-// Foi exatamente essa divergência que escondeu a cegueira de HTTP até a v0.1.1.
-var attributeConventions = map[string][]string{
-	"http.status":     {"http.response.status_code", "http.status_code"},
-	"db.system":       {"db.system.name", "db.system"},
-	"db.operation":    {"db.operation.name", "db.operation"},
-	"failure.type":    {"error.type", "exception.type"},
-	"failure.message": {"status.message", "exception.message"},
-}
-
-// attributeValue devolve o primeiro valor não vazio entre as convenções
-// conhecidas para o conceito solicitado.
-func attributeValue(attributes map[string]string, concept string) string {
-	for _, key := range attributeConventions[concept] {
-		if value := strings.TrimSpace(attributes[key]); value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
+// As convenções de nome de atributo vivem em internal/telemetry/semconv, que é
+// a única lista do produto. Manter uma cópia aqui foi o que permitiu, duas
+// vezes, que a tela e os detectores discordassem sobre o mesmo span.
 func httpStatusCode(attributes map[string]string) string {
-	return attributeValue(attributes, "http.status")
+	return semconv.HTTPStatusCode(attributes)
 }
 
 func databaseSystem(attributes map[string]string) string {
-	return attributeValue(attributes, "db.system")
+	return semconv.DatabaseSystem(attributes)
 }
 
 // filterDatabaseSignals considera somente spans que declaram explicitamente o sistema de banco observado.
@@ -357,7 +332,7 @@ func databaseFailures(signals []domain.Signal) []domain.Signal {
 	failures := make([]domain.Signal, 0, len(signals))
 	for _, signal := range signals {
 		if strings.EqualFold(strings.TrimSpace(signal.Severity), "error") ||
-			attributeValue(signal.Attributes, "failure.type") != "" {
+			semconv.FailureType(signal.Attributes) != "" {
 			failures = append(failures, signal)
 		}
 	}
@@ -370,8 +345,8 @@ func databaseFailures(signals []domain.Signal) []domain.Signal {
 func databaseTimeouts(signals []domain.Signal) []domain.Signal {
 	timeouts := make([]domain.Signal, 0, len(signals))
 	for _, signal := range databaseFailures(signals) {
-		failureType := strings.ToLower(attributeValue(signal.Attributes, "failure.type"))
-		failureMessage := strings.ToLower(attributeValue(signal.Attributes, "failure.message"))
+		failureType := strings.ToLower(semconv.FailureType(signal.Attributes))
+		failureMessage := strings.ToLower(semconv.FailureMessage(signal.Attributes))
 		if strings.Contains(failureType, "timeout") || strings.Contains(failureMessage, "timeout") {
 			timeouts = append(timeouts, signal)
 		}

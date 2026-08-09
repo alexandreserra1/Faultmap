@@ -217,3 +217,41 @@ func edgeKeys(edges []Edge) []string {
 	}
 	return keys
 }
+
+// TestClassificaçãoAceitaAsDuasConvenções cobre mais uma cópia da lista de
+// convenções que ficou para trás. O grafo classificava como HTTP apenas spans
+// com o nome estável do código de resposta, e como banco apenas com o nome
+// estável do sistema. Uma aplicação instrumentada automaticamente, que emite os
+// nomes anteriores, deixava de ser reconhecida — o mesmo defeito que já cegou os
+// detectores duas vezes, agora escondido na construção do grafo.
+func TestClassificaçãoAceitaAsDuasConvenções(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		nome      string
+		atributos map[string]string
+		ehHTTP    bool
+		ehDeBanco bool
+	}{
+		{nome: "HTTP estável", atributos: map[string]string{"http.response.status_code": "500"}, ehHTTP: true},
+		{nome: "HTTP anterior", atributos: map[string]string{"http.status_code": "500"}, ehHTTP: true},
+		{nome: "banco estável", atributos: map[string]string{"db.system.name": "postgresql"}, ehDeBanco: true},
+		{nome: "banco anterior", atributos: map[string]string{"db.system": "duckdb"}, ehDeBanco: true},
+		{nome: "span sem classificação", atributos: map[string]string{"span.name": "trabalho interno"}},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.nome, func(t *testing.T) {
+			t.Parallel()
+
+			signal := domain.Signal{ID: "sinal-1", Attributes: testCase.atributos}
+			if obtido := isHTTPSignal(signal); obtido != testCase.ehHTTP {
+				t.Fatalf("isHTTPSignal() = %v, esperado %v", obtido, testCase.ehHTTP)
+			}
+			if obtido := isDatabaseSignal(signal); obtido != testCase.ehDeBanco {
+				t.Fatalf("isDatabaseSignal() = %v, esperado %v", obtido, testCase.ehDeBanco)
+			}
+		})
+	}
+}

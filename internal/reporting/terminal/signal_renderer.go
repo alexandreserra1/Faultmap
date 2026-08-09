@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 // RenderSignals escreve uma visão cronológica e segura dos sinais de um serviço.
@@ -89,8 +90,8 @@ func spanName(signal domain.Signal) string {
 		return name
 	}
 
-	system := displayDatabaseSystem(firstAttribute(signal.Attributes, "db.system.name", "db.system"))
-	operation := firstAttribute(signal.Attributes, "db.operation.name", "db.operation")
+	system := displayDatabaseSystem(semconv.DatabaseSystem(signal.Attributes))
+	operation := semconv.DatabaseOperation(signal.Attributes)
 	switch {
 	case operation != "" && system != "":
 		return operation + " (" + system + ")"
@@ -110,13 +111,13 @@ func isUninformativeSpanName(name string) bool {
 
 func signalDetails(signal domain.Signal) []string {
 	details := make([]string, 0, 4)
-	if statusCode := firstAttribute(signal.Attributes, "http.response.status_code", "http.status_code"); statusCode != "" {
+	if statusCode := semconv.HTTPStatusCode(signal.Attributes); statusCode != "" {
 		details = append(details, "HTTP "+statusCode)
 	}
 	if databaseDetail := databaseDetail(signal.Attributes); databaseDetail != "" {
 		details = append(details, databaseDetail)
 	}
-	if errorType := firstAttribute(signal.Attributes, "error.type", "exception.type"); errorType != "" {
+	if errorType := semconv.FailureType(signal.Attributes); errorType != "" {
 		details = append(details, "erro "+errorType)
 	}
 	details = append(details, "duração "+duration(signal))
@@ -124,18 +125,9 @@ func signalDetails(signal domain.Signal) []string {
 	return details
 }
 
-func firstAttribute(attributes map[string]string, keys ...string) string {
-	for _, key := range keys {
-		if value := strings.TrimSpace(attributes[key]); value != "" {
-			return value
-		}
-	}
-	return ""
-}
-
 func databaseDetail(attributes map[string]string) string {
-	system := displayDatabaseSystem(firstAttribute(attributes, "db.system", "db.system.name"))
-	operation := firstAttribute(attributes, "db.operation.name")
+	system := displayDatabaseSystem(semconv.DatabaseSystem(attributes))
+	operation := semconv.DatabaseOperation(attributes)
 	switch {
 	case system != "" && operation != "":
 		return "Banco " + system + " · operação " + operation

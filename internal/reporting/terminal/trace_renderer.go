@@ -8,6 +8,7 @@ import (
 
 	"github.com/faultmap/faultmap/internal/evidencegraph"
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 // RenderTraceInvestigation escreve o fluxo de um trace usando apenas atributos
@@ -74,16 +75,16 @@ func traceServices(signals []domain.Signal) []string {
 
 func traceDetails(signal domain.Signal) []string {
 	details := make([]string, 0, 5)
-	if statusCode := firstAttribute(signal.Attributes, "http.response.status_code", "http.status_code"); statusCode != "" {
+	if statusCode := semconv.HTTPStatusCode(signal.Attributes); statusCode != "" {
 		details = append(details, "HTTP "+statusCode)
 	}
-	if system := displayDatabaseSystem(firstAttribute(signal.Attributes, "db.system.name", "db.system")); system != "" {
+	if system := displayDatabaseSystem(semconv.DatabaseSystem(signal.Attributes)); system != "" {
 		details = append(details, system)
 	}
-	if operation := firstAttribute(signal.Attributes, "db.operation.name", "db.operation"); operation != "" {
+	if operation := semconv.DatabaseOperation(signal.Attributes); operation != "" {
 		details = append(details, "operação "+operation)
 	}
-	if errorType := firstAttribute(signal.Attributes, "error.type", "exception.type"); errorType != "" {
+	if errorType := semconv.FailureType(signal.Attributes); errorType != "" {
 		details = append(details, "erro "+errorType)
 	}
 	details = append(details, "duração "+duration(signal))

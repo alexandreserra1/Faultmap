@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 const minimumRetryTraceCount = 3
@@ -130,8 +131,8 @@ func retryStats(signals []domain.Signal) map[string]retryOperationStats {
 }
 
 func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
-	if method := firstRetryAttribute(attributes, "http.request.method", "http.method"); method != "" {
-		target := firstRetryAttribute(attributes, "http.route", "url.template", "server.address")
+	if method := semconv.HTTPMethod(attributes); method != "" {
+		target := semconv.HTTPTarget(attributes)
 		if target == "" {
 			return "", "", false
 		}
@@ -139,12 +140,12 @@ func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
 		return "http|" + strings.ToLower(method) + "|" + strings.ToLower(target), method + " " + target, true
 	}
 
-	if system := firstRetryAttribute(attributes, "db.system.name", "db.system"); system != "" {
-		operation := firstRetryAttribute(attributes, "db.operation.name", "db.operation")
+	if system := semconv.DatabaseSystem(attributes); system != "" {
+		operation := semconv.DatabaseOperation(attributes)
 		if operation == "" {
 			return "", "", false
 		}
-		collection := firstRetryAttribute(attributes, "db.collection.name", "db.sql.table")
+		collection := semconv.DatabaseCollection(attributes)
 		labelSystem := system
 		if strings.EqualFold(system, "postgresql") {
 			labelSystem = "PostgreSQL"
@@ -153,19 +154,19 @@ func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
 		return "db|" + strings.ToLower(system) + "|" + strings.ToLower(operation) + "|" + strings.ToLower(collection), label, true
 	}
 
-	if system := firstRetryAttribute(attributes, "rpc.system"); system != "" {
-		method := firstRetryAttribute(attributes, "rpc.method")
+	if system := strings.TrimSpace(attributes["rpc.system"]); system != "" {
+		method := strings.TrimSpace(attributes["rpc.method"])
 		if method == "" {
 			return "", "", false
 		}
-		service := firstRetryAttribute(attributes, "rpc.service")
+		service := strings.TrimSpace(attributes["rpc.service"])
 		label := strings.TrimSpace(system + " " + service + "/" + method)
 		return "rpc|" + strings.ToLower(system) + "|" + strings.ToLower(service) + "|" + strings.ToLower(method), label, true
 	}
 
-	if system := firstRetryAttribute(attributes, "messaging.system"); system != "" {
-		operation := firstRetryAttribute(attributes, "messaging.operation.name", "messaging.operation")
-		destination := firstRetryAttribute(attributes, "messaging.destination.template", "messaging.destination.name")
+	if system := strings.TrimSpace(attributes["messaging.system"]); system != "" {
+		operation := semconv.MessagingOperation(attributes)
+		destination := semconv.MessagingDestination(attributes)
 		if operation == "" || destination == "" {
 			return "", "", false
 		}
@@ -174,13 +175,4 @@ func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
 	}
 
 	return "", "", false
-}
-
-func firstRetryAttribute(attributes map[string]string, keys ...string) string {
-	for _, key := range keys {
-		if value := strings.TrimSpace(attributes[key]); value != "" {
-			return value
-		}
-	}
-	return ""
 }
