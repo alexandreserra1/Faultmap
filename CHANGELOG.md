@@ -1,5 +1,27 @@
 # Changelog
 
+## Não publicado
+
+### Adicionado
+
+- **`faultmap export artifacts`** grava em disco os cinco artefatos previstos
+  pela especificação: `report.md`, `ranking.json`, `evidence-graph.mmd`,
+  `incident-summary.json` e `timeline.json`. O `init` criava o diretório
+  `faultmap-out/` e nada nunca escrevia nele; as saídas existiam apenas em
+  stdout. `ranking.json` e `incident-summary.json` não existiam.
+- **`faultmap explain suspect <serviço> --incident <id>`** detalha as parcelas
+  do score de um suspeito, as evidências que as sustentam, a proveniência e as
+  limitações. Era o último dos onze comandos previstos que faltava. Como
+  `incident show`, lê o snapshot e não reexecuta nada.
+
+### Corrigido
+
+- **Exportação contradizia o terminal.** Os renderizadores JSON reordenavam os
+  suspeitos por score e ID, enquanto o terminal preservava a ordem gravada. Em
+  um empate isso desfazia o desempate por profundidade na cadeia e colocava a
+  vítima em primeiro lugar no `ranking.json` e no relatório JSON. A ordem
+  persistida é o ranking e não é mais recalculada na exportação.
+
 ## v0.2.0 — 2026-08-09
 
 O diagnóstico passa a **comparar serviços** em vez de analisar um por vez. É

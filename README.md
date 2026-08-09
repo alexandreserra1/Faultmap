@@ -484,6 +484,42 @@ instrumentação de terceiros e sustentam os testes que impedem essa classe de
 regressão. As fixtures em `fixtures/otel/` são escritas por nós e provam apenas
 que o produto funciona contra si mesmo.
 
+### Gravar os artefatos em arquivo
+
+Em vez de redirecionar cada formato na mão, o comando abaixo grava de uma vez os
+cinco artefatos previstos:
+
+```bash
+go run ./cmd/faultmap export artifacts \
+  --config ./faultmap-local/faultmap.yaml \
+  --incident inc_001
+```
+
+```text
+faultmap-out/
+├── report.md
+├── ranking.json
+├── evidence-graph.mmd
+├── incident-summary.json
+└── timeline.json
+```
+
+O diretório precisa existir — ele é criado pelo `init`. Use `--output` para
+gravar em outro lugar.
+
+### Explicar um suspeito
+
+```bash
+go run ./cmd/faultmap explain suspect payment-service \
+  --config ./faultmap-local/faultmap.yaml \
+  --incident inc_001
+```
+
+A saída detalha cada parcela do score, as evidências que a sustentam e a
+proveniência resumida. Uma contribuição sem evidência gravada aparece declarada
+como tal, em vez de ser omitida. Como `incident show`, o comando lê o snapshot e
+não reexecuta detectores nem ranking.
+
 ## Decisões arquiteturais
 
 As decisões cujo motivo não é dedutível do código estão registradas em [`docs/adr/`](docs/adr/).
