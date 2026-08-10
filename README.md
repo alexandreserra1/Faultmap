@@ -31,7 +31,7 @@ O resultado deve listar os suspeitos mais prováveis, suas contribuições de sc
 1. Aplicações enviam traces por OTLP ao OpenTelemetry Collector.
 2. O Faultmap normaliza e armazena os sinais no SQLite.
 3. Ao diagnosticar um incidente, ele compara a janela atual com uma baseline anterior.
-4. Detectores determinísticos encontram mudanças como aumento de erros, latência, timeout de banco, retry storm e falhas em dependências.
+4. Detectores determinísticos encontram mudanças como aumento de erros, latência, timeout e falhas de banco, retry storm, regressão entre versões, falha propagada por dependência e perda de ligação entre serviços.
 5. Um grafo de evidências conecta serviços, traces, deploys, commits e operações de banco.
 6. O mecanismo de ranking gera os principais suspeitos e relatórios em terminal, JSON, Markdown e Mermaid.
 

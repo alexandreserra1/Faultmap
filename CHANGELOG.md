@@ -1,8 +1,27 @@
 # Changelog
 
-## Não publicado
+## v0.3.0 — 2026-08-10
+
+Completa a lista de detectores do documento normativo e fecha os dois últimos
+itens que faltavam da especificação: o comando `explain suspect` e a gravação
+dos artefatos em disco.
 
 ### Adicionado
+
+- **Os quatro detectores restantes**, fechando os dez previstos:
+  - `database_error` — falhas de banco que não são timeout, comparadas entre as
+    janelas. Cancelamento provocado por quem chamou é deliberadamente ignorado:
+    o banco não falhou, quem desistiu foi o serviço de cima, e contá-lo culparia
+    o serviço de baixo por um problema que nasceu acima dele.
+  - `version_regression` — compara duas versões do mesmo serviço convivendo na
+    janela do incidente, como em um rollout parcial. Exige volume mínimo por
+    versão, para que um canário de três requisições não vire conclusão.
+  - `dependency_failure` — marca o serviço cuja falha aparece sob a falha de
+    quem o chamou, no mesmo trace. O finding pertence ao serviço mais profundo,
+    candidato à origem, e não a quem sofreu a consequência.
+  - `trace_break` — aponta ligação entre serviços que existia na baseline e
+    desapareceu no incidente. Uma lacuna presente nas duas janelas descreve a
+    instrumentação, não o incidente, e é silenciada.
 
 - **`faultmap export artifacts`** grava em disco os cinco artefatos previstos
   pela especificação: `report.md`, `ranking.json`, `evidence-graph.mmd`,
@@ -14,8 +33,26 @@
   limitações. Era o último dos onze comandos previstos que faltava. Como
   `incident show`, lê o snapshot e não reexecuta nada.
 
+### Alterado
+
+- **Teto por classe de peso no ranking.** Quatro regras passam a dividir
+  `graph_proximity`, e somar livremente faria a evidência estrutural valer mais
+  que o aumento de erros apenas por existirem mais regras daquele tipo. O total
+  de cada classe passa a ser limitado ao peso configurado para ela; as
+  contribuições individuais continuam todas visíveis. Serviços que disparam duas
+  regras da mesma classe pontuam menos que antes. Ver ADR 0010, que revisita o
+  ADR 0001 como ele mesmo previa.
+- **Cenário `retry-storm` redesenhado.** Ele configurava o payment para falhar
+  em 100% das chamadas; com o ranking comparando serviços, quem quebrava era o
+  payment e o retry era reação. O defeito mudou de lugar: payment saudável,
+  checkout com timeout curto demais e quatro tentativas.
+
 ### Corrigido
 
+- **Janela de incidente chegando vazia de forma intermitente.** O SDK agrupa
+  spans por 5 segundos e o coletor acrescenta o próprio lote, mas os runners
+  esperavam 6 — menos de um segundo de margem. A espera sobe para 10 segundos.
+  Defeito do arcabouço de teste, não do produto, mas que o tornava não confiável.
 - **Grafo de evidências cego para a convenção anterior de HTTP.** Terceira
   aparição do mesmo defeito: a classificação de spans no grafo reconhecia apenas
   `http.response.status_code`, então uma aplicação instrumentada automaticamente
@@ -34,6 +71,14 @@
   um empate isso desfazia o desempate por profundidade na cadeia e colocava a
   vítima em primeiro lugar no `ranking.json` e no relatório JSON. A ordem
   persistida é o ranking e não é mais recalculada na exportação.
+
+### Verificação
+
+- Matriz E2E: 6 de 6. Modo difícil: 5 de 5, agora exigindo silêncio também das
+  quatro regras novas no cenário sem culpado.
+- Os quatro detectores foram submetidos à telemetria capturada de instrumentação
+  de terceiros usando a mesma janela como baseline e incidente: nada mudou entre
+  elas, então qualquer finding seria falso positivo por construção. Nenhum falou.
 
 ## v0.2.0 — 2026-08-09
 
