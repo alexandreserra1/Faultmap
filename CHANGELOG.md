@@ -1,5 +1,28 @@
 # Changelog
 
+## Não publicado
+
+### Adicionado
+
+- **`database_latency_delta`** — banco que ficou mais lento sem falhar. Os dois
+  detectores de banco existentes procuram falha: timeout e erro. Um banco que
+  apenas degrada não era percebido por nenhum, e o diagnóstico mostrava só a
+  latência HTTP que a degradação arrastava — quem investigava via "a API ficou
+  lenta" sem ver "o banco ficou lento", que é a informação que aponta onde mexer.
+
+  O caso apareceu na primeira carga gerada contra uma aplicação real: o banco
+  ficou catorze vezes mais lento, sem uma única falha, e o diagnóstico não o
+  mencionava.
+
+  Este detector não consta da lista de dez do documento normativo. Ele foi
+  pedido pela realidade, não pela especificação.
+
+  Duas decisões de contrato: o limiar é próprio, mais baixo que o de latência
+  HTTP, porque uma requisição dispara várias consultas e acréscimos pequenos se
+  acumulam — exige 2 ms de aumento e que a duração ao menos dobre; e só mede
+  operações que **concluíram**, já que uma operação que estourou o tempo é lenta
+  por definição e reportá-la aqui repetiria o que `database_timeout` já explica.
+
 ## v0.3.0 — 2026-08-10
 
 Completa a lista de detectores do documento normativo e fecha os dois últimos

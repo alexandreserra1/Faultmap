@@ -176,7 +176,8 @@ func weightClassForRule(rule string) (string, bool) {
 		return classErrorRate, true
 	case detection.RuleLatencyDelta:
 		return classLatency, true
-	case detection.RuleDatabaseTimeout, detection.RuleDatabaseError:
+	case detection.RuleDatabaseTimeout, detection.RuleDatabaseError,
+		detection.RuleDatabaseLatencyDelta:
 		return classDatabaseEvidence, true
 	case detection.RuleTraceCorrelation, detection.RuleRetryStorm,
 		detection.RuleDependencyFailure, detection.RuleTraceBreak:

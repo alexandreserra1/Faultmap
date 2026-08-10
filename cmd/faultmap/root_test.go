@@ -318,7 +318,7 @@ func TestIngestGitHubCommandPersisteCommitsEDeploymentsIdempotentemente(t *testi
 		"deployment_proximity",
 		"6 minuto(s) antes do incidente",
 		"service.version observada no incidente",
-		"Score agregado: 0.58",
+		"Score agregado: 0.72",
 	} {
 		if !strings.Contains(diagnosisOutput.String(), expected) {
 			t.Errorf("diagnóstico não contém %q:\n%s", expected, diagnosisOutput.String())
@@ -556,7 +556,7 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 	for _, expected := range []string{
 		"Ranking de suspeitos:",
 		"1. checkout-service",
-		"Score agregado: 0.40",
+		"Score agregado: 0.54",
 		"Contribuições:",
 		"error_rate_delta: score 0.40 × peso 0.25 = 0.10",
 		"latency_delta: score 0.94 × peso 0.10 = 0.09",
@@ -601,7 +601,7 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 		t.Fatalf("ler incidente persistido: %v", err)
 	}
 	assertTableCount(t, database, "incidents", 1)
-	assertTableCount(t, database, "findings", 4)
+	assertTableCount(t, database, "findings", 5)
 	assertTableCount(t, database, "ranking_results", 1)
 
 	var retryOutput bytes.Buffer
@@ -624,7 +624,7 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 		t.Errorf("retry não explica idempotência:\n%s", retryOutput.String())
 	}
 	assertTableCount(t, database, "incidents", 1)
-	assertTableCount(t, database, "findings", 4)
+	assertTableCount(t, database, "findings", 5)
 	assertTableCount(t, database, "ranking_results", 1)
 }
 
@@ -832,7 +832,7 @@ func TestIncidentShowCommandRecuperaDiagnosticoCompleto(t *testing.T) {
 		"Status: diagnosed",
 		"Baseline: 40 sinais",
 		"Incidente: 40 sinais",
-		"Score agregado: 0.40",
+		"Score agregado: 0.54",
 		"database_http_trace_correlation",
 		"database_timeout",
 		"error_rate_delta",
@@ -914,7 +914,7 @@ func TestExportReportCommandGeraJSONEMarkdownDoMesmoSnapshot(t *testing.T) {
 	if document.Baseline == nil || document.Baseline.SignalCount != 40 || document.IncidentWindow.SignalCount != 40 {
 		t.Fatalf("janelas JSON inesperadas: baseline=%#v incidente=%#v", document.Baseline, document.IncidentWindow)
 	}
-	if len(document.Findings) != 4 || len(document.Ranking) != 1 || document.Ranking[0].Score < 0.4035 || document.Ranking[0].Score > 0.4037 {
+	if len(document.Findings) != 5 || len(document.Ranking) != 1 || document.Ranking[0].Score < 0.5435 || document.Ranking[0].Score > 0.5437 {
 		t.Fatalf("análise JSON inesperada: findings=%d ranking=%#v", len(document.Findings), document.Ranking)
 	}
 

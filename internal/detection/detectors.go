@@ -29,6 +29,8 @@ const (
 	RuleDependencyFailure = "dependency_failure"
 	// RuleTraceBreak identifica ligação entre serviços que existia na baseline e sumiu no incidente.
 	RuleTraceBreak = "trace_break"
+	// RuleDatabaseLatencyDelta identifica banco que ficou mais lento sem falhar.
+	RuleDatabaseLatencyDelta = "database_latency_delta"
 	// RuleDatabaseError identifica crescimento de falhas de banco que não são timeout.
 	RuleDatabaseError = "database_error"
 	// RuleVersionRegression compara duas versões do mesmo serviço ativas na janela de incidente.
@@ -96,6 +98,9 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectRetryStorm(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectDatabaseLatencyDelta(input); found {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectDatabaseError(input); found {
