@@ -1,10 +1,17 @@
 services:
+  # O defeito deste cenário está no checkout, e não na dependência dele: um
+  # timeout curto demais faz toda chamada ser abandonada antes da resposta, e a
+  # política de quatro tentativas multiplica a carga sobre um serviço saudável.
+  #
+  # A versão anterior colocava o payment para falhar em 100% das chamadas. O
+  # ranking passou a comparar serviços, e ali quem quebrava era o payment — o
+  # retry era reação, não causa. Manter aquele desenho exigiria distorcer o
+  # produto para caber na expectativa do cenário.
   checkout-service:
     environment:
       SERVICE_VERSION: "1.1.0-retry-storm"
       PAYMENT_MAX_ATTEMPTS: "4"
-      PAYMENT_TIMEOUT: "500ms"
+      PAYMENT_TIMEOUT: "1ms"
   payment-service:
     environment:
       SERVICE_VERSION: "1.1.0-retry-storm"
-      FORCE_HTTP_STATUS: "503"

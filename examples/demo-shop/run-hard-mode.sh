@@ -15,7 +15,12 @@ BASE_COMPOSE="${SCRIPT_DIRECTORY}/compose.yaml"
 PROJECT_NAME="${FAULTMAP_HARD_PROJECT_NAME:-faultmap-demo-shop-hard}"
 CHECKOUT_URL="${FAULTMAP_HARD_CHECKOUT_URL:-http://127.0.0.1:18080/checkout}"
 ALL_SCENARIOS="ruido-cronico sem-culpado janela-imprecisa fan-out-legitimo causas-concorrentes"
-OTEL_FLUSH_WAIT_SECONDS="${OTEL_FLUSH_WAIT_SECONDS:-6}"
+# O SDK do Go agrupa spans por 5 segundos antes de exportar, e o coletor
+# acrescenta o próprio lote. Esperar 6 deixava menos de um segundo de margem, e a
+# janela do incidente chegava vazia de forma intermitente — o diagnóstico
+# encontrava zero sinais e o cenário falhava sem que nada estivesse errado no
+# produto. Dez segundos dão folga suficiente para o caminho inteiro.
+OTEL_FLUSH_WAIT_SECONDS="${OTEL_FLUSH_WAIT_SECONDS:-10}"
 
 if [[ ! "${PROJECT_NAME}" =~ ^faultmap-demo-shop-hard(-[a-z0-9][a-z0-9-]{0,30})?$ ]]; then
   printf 'Projeto inválido; use faultmap-demo-shop-hard ou um sufixo seguro.\n' >&2
@@ -203,12 +208,20 @@ run_scenario() {
   case "${scenario}" in
     ruido-cronico)
       assert_no_finding "${output}" "error_rate_delta" || return 1
+      # A falha crônica também atravessa o banco; nenhuma das duas regras de
+      # banco pode tratar ruído permanente como crescimento.
+      assert_no_finding "${output}" "database_error" || return 1
+      assert_no_finding "${output}" "database_timeout" || return 1
       printf 'Não acusou regressão de erro com ruído idêntico nas duas janelas: PASS\n'
       ;;
     sem-culpado)
-      assert_no_finding "${output}" "error_rate_delta" || return 1
-      assert_no_finding "${output}" "latency_delta" || return 1
-      assert_no_finding "${output}" "retry_storm" || return 1
+      # Este cenário é a rede de proteção de todo detector novo: nada mudou
+      # entre as janelas, então qualquer regra que dispare aqui é falso
+      # positivo por definição.
+      for regra in error_rate_delta latency_delta retry_storm \
+        database_error dependency_failure trace_break version_regression; do
+        assert_no_finding "${output}" "${regra}" || return 1
+      done
       assert_contains "${output}" "Nenhuma anomalia determinística" || return 1
       printf 'Não inventou suspeito em sistema saudável: PASS\n'
       ;;
@@ -218,6 +231,9 @@ run_scenario() {
       ;;
     fan-out-legitimo)
       assert_no_finding "${output}" "retry_storm" || return 1
+      # O fan-out cria muitas ligações pai-filho entre os dois serviços; elas
+      # existem nas duas janelas e não podem virar quebra de propagação.
+      assert_no_finding "${output}" "trace_break" || return 1
       printf 'Fan-out legítimo não foi confundido com retry storm: PASS\n'
       ;;
     causas-concorrentes)

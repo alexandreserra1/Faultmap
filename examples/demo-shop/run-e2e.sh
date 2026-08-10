@@ -8,7 +8,12 @@ PROJECT_NAME="${FAULTMAP_E2E_PROJECT_NAME:-faultmap-demo-shop-e2e}"
 CHECKOUT_URL="${FAULTMAP_E2E_CHECKOUT_URL:-http://127.0.0.1:18080/checkout}"
 ALL_SCENARIOS="database-slow small-pool payment-500 retry-storm timeout-after-deploy table-lock"
 KEEP_E2E_ENVIRONMENT="${KEEP_E2E_ENVIRONMENT:-0}"
-OTEL_FLUSH_WAIT_SECONDS="${OTEL_FLUSH_WAIT_SECONDS:-6}"
+# O SDK do Go agrupa spans por 5 segundos antes de exportar, e o coletor
+# acrescenta o próprio lote. Esperar 6 deixava menos de um segundo de margem, e a
+# janela do incidente chegava vazia de forma intermitente — o diagnóstico
+# encontrava zero sinais e o cenário falhava sem que nada estivesse errado no
+# produto. Dez segundos dão folga suficiente para o caminho inteiro.
+OTEL_FLUSH_WAIT_SECONDS="${OTEL_FLUSH_WAIT_SECONDS:-10}"
 TIMEOUT_DEPLOY_VERSION="${TIMEOUT_DEPLOY_VERSION:-0123456789abcdef0123456789abcdef01234567}"
 export TIMEOUT_DEPLOY_VERSION
 

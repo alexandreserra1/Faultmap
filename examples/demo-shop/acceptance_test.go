@@ -205,7 +205,10 @@ func TestRunnerE2EDeclaraMatrizLimitesELimpeza(t *testing.T) {
 		"Confiança: alta",
 		"down --volumes --remove-orphans",
 		"KEEP_E2E_ENVIRONMENT",
-		"OTEL_FLUSH_WAIT_SECONDS=\"${OTEL_FLUSH_WAIT_SECONDS:-6}\"",
+		// A espera precisa superar com folga o agrupamento de 5 segundos do SDK
+		// mais o lote do coletor. Com 6 a janela do incidente chegava vazia de
+		// forma intermitente e o cenário falhava sem defeito no produto.
+		"OTEL_FLUSH_WAIT_SECONDS=\"${OTEL_FLUSH_WAIT_SECONDS:-10}\"",
 		"Projeto E2E inválido",
 		"faultmap ingest github",
 		"GITHUB_TOKEN=e2e-token",
