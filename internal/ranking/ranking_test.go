@@ -305,3 +305,61 @@ func assertFloat(t *testing.T, label string, got, want float64) {
 		t.Errorf("%s = %.12f, esperava %.12f", label, got, want)
 	}
 }
+
+// TestClasseDePesoNãoUltrapassaOPesoConfigurado cobre a dívida registrada no
+// ADR 0001, que previu revisitar o reúso de graph_proximity caso um terceiro
+// detector estrutural aparecesse. Com quatro regras dividindo a mesma classe,
+// somar livremente faria a evidência estrutural valer mais que o aumento de
+// erros apenas por existirem mais regras daquele tipo — e a proporção mudaria
+// de novo a cada detector futuro, sem ninguém decidir.
+//
+// As contribuições continuam todas visíveis; o que é limitado é o total da classe.
+func TestClasseDePesoNãoUltrapassaOPesoConfigurado(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{ErrorRateDelta: 0.25, GraphProximity: 0.15, DatabaseEvidence: 0.20},
+		TopN:    3,
+	}
+	estruturais := []detection.Finding{
+		{Rule: detection.RuleTraceCorrelation, ServiceName: "checkout", Score: 1, Confidence: detection.ConfidenceHigh},
+		{Rule: detection.RuleRetryStorm, ServiceName: "checkout", Score: 1, Confidence: detection.ConfidenceHigh},
+	}
+
+	suspects, err := ranking.Rank(estruturais, config)
+	if err != nil {
+		t.Fatalf("ranking.Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	if suspects[0].Score > 0.15+1e-9 {
+		t.Fatalf("score = %.4f, esperado no máximo o peso da classe (0.15)", suspects[0].Score)
+	}
+	// Nenhuma evidência pode desaparecer da explicação por causa do teto.
+	if len(suspects[0].Contributions) != 2 {
+		t.Fatalf("contribuições = %d, esperado 2 mesmo com o teto aplicado", len(suspects[0].Contributions))
+	}
+}
+
+// TestClassesDiferentesContinuamSomando garante que o teto é por classe e não um
+// limite global: evidências de naturezas distintas continuam se acumulando.
+func TestClassesDiferentesContinuamSomando(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{ErrorRateDelta: 0.25, GraphProximity: 0.15, DatabaseEvidence: 0.20},
+		TopN:    3,
+	}
+	suspects, err := ranking.Rank([]detection.Finding{
+		{Rule: detection.RuleErrorRateDelta, ServiceName: "checkout", Score: 1, Confidence: detection.ConfidenceHigh},
+		{Rule: detection.RuleTraceCorrelation, ServiceName: "checkout", Score: 1, Confidence: detection.ConfidenceHigh},
+	}, config)
+	if err != nil {
+		t.Fatalf("ranking.Rank() erro = %v", err)
+	}
+	esperado := 0.25 + 0.15
+	if diferenca := suspects[0].Score - esperado; diferenca > 1e-9 || diferenca < -1e-9 {
+		t.Fatalf("score = %.4f, esperado %.4f", suspects[0].Score, esperado)
+	}
+}

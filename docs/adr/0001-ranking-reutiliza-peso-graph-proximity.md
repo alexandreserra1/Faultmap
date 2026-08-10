@@ -1,6 +1,6 @@
 # ADR 0001 — Detectores estruturais reutilizam o peso `graph_proximity`
 
-- Status: aceito
+- Status: aceito, revisitado pelo [ADR 0010](0010-teto-por-classe-de-peso-no-ranking.md)
 - Data: 2026-08-06
 
 ## Contexto

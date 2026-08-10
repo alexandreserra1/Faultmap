@@ -14,3 +14,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0007](0007-telemetria-real-como-base-de-teste.md) | Telemetria de instrumentação real como base de teste |
 | [0008](0008-politica-de-privacidade-aplicada-na-ingestao.md) | Política de privacidade aplicada na ingestão |
 | [0009](0009-investigacao-compara-servicos-por-escopo-de-traces.md) | A investigação compara serviços descobertos pelos traces |
+| [0010](0010-teto-por-classe-de-peso-no-ranking.md) | Teto por classe de peso no ranking |

@@ -50,7 +50,8 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 
 	byService := make(map[string]*suspectAccumulator)
 	for _, finding := range findings {
-		weight, known := weightForRule(finding.Rule, config.Weights)
+		class, known := weightClassForRule(finding.Rule)
+		weight := weightForClass(class, config.Weights)
 		serviceName := strings.TrimSpace(finding.ServiceName)
 		if !known || weight == 0 || serviceName == "" {
 			continue
@@ -59,15 +60,16 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 		accumulator := byService[serviceName]
 		if accumulator == nil {
 			accumulator = &suspectAccumulator{
-				confidence:  detection.ConfidenceHigh,
-				limitations: make(map[string]struct{}),
+				byWeightClass: make(map[string]float64),
+				confidence:    detection.ConfidenceHigh,
+				limitations:   make(map[string]struct{}),
 			}
 			byService[serviceName] = accumulator
 		}
 
 		findingScore := clamp(finding.Score)
 		value := findingScore * weight
-		accumulator.score += value
+		accumulator.byWeightClass[class] += value
 		accumulator.contributions = append(accumulator.contributions, ScoreContribution{
 			RuleID: finding.Rule,
 			Value:  value,
@@ -91,7 +93,7 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 		suspects = append(suspects, Suspect{
 			ID:            serviceName,
 			Label:         serviceName,
-			Score:         clamp(accumulator.score),
+			Score:         clamp(accumulator.score(config.Weights)),
 			Confidence:    accumulator.confidence,
 			Contributions: accumulator.contributions,
 			Limitations:   sortedSet(accumulator.limitations),
@@ -111,10 +113,30 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 }
 
 type suspectAccumulator struct {
-	score         float64
+	// byWeightClass acumula separadamente o que cada classe de peso somou, para
+	// que o total de uma classe possa ser limitado ao peso configurado para ela.
+	byWeightClass map[string]float64
 	confidence    detection.Confidence
 	contributions []ScoreContribution
 	limitations   map[string]struct{}
+}
+
+// score soma as classes já limitadas ao respectivo peso.
+//
+// Várias regras compartilham a mesma classe de peso — quatro delas dividem
+// graph_proximity. Somar livremente faria a evidência estrutural valer mais que
+// o aumento de erros apenas por existirem mais regras daquele tipo, e a
+// proporção mudaria a cada detector acrescentado, sem ninguém decidir. O teto
+// mantém o significado dos pesos configurados no YAML.
+//
+// As contribuições individuais continuam todas visíveis na explicação: o que é
+// limitado é o total da classe, não o que é apresentado.
+func (accumulator *suspectAccumulator) score(weights Weights) float64 {
+	total := 0.0
+	for class, accumulated := range accumulator.byWeightClass {
+		total += math.Min(accumulated, weightForClass(class, weights))
+	}
+	return total
 }
 
 // Validate rejeita limites e pesos que violariam o contrato normalizado antes de qualquer processamento.
@@ -137,22 +159,49 @@ func (config Config) Validate() error {
 	return nil
 }
 
-func weightForRule(rule string, weights Weights) (float64, bool) {
+// Classes de peso. Elas correspondem aos campos do YAML e existem para que
+// várias regras da mesma natureza compartilhem um orçamento comum de score.
+const (
+	classErrorRate           = "error_rate_delta"
+	classLatency             = "latency_delta"
+	classDatabaseEvidence    = "database_evidence"
+	classGraphProximity      = "graph_proximity"
+	classDeploymentProximity = "deployment_proximity"
+)
+
+// weightClassForRule associa cada regra à classe de peso que a financia.
+func weightClassForRule(rule string) (string, bool) {
 	switch rule {
 	case detection.RuleErrorRateDelta:
-		return weights.ErrorRateDelta, true
+		return classErrorRate, true
 	case detection.RuleLatencyDelta:
-		return weights.LatencyDelta, true
-	case detection.RuleDatabaseTimeout:
-		return weights.DatabaseEvidence, true
-	case detection.RuleTraceCorrelation:
-		return weights.GraphProximity, true
-	case detection.RuleRetryStorm:
-		return weights.GraphProximity, true
-	case detection.RuleDeploymentProximity:
-		return weights.DeploymentProximity, true
+		return classLatency, true
+	case detection.RuleDatabaseTimeout, detection.RuleDatabaseError:
+		return classDatabaseEvidence, true
+	case detection.RuleTraceCorrelation, detection.RuleRetryStorm,
+		detection.RuleDependencyFailure, detection.RuleTraceBreak:
+		return classGraphProximity, true
+	case detection.RuleDeploymentProximity, detection.RuleVersionRegression:
+		return classDeploymentProximity, true
 	default:
-		return 0, false
+		return "", false
+	}
+}
+
+func weightForClass(class string, weights Weights) float64 {
+	switch class {
+	case classErrorRate:
+		return weights.ErrorRateDelta
+	case classLatency:
+		return weights.LatencyDelta
+	case classDatabaseEvidence:
+		return weights.DatabaseEvidence
+	case classGraphProximity:
+		return weights.GraphProximity
+	case classDeploymentProximity:
+		return weights.DeploymentProximity
+	default:
+		return 0
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
@@ -158,4 +159,60 @@ func carregarFixtureReal(t *testing.T, nome string) []domain.Signal {
 		t.Fatalf("fixture %s não produziu sinais", nome)
 	}
 	return signals
+}
+
+// TestDetectoresNovosNãoAcusamTelemetriaRealSaudável submete os quatro
+// detectores acrescentados à telemetria capturada de instrumentação de
+// terceiros, usando a MESMA janela como baseline e incidente.
+//
+// Nada mudou entre as duas janelas, porque são a mesma: qualquer finding aqui é
+// falso positivo por construção. É a checagem mais barata contra o defeito que
+// mais custou a este projeto, e a que a telemetria escrita por nós não consegue
+// fazer — ela não tem spans órfãos, versões convivendo nem cadeias parciais
+// como as que uma aplicação real produz.
+func TestDetectoresNovosNãoAcusamTelemetriaRealSaudável(t *testing.T) {
+	t.Parallel()
+
+	for _, fixture := range []string{
+		"postgres-psycopg2.json",
+		"sqlite3.json",
+		"duckdb-strideredge.json",
+		"fastapi-strideredge.json",
+	} {
+		fixture := fixture
+		t.Run(fixture, func(t *testing.T) {
+			t.Parallel()
+
+			signals := carregarFixtureReal(t, fixture)
+			for _, service := range serviçosDaFixture(signals) {
+				input := Input{ServiceName: service, Baseline: signals, Incident: signals}
+				if finding, found := DetectDatabaseError(input); found {
+					t.Errorf("database_error acusou janela idêntica em %s: %s", service, finding.Evidence[0].Summary)
+				}
+				if finding, found := DetectVersionRegression(input); found {
+					t.Errorf("version_regression acusou janela idêntica em %s: %s", service, finding.Evidence[0].Summary)
+				}
+			}
+			for _, finding := range DetectDependencyFailure(signals, signals) {
+				t.Errorf("dependency_failure acusou janela idêntica: %s", finding.Evidence[0].Summary)
+			}
+			for _, finding := range DetectTraceBreak(signals, signals) {
+				t.Errorf("trace_break acusou janela idêntica: %s", finding.Evidence[0].Summary)
+			}
+		})
+	}
+}
+
+func serviçosDaFixture(signals []domain.Signal) []string {
+	seen := make(map[string]struct{})
+	services := make([]string, 0, 2)
+	for _, signal := range signals {
+		if _, repetido := seen[signal.ServiceName]; repetido {
+			continue
+		}
+		seen[signal.ServiceName] = struct{}{}
+		services = append(services, signal.ServiceName)
+	}
+	sort.Strings(services)
+	return services
 }

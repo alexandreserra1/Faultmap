@@ -25,6 +25,14 @@ const (
 	RuleDeploymentProximity = "deployment_proximity"
 	// RuleRetryStorm identifica aumento anormal de chamadas repetidas no mesmo trace.
 	RuleRetryStorm = "retry_storm"
+	// RuleDependencyFailure identifica falha de um serviço sob a falha de outro no mesmo trace.
+	RuleDependencyFailure = "dependency_failure"
+	// RuleTraceBreak identifica ligação entre serviços que existia na baseline e sumiu no incidente.
+	RuleTraceBreak = "trace_break"
+	// RuleDatabaseError identifica crescimento de falhas de banco que não são timeout.
+	RuleDatabaseError = "database_error"
+	// RuleVersionRegression compara duas versões do mesmo serviço ativas na janela de incidente.
+	RuleVersionRegression = "version_regression"
 
 	minimumSampleSize = 5
 
@@ -88,6 +96,12 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectRetryStorm(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectDatabaseError(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectVersionRegression(input); found {
 		findings = append(findings, finding)
 	}
 	return findings

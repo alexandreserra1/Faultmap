@@ -164,6 +164,12 @@ func DiagnoseIncidentInScope(
 		}
 	}
 
+	// Estes dois detectores comparam serviços entre si dentro dos mesmos traces,
+	// então recebem as janelas inteiras em vez dos sinais de um serviço só. Cada
+	// finding já vem com o serviço a que pertence.
+	findings = append(findings, detection.DetectDependencyFailure(baseline, incident)...)
+	findings = append(findings, detection.DetectTraceBreak(baseline, incident)...)
+
 	suspects, err := ranking.Rank(findings, request.Ranking)
 	if err != nil {
 		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: ranquear suspeitos: %w", err)
