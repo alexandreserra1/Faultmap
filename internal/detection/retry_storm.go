@@ -141,10 +141,12 @@ func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
 	}
 
 	if system := semconv.DatabaseSystem(attributes); system != "" {
+		// A operação refina o rótulo, mas não é indispensável para reconhecer a
+		// repetição: o sistema de banco já identifica a chamada. Exigi-la deixava
+		// invisível toda tempestade de retry vinda de instrumentações que não a
+		// emitem — a oficial do Node, por exemplo, coloca a operação no nome do
+		// span e não em um atributo.
 		operation := semconv.DatabaseOperation(attributes)
-		if operation == "" {
-			return "", "", false
-		}
 		collection := semconv.DatabaseCollection(attributes)
 		labelSystem := system
 		if strings.EqualFold(system, "postgresql") {

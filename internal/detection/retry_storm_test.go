@@ -170,3 +170,54 @@ func databaseRetrySignals(prefix string, traceCount, attempts int) []domain.Sign
 	}
 	return signals
 }
+
+// TestRetryStormReconheceBancoSemAtributoDeOperação cobre uma lacuna encontrada
+// ao capturar a instrumentação oficial do Node: os 68 spans de banco não
+// trouxeram nenhum atributo de operação. A biblioteca coloca a operação no nome
+// do span, como "pg.query:SELECT captura", e não em db.operation.
+//
+// Sem operação, a assinatura do retry desistia do span e uma tempestade de
+// retry no banco ficava invisível para toda aplicação instrumentada assim.
+// O sistema de banco, sozinho, já identifica a repetição — a operação apenas
+// refina o rótulo.
+func TestRetryStormReconheceBancoSemAtributoDeOperação(t *testing.T) {
+	t.Parallel()
+
+	baseline := bancoNodeRepetido(8, 1)
+	incidente := bancoNodeRepetido(8, 4)
+
+	finding, found := DetectRetryStorm(Input{
+		ServiceName: "captura-node", Baseline: baseline, Incident: incidente,
+	})
+	if !found {
+		t.Fatal("retry storm no banco ficou invisível sem o atributo de operação")
+	}
+	if len(finding.Evidence) == 0 {
+		t.Fatal("finding sem evidência")
+	}
+}
+
+// bancoNodeRepetido monta traces em que a mesma operação de banco se repete,
+// no formato que a instrumentação do Node produz: sem db.operation, com a
+// operação embutida no nome do span.
+func bancoNodeRepetido(traces, repeticoes int) []domain.Signal {
+	signals := make([]domain.Signal, 0, traces*repeticoes)
+	for trace := 0; trace < traces; trace++ {
+		for repeticao := 0; repeticao < repeticoes; repeticao++ {
+			signals = append(signals, domain.Signal{
+				ID:          fmt.Sprintf("node-%02d-%02d", trace, repeticao),
+				ServiceName: "captura-node",
+				TraceID:     fmt.Sprintf("trace-%02d", trace),
+				SpanID:      fmt.Sprintf("span-%02d-%02d", trace, repeticao),
+				Attributes: map[string]string{
+					"db.system.name": "postgresql",
+					"db.namespace":   "captura",
+					"span.kind":      "SPAN_KIND_CLIENT",
+					"span.name":      "pg.query:SELECT captura",
+				},
+				Measurements: map[string]float64{"duration_ms": 5},
+			})
+		}
+	}
+	return signals
+}

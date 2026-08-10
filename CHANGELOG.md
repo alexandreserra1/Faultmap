@@ -1,5 +1,33 @@
 # Changelog
 
+## Não publicado
+
+### Corrigido
+
+- **Retry storm invisível em banco sem atributo de operação.** A assinatura de
+  uma chamada de banco exigia `db.operation`, e desistia do span quando ele não
+  vinha. A captura da instrumentação oficial do Node mostrou que os 68 spans de
+  banco não trazem esse atributo — a biblioteca coloca a operação no nome do
+  span, como `pg.query:SELECT captura`. Uma tempestade de retry no banco era
+  invisível em qualquer aplicação instrumentada assim. O sistema de banco já
+  identifica a repetição; a operação apenas refina o rótulo quando existe.
+
+### Adicionado
+
+- `fixtures/otel/real/nodejs-pg.json` — telemetria capturada da instrumentação
+  oficial do Node com PostgreSQL, somando-se às de FastAPI, psycopg2, SQLite e
+  DuckDB. Os detectores passam a ser exercitados contra cinco instrumentações de
+  terceiros.
+
+### Verificação
+
+- Cinco detectores funcionaram contra o Node sem nenhuma correção:
+  `error_rate_delta`, `latency_delta`, `database_timeout`, `database_error` e
+  `database_http_trace_correlation`. A instrumentação usa a convenção estável,
+  que o produto já reconhecia — não houve a terceira cegueira que se temia.
+- Matriz E2E: 6 de 6. Modo difícil: 5 de 5, incluindo o cenário de fan-out
+  legítimo, que era o risco direto de alargar a assinatura do retry.
+
 ## v0.3.1 — 2026-08-10
 
 ### Adicionado

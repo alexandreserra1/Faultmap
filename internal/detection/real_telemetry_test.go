@@ -32,6 +32,8 @@ func TestTelemetriaRealDeBancoÉEnxergada(t *testing.T) {
 		{fixture: "sqlite3.json", sistemaEsperado: "sqlite"},
 		// Capturado da aplicação de terceiros em uso, com autenticação real.
 		{fixture: "duckdb-strideredge.json", sistemaEsperado: "duckdb"},
+		// Capturado da instrumentação oficial do Node, que usa a convenção nova.
+		{fixture: "nodejs-pg.json", sistemaEsperado: "PostgreSQL"},
 	}
 
 	for _, testCase := range testCases {
@@ -178,6 +180,7 @@ func TestDetectoresNovosNãoAcusamTelemetriaRealSaudável(t *testing.T) {
 		"sqlite3.json",
 		"duckdb-strideredge.json",
 		"fastapi-strideredge.json",
+		"nodejs-pg.json",
 	} {
 		fixture := fixture
 		t.Run(fixture, func(t *testing.T) {
