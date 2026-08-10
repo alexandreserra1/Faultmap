@@ -1,0 +1,5842 @@
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "captura-go"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "1.0.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "github.com/XSAM/otelsql",
+            "version": "0.43.0"
+          },
+          "spans": [
+            {
+              "traceId": "62672fe87a8c962a3861b1c393ab29c7",
+              "spanId": "80a13e86a6931cfe",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397609238971000",
+              "endTimeUnixNano": "1786397609251511125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "CREATE TABLE IF NOT EXISTS pedidos_go (id SERIAL PRIMARY KEY, valor INTEGER)"
+                  }
+                }
+              ],
+              "status": {}
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "captura-go"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "1.0.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "github.com/XSAM/otelsql",
+            "version": "0.43.0"
+          },
+          "spans": [
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "0414223d95d3bff8",
+              "parentSpanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612325728000",
+              "endTimeUnixNano": "1786397612325729208",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "8431c3ca07784a68",
+              "parentSpanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612325744000",
+              "endTimeUnixNano": "1786397612340211333",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "c3589dad466c5f43",
+              "parentSpanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612340230000",
+              "endTimeUnixNano": "1786397612340232208",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "515e7bffb69de7ea",
+              "parentSpanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612340240000",
+              "endTimeUnixNano": "1786397612341320083",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "51ff5dd792ed47ee",
+              "parentSpanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612341316000",
+              "endTimeUnixNano": "1786397612341386167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "8c253f8176c15ce6",
+              "parentSpanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612355358000",
+              "endTimeUnixNano": "1786397612355359125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "eb1c4774cdb8c031",
+              "parentSpanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612355372000",
+              "endTimeUnixNano": "1786397612359622958",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "f383a68160f8e381",
+              "parentSpanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612359655000",
+              "endTimeUnixNano": "1786397612359656791",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "223f1b84aabc2a8d",
+              "parentSpanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612359660000",
+              "endTimeUnixNano": "1786397612360541417",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "d19e62eba4361ef7",
+              "parentSpanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612360537000",
+              "endTimeUnixNano": "1786397612360556625",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "c480970a3c80d979",
+              "parentSpanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612371123000",
+              "endTimeUnixNano": "1786397612371123750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "2ffd1d026e1e39c2",
+              "parentSpanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612371135000",
+              "endTimeUnixNano": "1786397612378850500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "2a4018f5f211e95d",
+              "parentSpanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612378870000",
+              "endTimeUnixNano": "1786397612378872750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "bf0bfc843c516ecb",
+              "parentSpanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612378876000",
+              "endTimeUnixNano": "1786397612379443875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "43b0e1fc4c6879d4",
+              "parentSpanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612379442000",
+              "endTimeUnixNano": "1786397612379464000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "7bb5d5465c497492",
+              "parentSpanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612391426000",
+              "endTimeUnixNano": "1786397612391427000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "7c1ea5c032fb3170",
+              "parentSpanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612391439000",
+              "endTimeUnixNano": "1786397612394500542",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "10d10a50f729ddfe",
+              "parentSpanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612394511000",
+              "endTimeUnixNano": "1786397612394512042",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "14f4b30650673e9f",
+              "parentSpanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612394514000",
+              "endTimeUnixNano": "1786397612395492625",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "663080c8e6bf259f",
+              "parentSpanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612395491000",
+              "endTimeUnixNano": "1786397612395507292",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "e0b7ba35fea739d6",
+              "parentSpanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612410540000",
+              "endTimeUnixNano": "1786397612410540917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "65e5f7934e96d3f6",
+              "parentSpanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612410551000",
+              "endTimeUnixNano": "1786397612413868833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "09368ed60a02a90b",
+              "parentSpanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612413882000",
+              "endTimeUnixNano": "1786397612413883709",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "9b4aa0e525438cbe",
+              "parentSpanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612413887000",
+              "endTimeUnixNano": "1786397612415122916",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "2d7a897197dba06c",
+              "parentSpanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612415121000",
+              "endTimeUnixNano": "1786397612415166125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "d70a79907e8867ea",
+              "parentSpanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612426052000",
+              "endTimeUnixNano": "1786397612426053166",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "8592fd0ce850e916",
+              "parentSpanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612426064000",
+              "endTimeUnixNano": "1786397612432769041",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "bdb6438bfe5b05f8",
+              "parentSpanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612432805000",
+              "endTimeUnixNano": "1786397612432807750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "31faab3f618bbecf",
+              "parentSpanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612432812000",
+              "endTimeUnixNano": "1786397612433594709",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "9ac19bfb68352c44",
+              "parentSpanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612433593000",
+              "endTimeUnixNano": "1786397612433613083",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "3bf6110b8efc391c",
+              "parentSpanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612446811000",
+              "endTimeUnixNano": "1786397612446812584",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "e2d7e568b41c0324",
+              "parentSpanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612446826000",
+              "endTimeUnixNano": "1786397612451639000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "26e77f4f13ec50aa",
+              "parentSpanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612451651000",
+              "endTimeUnixNano": "1786397612451652291",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "4a6a2fbc5ff531d4",
+              "parentSpanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612451655000",
+              "endTimeUnixNano": "1786397612452145167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "7eea9c8228a60794",
+              "parentSpanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612452144000",
+              "endTimeUnixNano": "1786397612452158125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "16a6ef7a8e77718b",
+              "parentSpanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612462986000",
+              "endTimeUnixNano": "1786397612462990000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "1d836157dbb545a8",
+              "parentSpanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612463005000",
+              "endTimeUnixNano": "1786397612467735333",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "5e0a167d82254b06",
+              "parentSpanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612467755000",
+              "endTimeUnixNano": "1786397612467757167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "5cddfca7b912f48a",
+              "parentSpanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612467760000",
+              "endTimeUnixNano": "1786397612468359792",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "e8ff8878e0d69c0e",
+              "parentSpanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612468359000",
+              "endTimeUnixNano": "1786397612468392417",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "c265b27ec3342446",
+              "parentSpanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612478897000",
+              "endTimeUnixNano": "1786397612478898291",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "815b16f3c4f62e0f",
+              "parentSpanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612478912000",
+              "endTimeUnixNano": "1786397612486903125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "8a951a68815607df",
+              "parentSpanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612486923000",
+              "endTimeUnixNano": "1786397612486925709",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "60e36dda6a474bc9",
+              "parentSpanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612486929000",
+              "endTimeUnixNano": "1786397612488906625",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "7be38a681beb96fe",
+              "parentSpanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612488905000",
+              "endTimeUnixNano": "1786397612488937667",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "9f499e66be6539b8",
+              "parentSpanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612501883000",
+              "endTimeUnixNano": "1786397612501885833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "bc7a07f2f8c943c5",
+              "parentSpanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612501902000",
+              "endTimeUnixNano": "1786397612504818666",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "0b8c3bc6678002a2",
+              "parentSpanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612504826000",
+              "endTimeUnixNano": "1786397612504826792",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "9a0c8c62cf2bb3a6",
+              "parentSpanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612504829000",
+              "endTimeUnixNano": "1786397612505854791",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "0c840831236db873",
+              "parentSpanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612505852000",
+              "endTimeUnixNano": "1786397612505874041",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "8d228e258f7073c8",
+              "parentSpanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612516887000",
+              "endTimeUnixNano": "1786397612516888166",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "cf4789039147acc6",
+              "parentSpanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612516900000",
+              "endTimeUnixNano": "1786397612519876875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "57fc357ad50a2f4e",
+              "parentSpanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612519891000",
+              "endTimeUnixNano": "1786397612519892750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "5b66e74a783b97bf",
+              "parentSpanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612519896000",
+              "endTimeUnixNano": "1786397612520839500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "0f703a8e8ce51af2",
+              "parentSpanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612520839000",
+              "endTimeUnixNano": "1786397612520858125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "3984bc7e3a6828a4",
+              "parentSpanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612531199000",
+              "endTimeUnixNano": "1786397612531199875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "9631df89cf6acf31",
+              "parentSpanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612531210000",
+              "endTimeUnixNano": "1786397612535393250",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "e149193d2d2b3485",
+              "parentSpanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612535408000",
+              "endTimeUnixNano": "1786397612535409500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "1f7677f932b5ce7e",
+              "parentSpanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612535412000",
+              "endTimeUnixNano": "1786397612536314250",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "c19f5d581c1ad3aa",
+              "parentSpanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612536312000",
+              "endTimeUnixNano": "1786397612536327125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "1b51f888ed985ddf",
+              "parentSpanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612546488000",
+              "endTimeUnixNano": "1786397612546489125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "9809de0276b232b2",
+              "parentSpanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612546503000",
+              "endTimeUnixNano": "1786397612549823292",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "65a31d5bc79605bf",
+              "parentSpanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612549842000",
+              "endTimeUnixNano": "1786397612549843958",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "12977a725200e5fb",
+              "parentSpanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612549847000",
+              "endTimeUnixNano": "1786397612550493875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "8111813c813a45f7",
+              "parentSpanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612550493000",
+              "endTimeUnixNano": "1786397612550507291",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "01a7623285c27b6f",
+              "parentSpanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612560108000",
+              "endTimeUnixNano": "1786397612560108750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "e49f22e70174afcc",
+              "parentSpanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612560121000",
+              "endTimeUnixNano": "1786397612563719583",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "cec66d7695e0e235",
+              "parentSpanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612563739000",
+              "endTimeUnixNano": "1786397612563741166",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "78e7c2da40b74cf2",
+              "parentSpanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612563744000",
+              "endTimeUnixNano": "1786397612565235416",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "88e231dc0888b839",
+              "parentSpanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612565233000",
+              "endTimeUnixNano": "1786397612565251291",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "814c71081942354d",
+              "parentSpanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612576725000",
+              "endTimeUnixNano": "1786397612576730459",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "f3e9d5985473e15d",
+              "parentSpanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612576743000",
+              "endTimeUnixNano": "1786397612580835125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "INSERT INTO pedidos_go (valor) VALUES ($1)"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "901698bb34009c92",
+              "parentSpanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612580855000",
+              "endTimeUnixNano": "1786397612580857292",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "23875e0e9b493106",
+              "parentSpanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612580861000",
+              "endTimeUnixNano": "1786397612581490625",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT COUNT(*) FROM pedidos_go"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "eced110bb5555b1a",
+              "parentSpanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "sql.rows",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612581488000",
+              "endTimeUnixNano": "1786397612581506916",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9e9d627d037f69f7a10ab3e691320868",
+              "spanId": "2ffd57700f6ee579",
+              "parentSpanId": "3727ad3c437e75da",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612594121000",
+              "endTimeUnixNano": "1786397612594122167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9e9d627d037f69f7a10ab3e691320868",
+              "spanId": "94b69c1ff47fed97",
+              "parentSpanId": "3727ad3c437e75da",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612594133000",
+              "endTimeUnixNano": "1786397612597311208",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612597309000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "66dda1986f0911a20f84dc7b1546997e",
+              "spanId": "60c5970f96b7c77a",
+              "parentSpanId": "0165b42308f34e0a",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612608097000",
+              "endTimeUnixNano": "1786397612608097791",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "66dda1986f0911a20f84dc7b1546997e",
+              "spanId": "8a190d0482e287f8",
+              "parentSpanId": "0165b42308f34e0a",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612608106000",
+              "endTimeUnixNano": "1786397612609640000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612609639000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "1ed63c0c7b7529c455d01af1d0ec29a0",
+              "spanId": "99e4eb3a954d9412",
+              "parentSpanId": "755b6a9824963032",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612619593000",
+              "endTimeUnixNano": "1786397612619593917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1ed63c0c7b7529c455d01af1d0ec29a0",
+              "spanId": "251590f22b0b5a1b",
+              "parentSpanId": "755b6a9824963032",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612619603000",
+              "endTimeUnixNano": "1786397612621546792",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612621505000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "df7e8af47b9e7c570009ed1d243438b1",
+              "spanId": "2a82b624bfe2a9d6",
+              "parentSpanId": "26d8d8f9e0eb38da",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612631544000",
+              "endTimeUnixNano": "1786397612631545167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "df7e8af47b9e7c570009ed1d243438b1",
+              "spanId": "619d45fcdfcf38f8",
+              "parentSpanId": "26d8d8f9e0eb38da",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612631554000",
+              "endTimeUnixNano": "1786397612633123750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612633123000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "50bd14afd12fb8d299e745e983d441c3",
+              "spanId": "d5377bb552275660",
+              "parentSpanId": "42aa6b228419a73e",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612644085000",
+              "endTimeUnixNano": "1786397612644086167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "50bd14afd12fb8d299e745e983d441c3",
+              "spanId": "b687e26db4356876",
+              "parentSpanId": "42aa6b228419a73e",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612644095000",
+              "endTimeUnixNano": "1786397612652303458",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612652301000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "823ac4fc8327d56e81ea0522fa4078db",
+              "spanId": "f532e6eebfa1a8d3",
+              "parentSpanId": "a558a7a1d32bb639",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612662359000",
+              "endTimeUnixNano": "1786397612662359750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "823ac4fc8327d56e81ea0522fa4078db",
+              "spanId": "ec6f0dcc9b28216f",
+              "parentSpanId": "a558a7a1d32bb639",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612662368000",
+              "endTimeUnixNano": "1786397612667578833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612667578000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ce8438dfbb5cc351433c7b592f92ab2c",
+              "spanId": "d3bad0bd38e50852",
+              "parentSpanId": "5a63a7520b73f925",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612677207000",
+              "endTimeUnixNano": "1786397612677207917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "ce8438dfbb5cc351433c7b592f92ab2c",
+              "spanId": "49dd0391a1902469",
+              "parentSpanId": "5a63a7520b73f925",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612677220000",
+              "endTimeUnixNano": "1786397612679485500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612679485000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "dbd6d2665981f47a7e9d6042b7ec7888",
+              "spanId": "98b8e697143be117",
+              "parentSpanId": "2a11b3c12f5bf195",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612689257000",
+              "endTimeUnixNano": "1786397612689257917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "dbd6d2665981f47a7e9d6042b7ec7888",
+              "spanId": "4fb473ffc3d6dca0",
+              "parentSpanId": "2a11b3c12f5bf195",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612689267000",
+              "endTimeUnixNano": "1786397612693957459",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612693956000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "c60c4f9846f711e110fa9184c862a6c3",
+              "spanId": "5e69c06fd2eaab53",
+              "parentSpanId": "2f9b6aae2d278364",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612705069000",
+              "endTimeUnixNano": "1786397612705070000",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "c60c4f9846f711e110fa9184c862a6c3",
+              "spanId": "a843287101cfa5a2",
+              "parentSpanId": "2f9b6aae2d278364",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612705078000",
+              "endTimeUnixNano": "1786397612709980708",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612709979000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "d17858b38f509f38a389577e1a35405c",
+              "spanId": "3e7f601b6a5d7946",
+              "parentSpanId": "fd7a1d2ea0dc94c3",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612719648000",
+              "endTimeUnixNano": "1786397612719648834",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d17858b38f509f38a389577e1a35405c",
+              "spanId": "ab6277ed5b97c423",
+              "parentSpanId": "fd7a1d2ea0dc94c3",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612719657000",
+              "endTimeUnixNano": "1786397612722726541",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT * FROM tabela_que_nao_existe"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612722726000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: relation \"tabela_que_nao_existe\" does not exist at column 15 (42P01)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "d8eb4c272795dd78cd5372ce229220e0",
+              "spanId": "cc8ef02b7e42d03f",
+              "parentSpanId": "46c7beff3b7b0438",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612734249000",
+              "endTimeUnixNano": "1786397612734249791",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d8eb4c272795dd78cd5372ce229220e0",
+              "spanId": "4d9cb98624be1996",
+              "parentSpanId": "46c7beff3b7b0438",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612734257000",
+              "endTimeUnixNano": "1786397612735689833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d8eb4c272795dd78cd5372ce229220e0",
+              "spanId": "d9d7c6b0cf5c4836",
+              "parentSpanId": "46c7beff3b7b0438",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612735703000",
+              "endTimeUnixNano": "1786397612793809125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612793808000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "e8050552c1b73f0ef5d6b90bdb8ac7cb",
+              "spanId": "18353dcdb59f3e11",
+              "parentSpanId": "c9baf98169676426",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612807097000",
+              "endTimeUnixNano": "1786397612807098041",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e8050552c1b73f0ef5d6b90bdb8ac7cb",
+              "spanId": "15752c1d6380212c",
+              "parentSpanId": "c9baf98169676426",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612807109000",
+              "endTimeUnixNano": "1786397612808527584",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "e8050552c1b73f0ef5d6b90bdb8ac7cb",
+              "spanId": "a71dd52bdb2b60b3",
+              "parentSpanId": "c9baf98169676426",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612808534000",
+              "endTimeUnixNano": "1786397612863267500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612863266000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "0dc93682e11af926fb2f3c7597fa6e9e",
+              "spanId": "66a22dd6bdf372e9",
+              "parentSpanId": "8cc3b8613b0f1b16",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612873393000",
+              "endTimeUnixNano": "1786397612873410833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0dc93682e11af926fb2f3c7597fa6e9e",
+              "spanId": "665b6ea6fd243fc5",
+              "parentSpanId": "8cc3b8613b0f1b16",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612873432000",
+              "endTimeUnixNano": "1786397612874595334",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "0dc93682e11af926fb2f3c7597fa6e9e",
+              "spanId": "f33702b4c178a405",
+              "parentSpanId": "8cc3b8613b0f1b16",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612874607000",
+              "endTimeUnixNano": "1786397612934232833",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397612934231000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "1cf9c59cf9a52202521bce7c1254dafa",
+              "spanId": "4a87fd3a1eca5721",
+              "parentSpanId": "bb277bbde876da65",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612945720000",
+              "endTimeUnixNano": "1786397612945727917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1cf9c59cf9a52202521bce7c1254dafa",
+              "spanId": "0a996e1a14e1a8a1",
+              "parentSpanId": "bb277bbde876da65",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612945741000",
+              "endTimeUnixNano": "1786397612946852292",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "1cf9c59cf9a52202521bce7c1254dafa",
+              "spanId": "1de5b6eb91ed075d",
+              "parentSpanId": "bb277bbde876da65",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397612946858000",
+              "endTimeUnixNano": "1786397613001429084",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397613001427000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "151da7d641719768754a3a93a478b973",
+              "spanId": "08a68dde45e4b662",
+              "parentSpanId": "2ffabad90d9a0c0a",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613013053000",
+              "endTimeUnixNano": "1786397613013053917",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "151da7d641719768754a3a93a478b973",
+              "spanId": "80b7c665b0ec5954",
+              "parentSpanId": "2ffabad90d9a0c0a",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613013064000",
+              "endTimeUnixNano": "1786397613014258125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "151da7d641719768754a3a93a478b973",
+              "spanId": "07c24f39f4d2d886",
+              "parentSpanId": "2ffabad90d9a0c0a",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613014264000",
+              "endTimeUnixNano": "1786397613070281208",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397613070279000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "47b95fbfca21f14abadf57ff1169822e",
+              "spanId": "3129b08fb77b8f8e",
+              "parentSpanId": "c13816ce80334ca6",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613087263000",
+              "endTimeUnixNano": "1786397613087264375",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "47b95fbfca21f14abadf57ff1169822e",
+              "spanId": "bdb0aba027898b2e",
+              "parentSpanId": "c13816ce80334ca6",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613087284000",
+              "endTimeUnixNano": "1786397613088629542",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "47b95fbfca21f14abadf57ff1169822e",
+              "spanId": "cd1a19f8bd3e14ff",
+              "parentSpanId": "c13816ce80334ca6",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613088648000",
+              "endTimeUnixNano": "1786397613143714750",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397613143711000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ef4bea2ada5335d3382bc1c746ae5fba",
+              "spanId": "2f9913b597000ecf",
+              "parentSpanId": "aac11fea9c304d6c",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613163185000",
+              "endTimeUnixNano": "1786397613163186667",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "ef4bea2ada5335d3382bc1c746ae5fba",
+              "spanId": "cacd9b30aaa2577f",
+              "parentSpanId": "aac11fea9c304d6c",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613163203000",
+              "endTimeUnixNano": "1786397613166267875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "ef4bea2ada5335d3382bc1c746ae5fba",
+              "spanId": "6a8baa983a030e1b",
+              "parentSpanId": "aac11fea9c304d6c",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613166294000",
+              "endTimeUnixNano": "1786397613219073125",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397613219072000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        },
+        {
+          "scope": {
+            "name": "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
+            "version": "0.70.0"
+          },
+          "spans": [
+            {
+              "traceId": "c7b6198722aa73973c291f7da324c64c",
+              "spanId": "87b6942c5d28174e",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612325451000",
+              "endTimeUnixNano": "1786397612341430250",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "58998"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "bc954b5264b5b309c6c39b4d4b2e650b",
+              "spanId": "d654c7b7bcb21363",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612355329000",
+              "endTimeUnixNano": "1786397612360573542",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "58999"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "91e5aa8ed5bdbf21d6738033582c174b",
+              "spanId": "bc38bd0d38316755",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612371099000",
+              "endTimeUnixNano": "1786397612379488833",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59000"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "07787b386ee1113671b64a9ad3562105",
+              "spanId": "9010b36aac3c74a1",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612391400000",
+              "endTimeUnixNano": "1786397612395523625",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59001"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "5684433a0686489c320cfd8a5c6180f3",
+              "spanId": "80a8d6adb61c7831",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612410516000",
+              "endTimeUnixNano": "1786397612415188084",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59002"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9db3f27f300e98b064ddb7df518271a8",
+              "spanId": "191c0d7f3f690c08",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612426026000",
+              "endTimeUnixNano": "1786397612433637917",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59003"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "7e0286041cb1db77523b6fcb388550ab",
+              "spanId": "78aacd43c276ff27",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612446750000",
+              "endTimeUnixNano": "1786397612452169417",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59004"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "d00b72f1690e4620ab97c8b85b87242f",
+              "spanId": "6c5e4ac60537a99b",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612462935000",
+              "endTimeUnixNano": "1786397612468405209",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59005"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "26e0f109bd13afd6bb8241d8eefdb83b",
+              "spanId": "835303b708e4ea59",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612478842000",
+              "endTimeUnixNano": "1786397612488950958",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59006"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9f09680fc0288f5762886d37268c70f3",
+              "spanId": "2815b3c0ad1b9d12",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612501829000",
+              "endTimeUnixNano": "1786397612505889084",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59007"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "2a432f3787907dd508d04c108c266802",
+              "spanId": "23f0ae066313fd6d",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612516861000",
+              "endTimeUnixNano": "1786397612520870667",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59008"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "465e99744e83c0b4cf76a656282f0f61",
+              "spanId": "29d7892496f62f9e",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612531170000",
+              "endTimeUnixNano": "1786397612536339750",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59009"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "39b5886d20c686cb98025aab4793741c",
+              "spanId": "329409126c8e4e8f",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612546461000",
+              "endTimeUnixNano": "1786397612550521958",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59010"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "76fe826e78d9a1a0334cb7161e392b6d",
+              "spanId": "ae85fab104c2cb72",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612560084000",
+              "endTimeUnixNano": "1786397612565265916",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59011"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "cad69d0eb80d7898cd5ac2e499659fd1",
+              "spanId": "ca7a33f77136f127",
+              "flags": 257,
+              "name": "GET /pedido",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612576700000",
+              "endTimeUnixNano": "1786397612581538417",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59012"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/pedido"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "201"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "9e9d627d037f69f7a10ab3e691320868",
+              "spanId": "3727ad3c437e75da",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612594095000",
+              "endTimeUnixNano": "1786397612597340083",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59013"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "66dda1986f0911a20f84dc7b1546997e",
+              "spanId": "0165b42308f34e0a",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612608071000",
+              "endTimeUnixNano": "1786397612609677875",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59014"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "1ed63c0c7b7529c455d01af1d0ec29a0",
+              "spanId": "755b6a9824963032",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612619569000",
+              "endTimeUnixNano": "1786397612621569792",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59015"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "df7e8af47b9e7c570009ed1d243438b1",
+              "spanId": "26d8d8f9e0eb38da",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612631514000",
+              "endTimeUnixNano": "1786397612633138958",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59016"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "50bd14afd12fb8d299e745e983d441c3",
+              "spanId": "42aa6b228419a73e",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612644056000",
+              "endTimeUnixNano": "1786397612652330166",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59017"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "823ac4fc8327d56e81ea0522fa4078db",
+              "spanId": "a558a7a1d32bb639",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612662336000",
+              "endTimeUnixNano": "1786397612667602541",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59018"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ce8438dfbb5cc351433c7b592f92ab2c",
+              "spanId": "5a63a7520b73f925",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612677184000",
+              "endTimeUnixNano": "1786397612679502333",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59019"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "dbd6d2665981f47a7e9d6042b7ec7888",
+              "spanId": "2a11b3c12f5bf195",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612689231000",
+              "endTimeUnixNano": "1786397612693979209",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59020"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "c60c4f9846f711e110fa9184c862a6c3",
+              "spanId": "2f9b6aae2d278364",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612705044000",
+              "endTimeUnixNano": "1786397612710017709",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59021"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "d17858b38f509f38a389577e1a35405c",
+              "spanId": "fd7a1d2ea0dc94c3",
+              "flags": 257,
+              "name": "GET /quebrado",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612719621000",
+              "endTimeUnixNano": "1786397612722746083",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59022"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/quebrado"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "18"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "500"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "d8eb4c272795dd78cd5372ce229220e0",
+              "spanId": "46c7beff3b7b0438",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612734227000",
+              "endTimeUnixNano": "1786397612793840875",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59023"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "e8050552c1b73f0ef5d6b90bdb8ac7cb",
+              "spanId": "c9baf98169676426",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612807071000",
+              "endTimeUnixNano": "1786397612863309166",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59024"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "0dc93682e11af926fb2f3c7597fa6e9e",
+              "spanId": "8cc3b8613b0f1b16",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612873367000",
+              "endTimeUnixNano": "1786397612934273125",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59025"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "1cf9c59cf9a52202521bce7c1254dafa",
+              "spanId": "bb277bbde876da65",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397612945695000",
+              "endTimeUnixNano": "1786397613001466000",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59026"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "151da7d641719768754a3a93a478b973",
+              "spanId": "2ffabad90d9a0c0a",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397613013025000",
+              "endTimeUnixNano": "1786397613070331250",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59027"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "47b95fbfca21f14abadf57ff1169822e",
+              "spanId": "c13816ce80334ca6",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397613087213000",
+              "endTimeUnixNano": "1786397613143766958",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59028"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            },
+            {
+              "traceId": "ef4bea2ada5335d3382bc1c746ae5fba",
+              "spanId": "aac11fea9c304d6c",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397613163130000",
+              "endTimeUnixNano": "1786397613219112459",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59029"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+    },
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "captura-go"
+            }
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "1.0.0"
+            }
+          }
+        ]
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "github.com/XSAM/otelsql",
+            "version": "0.43.0"
+          },
+          "spans": [
+            {
+              "traceId": "eb13e59c736fd4e93f043d39350b56e2",
+              "spanId": "070295366c03be25",
+              "parentSpanId": "1cec7d782408afe7",
+              "flags": 257,
+              "name": "sql.conn.reset_session",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613231586000",
+              "endTimeUnixNano": "1786397613231586875",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eb13e59c736fd4e93f043d39350b56e2",
+              "spanId": "eab95fc99af4b4b2",
+              "parentSpanId": "1cec7d782408afe7",
+              "flags": 257,
+              "name": "sql.conn.exec",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613231595000",
+              "endTimeUnixNano": "1786397613239945500",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SET statement_timeout = 50"
+                  }
+                }
+              ],
+              "status": {}
+            },
+            {
+              "traceId": "eb13e59c736fd4e93f043d39350b56e2",
+              "spanId": "dfa3f87a6520215c",
+              "parentSpanId": "1cec7d782408afe7",
+              "flags": 257,
+              "name": "sql.conn.query",
+              "kind": 3,
+              "startTimeUnixNano": "1786397613239974000",
+              "endTimeUnixNano": "1786397613293853167",
+              "attributes": [
+                {
+                  "key": "db.system",
+                  "value": {
+                    "stringValue": "postgresql"
+                  }
+                },
+                {
+                  "key": "db.query.text",
+                  "value": {
+                    "stringValue": "SELECT pg_sleep(1)"
+                  }
+                }
+              ],
+              "events": [
+                {
+                  "timeUnixNano": "1786397613293850000",
+                  "name": "exception",
+                  "attributes": [
+                    {
+                      "key": "exception.type",
+                      "value": {
+                        "stringValue": "*pq.Error"
+                      }
+                    },
+                    {
+                      "key": "exception.message",
+                      "value": {
+                        "stringValue": "pq: canceling statement due to statement timeout (57014)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        },
+        {
+          "scope": {
+            "name": "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
+            "version": "0.70.0"
+          },
+          "spans": [
+            {
+              "traceId": "eb13e59c736fd4e93f043d39350b56e2",
+              "spanId": "1cec7d782408afe7",
+              "flags": 257,
+              "name": "GET /lento",
+              "kind": 2,
+              "startTimeUnixNano": "1786397613231559000",
+              "endTimeUnixNano": "1786397613293913291",
+              "attributes": [
+                {
+                  "key": "server.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "http.request.method",
+                  "value": {
+                    "stringValue": "GET"
+                  }
+                },
+                {
+                  "key": "url.scheme",
+                  "value": {
+                    "stringValue": "http"
+                  }
+                },
+                {
+                  "key": "server.port",
+                  "value": {
+                    "intValue": "8124"
+                  }
+                },
+                {
+                  "key": "network.peer.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "network.peer.port",
+                  "value": {
+                    "intValue": "59030"
+                  }
+                },
+                {
+                  "key": "user_agent.original",
+                  "value": {
+                    "stringValue": "curl/8.7.1"
+                  }
+                },
+                {
+                  "key": "client.address",
+                  "value": {
+                    "stringValue": "127.0.0.1"
+                  }
+                },
+                {
+                  "key": "url.path",
+                  "value": {
+                    "stringValue": "/lento"
+                  }
+                },
+                {
+                  "key": "network.protocol.version",
+                  "value": {
+                    "stringValue": "1.1"
+                  }
+                },
+                {
+                  "key": "http.response.body.size",
+                  "value": {
+                    "intValue": "15"
+                  }
+                },
+                {
+                  "key": "http.response.status_code",
+                  "value": {
+                    "intValue": "504"
+                  }
+                }
+              ],
+              "status": {
+                "code": 2
+              }
+            }
+          ]
+        }
+      ],
+      "schemaUrl": "https://opentelemetry.io/schemas/1.26.0"
+    }
+  ]
+}

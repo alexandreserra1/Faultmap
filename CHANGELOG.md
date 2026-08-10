@@ -4,6 +4,14 @@
 
 ### Corrigido
 
+- **Retry storm confundindo operações diferentes.** Ao aceitar spans de banco
+  sem atributo de operação, todas as chamadas de um mesmo sistema colapsavam em
+  uma assinatura só: uma aplicação que passasse a fazer mais consultas por
+  requisição — mudança legítima de padrão — apareceria como tempestade de retry.
+  O nome do span passa a ser o discriminador quando o atributo não vem. Ele é o
+  que a telemetria realmente traz, e usá-lo evita inventar uma operação
+  inexistente. Em Go o nome é genérico (`sql.conn.query`), então distinguimos
+  leitura de escrita, mas não uma consulta de outra.
 - **Retry storm invisível em banco sem atributo de operação.** A assinatura de
   uma chamada de banco exigia `db.operation`, e desistia do span quando ele não
   vinha. A captura da instrumentação oficial do Node mostrou que os 68 spans de
@@ -14,13 +22,25 @@
 
 ### Adicionado
 
-- `fixtures/otel/real/nodejs-pg.json` — telemetria capturada da instrumentação
-  oficial do Node com PostgreSQL, somando-se às de FastAPI, psycopg2, SQLite e
-  DuckDB. Os detectores passam a ser exercitados contra cinco instrumentações de
-  terceiros.
+- Telemetria capturada de mais três instrumentações oficiais:
+  `nodejs-pg.json`, `golang-otelsql.json` e `java-agent-jdbc.json`. Com as de
+  FastAPI, psycopg2, SQLite e DuckDB, os detectores passam a ser exercitados
+  contra **sete** instrumentações de terceiros, em quatro linguagens.
+
+  As capturas confirmaram que nenhuma biblioteca segue uma convenção por
+  inteiro: o `otelsql` do Go emite `db.system` (anterior) junto de
+  `db.query.text` (atual), e o agente do Java usa a convenção anterior em quase
+  tudo enquanto o Node usa a atual. Aceitar as duas não é preciosismo.
+
+  Verificação de privacidade feita com medição, não suposição: o agente do Java
+  emite `db.connection_string`, e um teste com usuário real e senha embutida na
+  URL de conexão confirmou que ele sanitiza o valor antes de exportar.
 
 ### Verificação
 
+- Java: cinco detectores funcionaram sem nenhuma correção. Go: três, cobrindo
+  erro, timeout e latência de banco. Node: cinco. Nenhuma cegueira nova apareceu
+  em quatro linguagens.
 - Cinco detectores funcionaram contra o Node sem nenhuma correção:
   `error_rate_delta`, `latency_delta`, `database_timeout`, `database_error` e
   `database_http_trace_correlation`. A instrumentação usa a convenção estável,

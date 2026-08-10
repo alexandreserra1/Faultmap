@@ -221,3 +221,56 @@ func bancoNodeRepetido(traces, repeticoes int) []domain.Signal {
 	}
 	return signals
 }
+
+// TestRetryStormNãoConfundeOperaçõesDiferentes cobre um risco introduzido ao
+// aceitar spans de banco sem atributo de operação: sem ela, todas as chamadas
+// de um mesmo sistema colapsavam em uma única assinatura, e um trace que faz
+// INSERT e depois SELECT — o padrão mais comum — passava a parecer a mesma
+// operação repetida.
+//
+// A maioria das instrumentações põe a operação no nome do span. Ele é o
+// discriminador disponível, e usá-lo evita inventar um valor que a telemetria
+// não trouxe.
+func TestRetryStormNãoConfundeOperaçõesDiferentes(t *testing.T) {
+	t.Parallel()
+
+	// A baseline faz uma escrita por trace. O incidente faz a mesma escrita e
+	// acrescenta três leituras — uma mudança legítima do padrão de consultas,
+	// não um retry. Com a assinatura colapsada por falta do atributo de
+	// operação, as quatro chamadas viram "a mesma operação repetida quatro
+	// vezes" e o detector acusaria tempestade de retry onde não há nenhuma.
+	baseline := make([]domain.Signal, 0, 8)
+	for trace := 0; trace < 8; trace++ {
+		baseline = append(baseline, spanDeBancoNomeado("base", trace, 0, "INSERT"))
+	}
+	incidente := make([]domain.Signal, 0, 32)
+	for trace := 0; trace < 8; trace++ {
+		incidente = append(incidente, spanDeBancoNomeado("inc", trace, 0, "INSERT"))
+		for leitura := 1; leitura <= 3; leitura++ {
+			incidente = append(incidente, spanDeBancoNomeado("inc", trace, leitura, "SELECT"))
+		}
+	}
+
+	if finding, found := DetectRetryStorm(Input{
+		ServiceName: "captura", Baseline: baseline, Incident: incidente,
+	}); found {
+		t.Fatalf("operações distintas foram contadas como repetição: %s", finding.Evidence[0].Summary)
+	}
+}
+
+// spanDeBancoNomeado monta um span de banco sem atributo de operação, com a
+// operação apenas no nome, como fazem as instrumentações de Python e Node.
+func spanDeBancoNomeado(prefixo string, trace, indice int, operacao string) domain.Signal {
+	return domain.Signal{
+		ID:          fmt.Sprintf("%s-%02d-%02d", prefixo, trace, indice),
+		ServiceName: "captura",
+		TraceID:     fmt.Sprintf("%s-trace-%02d", prefixo, trace),
+		SpanID:      fmt.Sprintf("%s-span-%02d-%02d", prefixo, trace, indice),
+		Attributes: map[string]string{
+			"db.system.name": "postgresql",
+			"span.kind":      "SPAN_KIND_CLIENT",
+			"span.name":      operacao,
+		},
+		Measurements: map[string]float64{"duration_ms": 3},
+	}
+}

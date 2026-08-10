@@ -34,6 +34,11 @@ func TestTelemetriaRealDeBancoÉEnxergada(t *testing.T) {
 		{fixture: "duckdb-strideredge.json", sistemaEsperado: "duckdb"},
 		// Capturado da instrumentação oficial do Node, que usa a convenção nova.
 		{fixture: "nodejs-pg.json", sistemaEsperado: "PostgreSQL"},
+		// Instrumentação oficial em Go (otelsql), que mistura as convenções:
+		// db.system antigo com db.query.text novo.
+		{fixture: "golang-otelsql.json", sistemaEsperado: "PostgreSQL"},
+		// Agente oficial do Java, que usa a convenção anterior em quase tudo.
+		{fixture: "java-agent-jdbc.json", sistemaEsperado: "PostgreSQL"},
 	}
 
 	for _, testCase := range testCases {
@@ -181,6 +186,8 @@ func TestDetectoresNovosNãoAcusamTelemetriaRealSaudável(t *testing.T) {
 		"duckdb-strideredge.json",
 		"fastapi-strideredge.json",
 		"nodejs-pg.json",
+		"golang-otelsql.json",
+		"java-agent-jdbc.json",
 	} {
 		fixture := fixture
 		t.Run(fixture, func(t *testing.T) {

@@ -141,19 +141,33 @@ func safeRetryIdentity(attributes map[string]string) (string, string, bool) {
 	}
 
 	if system := semconv.DatabaseSystem(attributes); system != "" {
-		// A operação refina o rótulo, mas não é indispensável para reconhecer a
-		// repetição: o sistema de banco já identifica a chamada. Exigi-la deixava
-		// invisível toda tempestade de retry vinda de instrumentações que não a
-		// emitem — a oficial do Node, por exemplo, coloca a operação no nome do
-		// span e não em um atributo.
+		// A maioria das instrumentações não emite atributo de operação: das
+		// quatro capturadas, só o agente do Java o traz. Exigi-lo deixava
+		// invisível toda tempestade de retry vinda das outras.
+		//
+		// Aceitá-lo ausente, porém, colapsaria todas as chamadas do sistema em
+		// uma assinatura só, e um trace que passasse a fazer mais consultas
+		// pareceria repetir a mesma. O nome do span é o discriminador que a
+		// telemetria realmente traz — "SELECT", "pg.query:SELECT captura",
+		// "sql.conn.exec" — e usá-lo evita inventar uma operação que não veio.
 		operation := semconv.DatabaseOperation(attributes)
+		discriminator := operation
+		if discriminator == "" {
+			discriminator = strings.TrimSpace(attributes["span.name"])
+		}
 		collection := semconv.DatabaseCollection(attributes)
 		labelSystem := system
 		if strings.EqualFold(system, "postgresql") {
 			labelSystem = "PostgreSQL"
 		}
-		label := strings.TrimSpace(labelSystem + " " + strings.ToUpper(operation) + " " + collection)
-		return "db|" + strings.ToLower(system) + "|" + strings.ToLower(operation) + "|" + strings.ToLower(collection), label, true
+		// O rótulo prefere a operação declarada; sem ela, o nome do span é o que
+		// há de mais próximo de identificar a chamada para quem investiga.
+		labelOperation := operation
+		if labelOperation == "" {
+			labelOperation = discriminator
+		}
+		label := strings.TrimSpace(labelSystem + " " + strings.ToUpper(labelOperation) + " " + collection)
+		return "db|" + strings.ToLower(system) + "|" + strings.ToLower(discriminator) + "|" + strings.ToLower(collection), label, true
 	}
 
 	if system := strings.TrimSpace(attributes["rpc.system"]); system != "" {
