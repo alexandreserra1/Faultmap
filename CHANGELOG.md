@@ -1,6 +1,6 @@
 # Changelog
 
-## Não publicado
+## v0.3.1 — 2026-08-10
 
 ### Adicionado
 
@@ -22,6 +22,16 @@
   acumulam — exige 2 ms de aumento e que a duração ao menos dobre; e só mede
   operações que **concluíram**, já que uma operação que estourou o tempo é lenta
   por definição e reportá-la aqui repetiria o que `database_timeout` já explica.
+
+### Verificação
+
+- Contra a aplicação real que motivou o detector: p95 do banco de 0,40 ms para
+  5,67 ms, sem nenhuma falha, agora reportado ao lado da latência HTTP.
+- Matriz E2E: 6 de 6. O detector fala nos três cenários em que o banco degrada
+  (760 ms, 1532 ms e 630 ms de p95 no incidente) e permanece calado nos outros
+  três. Nenhum diagnóstico existente mudou de suspeito.
+- Modo difícil: 5 de 5, incluindo silêncio nos cenários sem culpado e de ruído
+  crônico.
 
 ## v0.3.0 — 2026-08-10
 
