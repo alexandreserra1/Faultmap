@@ -84,7 +84,7 @@ func renderSuspectRanking(output *strings.Builder, suspects []ranking.Suspect) {
 	}
 	output.WriteString("\nRanking de suspeitos:\n")
 	for index, suspect := range suspects {
-		fmt.Fprintf(output, "%d. %s\n", index+1, suspect.Label)
+		fmt.Fprintf(output, "%d. %s%s\n", index+1, suspect.Label, subjectKindSuffix(suspect.Kind))
 		fmt.Fprintf(output, "   Score agregado: %.2f\n", suspect.Score)
 		fmt.Fprintf(output, "   Confiança: %s\n", suspect.Confidence)
 		output.WriteString("   Contribuições:\n")
@@ -203,4 +203,16 @@ func RenderScopeSummary(writer io.Writer, scope application.DiagnosisScope) erro
 		return fmt.Errorf("escrever escopo no terminal: %w", err)
 	}
 	return nil
+}
+
+// subjectKindSuffix marca o tipo do suspeito quando ele não é um serviço.
+//
+// Serviço é o caso comum e dispensa rótulo; um commit, não. Sem essa marca, os
+// dois apareceriam lado a lado na mesma lista sem que se pudesse saber que um é
+// código e o outro é sistema em execução.
+func subjectKindSuffix(kind detection.SubjectKind) string {
+	if kind == "" || kind == detection.SubjectService {
+		return ""
+	}
+	return " (" + string(kind) + ")"
 }

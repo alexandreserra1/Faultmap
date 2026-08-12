@@ -62,14 +62,54 @@ type Evidence struct {
 	IncidentValue float64
 }
 
+// SubjectKind identifica a natureza do que está sendo acusado.
+//
+// Até aqui todo suspeito era um serviço, e o ranking agrupava por nome. Um
+// commit implantado, porém, é um suspeito por direito próprio: ele não é um
+// detalhe dentro do serviço, e tratá-lo como tal escondia a informação mais
+// acionável de um incidente causado por mudança.
+type SubjectKind string
+
+const (
+	// SubjectService indica um serviço, o único tipo que existia antes.
+	SubjectService SubjectKind = "service"
+	// SubjectCommit indica um commit implantado.
+	SubjectCommit SubjectKind = "commit"
+)
+
 // Finding descreve uma hipótese baseada em sinais observados, sem afirmar causalidade.
+//
+// Os campos de sujeito são opcionais: quando vazios, o finding acusa o próprio
+// serviço, que era o comportamento único antes de existirem outros tipos. Isso
+// mantém os detectores que não precisam da distinção sem alteração alguma.
 type Finding struct {
-	Rule        string
-	ServiceName string
-	Score       float64
-	Confidence  Confidence
-	Evidence    []Evidence
-	Limitations []string
+	Rule         string
+	ServiceName  string
+	SubjectKind  SubjectKind
+	SubjectID    string
+	SubjectLabel string
+	Score        float64
+	Confidence   Confidence
+	Evidence     []Evidence
+	Limitations  []string
+}
+
+// Subject devolve o tipo, o identificador e o rótulo do que o finding acusa,
+// preenchendo os padrões de um finding que não declara sujeito.
+func (finding Finding) Subject() (SubjectKind, string, string) {
+	kind := finding.SubjectKind
+	if kind == "" {
+		kind = SubjectService
+	}
+	identifier := strings.TrimSpace(finding.SubjectID)
+	if identifier == "" {
+		identifier = strings.TrimSpace(finding.ServiceName)
+	}
+	label := strings.TrimSpace(finding.SubjectLabel)
+	if label == "" {
+		label = identifier
+	}
+	return kind, identifier, label
 }
 
 // Input agrupa os sinais de uma mesma aplicação nas janelas baseline e incidente.

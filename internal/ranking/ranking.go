@@ -34,6 +34,9 @@ type ScoreContribution struct {
 
 // Suspect representa um serviço priorizado e preserva todas as contribuições e limitações usadas no cálculo.
 type Suspect struct {
+	// Kind distingue um serviço de um commit. Snapshots gravados antes de
+	// existirem outros tipos são lidos como serviço.
+	Kind          detection.SubjectKind
 	ID            string
 	Label         string
 	Score         float64
@@ -48,23 +51,29 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 		return nil, err
 	}
 
-	byService := make(map[string]*suspectAccumulator)
+	bySubject := make(map[string]*suspectAccumulator)
 	for _, finding := range findings {
 		class, known := weightClassForRule(finding.Rule)
 		weight := weightForClass(class, config.Weights)
-		serviceName := strings.TrimSpace(finding.ServiceName)
-		if !known || weight == 0 || serviceName == "" {
+		kind, identifier, label := finding.Subject()
+		if !known || weight == 0 || identifier == "" {
 			continue
 		}
 
-		accumulator := byService[serviceName]
+		// A chave combina tipo e identificador: um commit e um serviço podem
+		// carregar o mesmo nome sem serem a mesma coisa.
+		key := string(kind) + "\x00" + identifier
+		accumulator := bySubject[key]
 		if accumulator == nil {
 			accumulator = &suspectAccumulator{
+				kind:          kind,
+				identifier:    identifier,
+				label:         label,
 				byWeightClass: make(map[string]float64),
 				confidence:    detection.ConfidenceHigh,
 				limitations:   make(map[string]struct{}),
 			}
-			byService[serviceName] = accumulator
+			bySubject[key] = accumulator
 		}
 
 		findingScore := clamp(finding.Score)
@@ -85,14 +94,15 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 		}
 	}
 
-	suspects := make([]Suspect, 0, len(byService))
-	for serviceName, accumulator := range byService {
+	suspects := make([]Suspect, 0, len(bySubject))
+	for _, accumulator := range bySubject {
 		sort.Slice(accumulator.contributions, func(first, second int) bool {
 			return accumulator.contributions[first].RuleID < accumulator.contributions[second].RuleID
 		})
 		suspects = append(suspects, Suspect{
-			ID:            serviceName,
-			Label:         serviceName,
+			Kind:          accumulator.kind,
+			ID:            accumulator.identifier,
+			Label:         accumulator.label,
 			Score:         clamp(accumulator.score(config.Weights)),
 			Confidence:    accumulator.confidence,
 			Contributions: accumulator.contributions,
@@ -113,6 +123,9 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 }
 
 type suspectAccumulator struct {
+	kind       detection.SubjectKind
+	identifier string
+	label      string
 	// byWeightClass acumula separadamente o que cada classe de peso somou, para
 	// que o total de uma classe possa ser limitado ao peso configurado para ela.
 	byWeightClass map[string]float64

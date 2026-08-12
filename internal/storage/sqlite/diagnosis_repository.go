@@ -140,9 +140,11 @@ func prepareDiagnosis(diagnosis application.Diagnosis) (preparedDiagnosis, error
 			return preparedDiagnosis{}, fmt.Errorf("marshal finding %q limitations: %w", finding.Rule, err)
 		}
 		prepared.findings = append(prepared.findings, preparedFinding{
-			id:              findingID(diagnosis.ID, finding),
-			rule:            finding.Rule,
-			subjectID:       finding.ServiceName,
+			id:   findingID(diagnosis.ID, finding),
+			rule: finding.Rule,
+			// A coluna sempre foi genérica; agora ela guarda de fato o sujeito
+			// acusado, que pode ser um serviço ou um commit.
+			subjectID:       subjectIdentifier(finding),
 			score:           finding.Score,
 			confidence:      string(finding.Confidence),
 			evidenceJSON:    string(evidenceJSON),
@@ -158,8 +160,15 @@ func prepareDiagnosis(diagnosis application.Diagnosis) (preparedDiagnosis, error
 	return prepared, nil
 }
 
+// findingID identifica o finding pelo incidente, pela regra e pelo sujeito
+// acusado.
+//
+// O sujeito passou a fazer parte da identidade quando uma mesma regra ganhou a
+// capacidade de acusar mais de um: a proximidade de deployment aponta o serviço
+// e o commit implantado, e sem o sujeito os dois colidiam no mesmo registro.
 func findingID(incidentID string, finding detection.Finding) string {
-	canonical := strings.Join([]string{incidentID, finding.Rule, finding.ServiceName}, "\x00")
+	kind, identifier, _ := finding.Subject()
+	canonical := strings.Join([]string{incidentID, finding.Rule, string(kind), identifier}, "\x00")
 	digest := sha256.Sum256([]byte(canonical))
 	return "finding:" + hex.EncodeToString(digest[:12])
 }
@@ -170,4 +179,10 @@ func rollbackDiagnosisTransaction(transaction *sql.Tx, cause error) error {
 		return fmt.Errorf("save diagnosis failed: %w; rollback diagnosis: %v", cause, rollbackErr)
 	}
 	return cause
+}
+
+// subjectIdentifier extrai do finding o identificador do que ele acusa.
+func subjectIdentifier(finding detection.Finding) string {
+	_, identifier, _ := finding.Subject()
+	return identifier
 }

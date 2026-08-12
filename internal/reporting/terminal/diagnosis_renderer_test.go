@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/faultmap/faultmap/internal/detection"
+	"github.com/faultmap/faultmap/internal/ranking"
 )
 
 // TestRenderDiagnosisApresentaRegrasDeFormaHumanaEAuditavel garante que o relatório seja legível sem ocultar os identificadores técnicos.
@@ -169,4 +170,42 @@ func renderDiagnosisForTest(t *testing.T, findings []detection.Finding) string {
 		t.Fatalf("RenderDiagnosis() erro = %v", err)
 	}
 	return output.String()
+}
+
+// TestRenderDiagnosisDistingueCommitDeServiço garante que o ranking não
+// apresente um commit como se fosse um serviço. Sem a distinção, quem lê veria
+// dois nomes na mesma lista sem saber que um é código e o outro é sistema.
+func TestRenderDiagnosisDistingueCommitDeServiço(t *testing.T) {
+	t.Parallel()
+
+	var buffer bytes.Buffer
+	// O renderizador só apresenta o ranking quando há evidência; sem findings
+	// ele declara que nada foi encontrado, e o teste não exercitaria nada.
+	findings := []detection.Finding{{
+		Rule: detection.RuleDeploymentProximity, ServiceName: "checkout-service",
+		Score: 0.9, Confidence: detection.ConfidenceHigh,
+		Evidence: []detection.Evidence{{Summary: "deployment seis minutos antes"}},
+	}}
+	err := RenderDiagnosis(&buffer, "checkout-service", 40, 40, findings, []ranking.Suspect{
+		{
+			Kind: detection.SubjectService, ID: "checkout-service", Label: "checkout-service",
+			Score: 0.35, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Kind: detection.SubjectCommit, ID: "abc123def456",
+			Label: "commit abc123de — Reduce payment timeout",
+			Score: 0.18, Confidence: detection.ConfidenceHigh,
+		},
+	})
+	if err != nil {
+		t.Fatalf("RenderDiagnosis() erro = %v", err)
+	}
+
+	saida := buffer.String()
+	if !strings.Contains(saida, "commit abc123de — Reduce payment timeout") {
+		t.Fatalf("o rótulo do commit não apareceu:\n%s", saida)
+	}
+	if !strings.Contains(saida, "(commit)") {
+		t.Fatalf("o tipo do sujeito não foi declarado:\n%s", saida)
+	}
 }

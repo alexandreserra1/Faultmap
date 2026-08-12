@@ -267,3 +267,62 @@ func (repository *ChangeRepository) ListDeploymentsForServices(
 	}
 	return deployments, nil
 }
+
+// ListCommitMessagesBySHA devolve, em uma consulta só, a mensagem de cada
+// commit solicitado.
+//
+// O rótulo de um commit suspeito precisa da mensagem para ser legível — quem
+// investiga não decora SHA. Buscar uma por vez seria um N+1 que cresce com o
+// número de serviços comparados, então os identificadores entram como
+// parâmetros posicionais de uma única consulta.
+func (repository *ChangeRepository) ListCommitMessagesBySHA(
+	ctx context.Context,
+	shas []string,
+	limit int,
+) (map[string]string, error) {
+	if len(shas) == 0 {
+		return map[string]string{}, nil
+	}
+	if limit <= 0 || limit > maxDeploymentsPerQuery {
+		return nil, fmt.Errorf("listar commits: limite deve estar entre 1 e %d", maxDeploymentsPerQuery)
+	}
+
+	placeholders := make([]string, 0, len(shas))
+	arguments := make([]any, 0, len(shas)+1)
+	for _, sha := range shas {
+		if trimmed := strings.TrimSpace(sha); trimmed != "" {
+			placeholders = append(placeholders, "?")
+			arguments = append(arguments, trimmed)
+		}
+	}
+	if len(placeholders) == 0 {
+		return map[string]string{}, nil
+	}
+	arguments = append(arguments, limit)
+
+	rows, err := repository.database.QueryContext(ctx, `
+		SELECT sha, message
+		FROM commits
+		WHERE sha IN (`+strings.Join(placeholders, ", ")+`)
+		ORDER BY sha ASC
+		LIMIT ?
+	`, arguments...)
+	if err != nil {
+		return nil, fmt.Errorf("listar mensagens de commit: %w", err)
+	}
+	defer rows.Close()
+
+	messages := make(map[string]string, len(placeholders))
+	for rows.Next() {
+		var sha string
+		var message string
+		if err := rows.Scan(&sha, &message); err != nil {
+			return nil, fmt.Errorf("ler mensagem de commit: %w", err)
+		}
+		messages[sha] = message
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("percorrer mensagens de commit: %w", err)
+	}
+	return messages, nil
+}

@@ -13,9 +13,9 @@ import (
 // DeploymentLookback limita quanto tempo antes do incidente ainda sustenta uma hipótese de proximidade.
 const DeploymentLookback = time.Hour
 
-// DetectDeploymentProximity seleciona o deployment mais forte do mesmo serviço
+// detectDeploymentProximity seleciona o deployment mais forte do mesmo serviço
 // dentro da janela anterior ao incidente e verifica a versão observada nos spans.
-func DetectDeploymentProximity(input Input, deployments []changedomain.Deployment, incidentStart time.Time) (Finding, bool) {
+func detectDeploymentProximity(input Input, deployments []changedomain.Deployment, incidentStart time.Time) (Finding, bool) {
 	incidentVersions := observedVersions(input.Incident)
 	baselineVersions := observedVersions(input.Baseline)
 	candidates := make([]deploymentCandidate, 0, len(deployments))
@@ -70,6 +70,67 @@ func DetectDeploymentProximity(input Input, deployments []changedomain.Deploymen
 		}},
 		Limitations: limitations,
 	}, true
+}
+
+// DetectDeploymentProximityFindings devolve a proximidade do deployment acusando
+// tanto o serviço quanto o commit implantado.
+//
+// Antes, o commit existia apenas dentro do texto da evidência do serviço: quem
+// lia via "o checkout está suspeito" e precisava caçar, na explicação, qual
+// mudança havia entrado. Num incidente causado por deploy, essa é a informação
+// mais acionável que existe, e ela ficava escondida.
+//
+// O commit acusado é sempre o que foi implantado. Um commit que não chegou a ser
+// implantado não aparece: ele não tem relação observável com o incidente.
+func DetectDeploymentProximityFindings(
+	input Input,
+	deployments []changedomain.Deployment,
+	commitMessages map[string]string,
+	incidentStart time.Time,
+) []Finding {
+	serviceFinding, found := detectDeploymentProximity(input, deployments, incidentStart)
+	if !found {
+		return nil
+	}
+
+	commitSHA := commitSHAFromEvidence(deployments, serviceFinding)
+	if commitSHA == "" {
+		return []Finding{serviceFinding}
+	}
+
+	commitFinding := serviceFinding
+	commitFinding.SubjectKind = SubjectCommit
+	commitFinding.SubjectID = commitSHA
+	commitFinding.SubjectLabel = commitLabel(commitSHA, commitMessages[commitSHA])
+	return []Finding{serviceFinding, commitFinding}
+}
+
+// commitSHAFromEvidence recupera o commit do deployment que sustentou o finding,
+// usando o mesmo critério de seleção do detector para não divergir dele.
+func commitSHAFromEvidence(deployments []changedomain.Deployment, finding Finding) string {
+	for _, evidence := range finding.Evidence {
+		for _, changeID := range evidence.ChangeIDs {
+			for _, deployment := range deployments {
+				if deployment.ID == changeID {
+					return strings.TrimSpace(deployment.CommitSHA)
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// commitLabel monta um rótulo legível: quem investiga não decora SHA.
+func commitLabel(commitSHA, message string) string {
+	short := commitSHA
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	label := "commit " + short
+	if trimmed := strings.TrimSpace(message); trimmed != "" {
+		label += " — " + trimmed
+	}
+	return label
 }
 
 type deploymentCandidate struct {

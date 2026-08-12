@@ -363,3 +363,73 @@ func TestClassesDiferentesContinuamSomando(t *testing.T) {
 		t.Fatalf("score = %.4f, esperado %.4f", suspects[0].Score, esperado)
 	}
 }
+
+// TestRankSepararSujeitosDeTiposDiferentes cobre a mudança central: o ranking
+// deixa de agrupar por serviço e passa a agrupar por sujeito.
+//
+// Um commit e um serviço podem carregar o mesmo identificador sem serem a mesma
+// coisa, e um commit implantado é um suspeito por direito próprio — não um
+// detalhe dentro do serviço. Agrupar por nome apenas os fundiria.
+func TestRankSepararSujeitosDeTiposDiferentes(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{ErrorRateDelta: 0.25, DeploymentProximity: 0.20},
+		TopN:    5,
+	}
+	suspects, err := ranking.Rank([]detection.Finding{
+		{
+			Rule: detection.RuleErrorRateDelta, ServiceName: "checkout-service",
+			Score: 1, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "checkout-service",
+			SubjectKind: detection.SubjectCommit, SubjectID: "abc123def456",
+			SubjectLabel: "commit abc123de — Reduce payment timeout",
+			Score:        0.9, Confidence: detection.ConfidenceHigh,
+		},
+	}, config)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 2 {
+		t.Fatalf("suspeitos = %d, esperado 2: serviço e commit são sujeitos distintos", len(suspects))
+	}
+
+	porTipo := make(map[detection.SubjectKind]ranking.Suspect, 2)
+	for _, suspect := range suspects {
+		porTipo[suspect.Kind] = suspect
+	}
+	servico, temServico := porTipo[detection.SubjectService]
+	commit, temCommit := porTipo[detection.SubjectCommit]
+	if !temServico || !temCommit {
+		t.Fatalf("tipos presentes = %v, esperado serviço e commit", suspects)
+	}
+	if servico.ID != "checkout-service" {
+		t.Fatalf("sujeito do serviço = %q", servico.ID)
+	}
+	if commit.ID != "abc123def456" || commit.Label != "commit abc123de — Reduce payment timeout" {
+		t.Fatalf("sujeito do commit = %q / %q", commit.ID, commit.Label)
+	}
+}
+
+// TestRankMantémFindingsSemSujeitoComoServiço garante que os detectores
+// existentes continuem funcionando sem alteração: quem não declara sujeito é
+// tratado como serviço, que era o único tipo possível antes.
+func TestRankMantémFindingsSemSujeitoComoServiço(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank([]detection.Finding{{
+		Rule: detection.RuleErrorRateDelta, ServiceName: "payment-service",
+		Score: 1, Confidence: detection.ConfidenceHigh,
+	}}, ranking.Config{Weights: ranking.Weights{ErrorRateDelta: 0.25}, TopN: 3})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	if suspects[0].Kind != detection.SubjectService || suspects[0].ID != "payment-service" {
+		t.Fatalf("sujeito = %q/%q, esperado serviço payment-service", suspects[0].Kind, suspects[0].ID)
+	}
+}

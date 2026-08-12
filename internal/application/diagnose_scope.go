@@ -94,6 +94,9 @@ type ScopedDeploymentReader interface {
 		ctx context.Context, serviceNames []string, environment string,
 		start time.Time, end time.Time, limit int,
 	) ([]changedomain.Deployment, error)
+	// ListCommitMessagesBySHA busca em lote as mensagens que tornam o commit
+	// legível no ranking.
+	ListCommitMessagesBySHA(ctx context.Context, shas []string, limit int) (map[string]string, error)
 }
 
 // DiagnoseIncidentInScope compara vários serviços na mesma investigação.
@@ -144,6 +147,12 @@ func DiagnoseIncidentInScope(
 		return Diagnosis{}, err
 	}
 
+	// As mensagens são buscadas uma vez para todo o escopo, e não por serviço.
+	commitMessages, err := loadCommitMessages(ctx, request, deployments, deploymentReader)
+	if err != nil {
+		return Diagnosis{}, err
+	}
+
 	baselineByService := signalsByService(baseline)
 	incidentByService := signalsByService(incident)
 	findings := make([]detection.Finding, 0, len(scope.Services)*3)
@@ -157,11 +166,10 @@ func DiagnoseIncidentInScope(
 		if deploymentReader == nil {
 			continue
 		}
-		if finding, found := detection.DetectDeploymentProximity(
-			input, deploymentsForService(deployments, service), request.Windows.Incident.Start,
-		); found {
-			findings = append(findings, finding)
-		}
+		findings = append(findings, detection.DetectDeploymentProximityFindings(
+			input, deploymentsForService(deployments, service),
+			commitMessages, request.Windows.Incident.Start,
+		)...)
 	}
 
 	// Estes dois detectores comparam serviços entre si dentro dos mesmos traces,
@@ -375,6 +383,41 @@ func loadScopeDeployments(
 		return nil, fmt.Errorf("diagnosticar incidente: carregar deployments: %w", err)
 	}
 	return deployments, nil
+}
+
+// loadCommitMessages busca em lote as mensagens dos commits implantados no
+// escopo. A ausência de mensagem não impede a acusação do commit: o rótulo cai
+// para o identificador.
+func loadCommitMessages(
+	ctx context.Context,
+	request ScopedDiagnosisRequest,
+	deployments []changedomain.Deployment,
+	deploymentReader ScopedDeploymentReader,
+) (map[string]string, error) {
+	if deploymentReader == nil || len(deployments) == 0 {
+		return nil, nil
+	}
+	shas := make([]string, 0, len(deployments))
+	seen := make(map[string]struct{}, len(deployments))
+	for _, deployment := range deployments {
+		sha := strings.TrimSpace(deployment.CommitSHA)
+		if sha == "" {
+			continue
+		}
+		if _, duplicate := seen[sha]; duplicate {
+			continue
+		}
+		seen[sha] = struct{}{}
+		shas = append(shas, sha)
+	}
+	if len(shas) == 0 {
+		return nil, nil
+	}
+	messages, err := deploymentReader.ListCommitMessagesBySHA(ctx, shas, request.Limit)
+	if err != nil {
+		return nil, fmt.Errorf("diagnosticar incidente: carregar mensagens de commit: %w", err)
+	}
+	return messages, nil
 }
 
 func deploymentsForService(deployments []changedomain.Deployment, service string) []changedomain.Deployment {

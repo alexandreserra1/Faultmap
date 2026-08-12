@@ -2,11 +2,15 @@ package application
 
 import (
 	"context"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
+	"github.com/faultmap/faultmap/internal/detection"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
+	"github.com/faultmap/faultmap/internal/ranking"
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 )
 
@@ -64,8 +68,19 @@ func (fake *scopedSignalReaderFake) ListByServicesAndWindow(
 }
 
 type scopedDeploymentReaderFake struct {
-	deployments []changedomain.Deployment
-	consultas   int
+	deployments       []changedomain.Deployment
+	mensagens         map[string]string
+	consultas         int
+	consultasDeCommit int
+}
+
+// ListCommitMessagesBySHA registra quantas vezes foi chamada, para que o teste
+// possa exigir uma única busca para todo o escopo.
+func (fake *scopedDeploymentReaderFake) ListCommitMessagesBySHA(
+	_ context.Context, _ []string, _ int,
+) (map[string]string, error) {
+	fake.consultasDeCommit++
+	return fake.mensagens, nil
 }
 
 func (fake *scopedDeploymentReaderFake) ListDeploymentsForServices(
@@ -452,5 +467,144 @@ func TestDiagnoseScopeParaQuandoNãoHáNovosServiços(t *testing.T) {
 	// Uma rodada para o primeiro nível e uma que não trouxe novidade; nunca cinco.
 	if fake.rodadas > 2 {
 		t.Fatalf("rodadas de descoberta = %d, esperado parar ao esgotar a topologia", fake.rodadas)
+	}
+}
+
+// TestDiagnoseScopeAcusaOCommitImplantado cobre, no nível da aplicação, o
+// caminho completo da mudança: o deployment é carregado, a mensagem do commit é
+// buscada em lote, e o commit aparece no ranking como suspeito próprio, ao lado
+// do serviço afetado.
+func TestDiagnoseScopeAcusaOCommitImplantado(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.August, 11, 10, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	baseline := make([]domain.Signal, 0, 20)
+	incidente := make([]domain.Signal, 0, 20)
+	for indice := 0; indice < 20; indice++ {
+		baseline = append(baseline, sinalComVersao("base", indice, incidentStart.Add(-time.Minute), 200, "1.0.0"))
+		incidente = append(incidente, sinalComVersao("inc", indice, incidentStart, 500, "abc123def4567890"))
+	}
+
+	deployments := &scopedDeploymentReaderFake{
+		deployments: []changedomain.Deployment{{
+			ID: "deploy-1", ServiceName: "checkout-service", Environment: "producao",
+			CommitSHA: "abc123def4567890", State: "success",
+			DeployedAt: incidentStart.Add(-5 * time.Minute),
+		}},
+		mensagens: map[string]string{"abc123def4567890": "Reduce payment timeout"},
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "checkout-service", Environment: "producao", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"checkout-service"}, traceCount: 20},
+		&scopedSignalReaderFake{baseline: baseline, incident: incidente},
+		deployments,
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	var commit *ranking.Suspect
+	for indice := range diagnosis.Suspects {
+		if diagnosis.Suspects[indice].Kind == detection.SubjectCommit {
+			commit = &diagnosis.Suspects[indice]
+		}
+	}
+	if commit == nil {
+		t.Fatalf("o commit não apareceu no ranking: %+v", diagnosis.Suspects)
+	}
+	if commit.ID != "abc123def4567890" {
+		t.Fatalf("identificador do commit = %q", commit.ID)
+	}
+	if !strings.Contains(commit.Label, "Reduce payment timeout") {
+		t.Fatalf("rótulo do commit = %q, esperado conter a mensagem", commit.Label)
+	}
+	// Uma única busca de mensagens para todo o escopo, nunca uma por serviço.
+	if deployments.consultasDeCommit != 1 {
+		t.Fatalf("buscas de mensagem = %d, esperado 1", deployments.consultasDeCommit)
+	}
+}
+
+// TestDiagnoseScopeRejeitaEntradaInválidaAntesDasConsultas preserva a cobertura
+// que existia no caminho de serviço único: entrada inválida não pode chegar ao
+// banco.
+func TestDiagnoseScopeRejeitaEntradaInválidaAntesDasConsultas(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.August, 11, 10, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	testCases := []struct {
+		nome    string
+		request ScopedDiagnosisRequest
+	}{
+		{
+			nome: "limite de sinais inválido",
+			request: ScopedDiagnosisRequest{
+				EntryService: "checkout-service", Windows: windows,
+				Limit: 0, MaxServices: 10, Ranking: testRankingConfig(),
+			},
+		},
+		{
+			nome: "pesos de ranking inválidos",
+			request: ScopedDiagnosisRequest{
+				EntryService: "checkout-service", Windows: windows,
+				Limit: 500, MaxServices: 10,
+				Ranking: ranking.Config{Weights: ranking.Weights{ErrorRateDelta: -1}, TopN: 3},
+			},
+		},
+		{
+			nome: "sem serviço de entrada",
+			request: ScopedDiagnosisRequest{
+				Windows: windows, Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.nome, func(t *testing.T) {
+			t.Parallel()
+
+			signals := &scopedSignalReaderFake{}
+			if _, err := DiagnoseIncidentInScope(
+				context.Background(), testCase.request,
+				&scopeReaderFake{}, signals, nil,
+			); err == nil {
+				t.Fatal("erro = nil para entrada inválida")
+			}
+			if signals.consultas != 0 {
+				t.Fatalf("consultas = %d, esperado nenhuma leitura com entrada inválida", signals.consultas)
+			}
+		})
+	}
+}
+
+// sinalComVersao monta um span HTTP declarando a versão observada do serviço.
+func sinalComVersao(prefixo string, indice int, instante time.Time, status int, versao string) domain.Signal {
+	return domain.Signal{
+		ID:          prefixo + "-" + versao + "-" + string(rune('a'+indice%26)),
+		ServiceName: "checkout-service",
+		Timestamp:   instante,
+		TraceID:     "trace-" + string(rune('a'+indice%26)),
+		Attributes: map[string]string{
+			"http.response.status_code": strconv.Itoa(status),
+			"service.version":           versao,
+		},
+		Measurements: map[string]float64{"duration_ms": 12},
 	}
 }

@@ -2,6 +2,36 @@
 
 ## Não publicado
 
+### Adicionado
+
+- **O commit implantado passa a ser suspeito por direito próprio no ranking.**
+  Antes ele existia apenas dentro do texto da evidência do serviço: quem lia via
+  "o checkout está suspeito" e precisava caçar, na explicação, qual mudança
+  havia entrado. Num incidente causado por deploy, essa é a informação mais
+  acionável que existe.
+
+  ```text
+  1. checkout-service                                      0.54
+  2. payment-service                                       0.24
+  3. commit 01234567 — Versão E2E com regressão de timeout  0.20  (commit)
+  ```
+
+  O ranking deixou de agrupar por serviço e passou a agrupar por **sujeito**,
+  que pode ser um serviço ou um commit. Detectores que não declaram sujeito
+  continuam acusando o próprio serviço, sem alteração alguma.
+
+  Só commits **implantados** viram suspeitos: um commit que não chegou a rodar
+  não tem relação observável com o incidente. A mensagem que torna o rótulo
+  legível é buscada em lote, uma consulta para todo o escopo.
+
+### Removido
+
+- O caminho de diagnóstico de serviço único (`DiagnoseIncident` e
+  `DiagnoseIncidentWithDeployments`) ficou órfão quando a investigação passou a
+  comparar serviços, e só era exercitado pelos próprios testes. A cobertura de
+  validação e de correlação de deployment foi portada para o caminho vivo antes
+  da remoção.
+
 ### Corrigido
 
 - **Retry storm confundindo operações diferentes.** Ao aceitar spans de banco
