@@ -61,6 +61,44 @@ func IngestTelemetry(
 	return IngestionResult{Normalized: len(signals), Persisted: persisted}, nil
 }
 
+// IngestLogs normaliza e persiste um lote de logs OTLP.
+//
+// Ele compartilha a política de privacidade e o repositório com a ingestão de
+// traces: o que muda é apenas o envelope lido. O texto da mensagem não chega
+// aqui — o normalizador o descarta antes.
+func IngestLogs(
+	ctx context.Context,
+	reader io.Reader,
+	encoding normalizer.OTLPEncoding,
+	policy privacy.Policy,
+	store SignalStore,
+) (IngestionResult, error) {
+	if err := contextError(ctx); err != nil {
+		return IngestionResult{}, err
+	}
+	if reader == nil {
+		return IngestionResult{}, fmt.Errorf("ingerir logs: leitor é obrigatório")
+	}
+	if store == nil {
+		return IngestionResult{}, fmt.Errorf("ingerir logs: repositório de sinais é obrigatório")
+	}
+
+	signals, err := normalizer.ParseOTLPLogs(ctx, reader, encoding)
+	if err != nil {
+		return IngestionResult{}, fmt.Errorf("normalizar logs: %w", err)
+	}
+	if err := contextError(ctx); err != nil {
+		return IngestionResult{}, err
+	}
+	signals = policy.Apply(signals)
+
+	persisted, err := store.Save(ctx, signals)
+	if err != nil {
+		return IngestionResult{}, fmt.Errorf("persistir logs normalizados: %w", err)
+	}
+	return IngestionResult{Normalized: len(signals), Persisted: persisted}, nil
+}
+
 // IngestTelemetryFile normaliza um arquivo OTLP JSON e persiste seus sinais de forma idempotente.
 func IngestTelemetryFile(ctx context.Context, inputPath string, policy privacy.Policy, store SignalStore) (IngestionResult, error) {
 	if err := contextError(ctx); err != nil {

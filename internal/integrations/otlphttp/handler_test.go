@@ -429,3 +429,60 @@ func newTestHandler(t *testing.T, ingester TraceIngester, options Options) http.
 	}
 	return handler
 }
+
+// TestHandlerAtendeLogsQuandoConfigurado cobre o endpoint de logs, que só passa
+// a existir quando um ingester é fornecido: um receiver que anuncia a rota sem
+// saber processá-la seria pior que não anunciá-la.
+func TestHandlerAtendeLogsQuandoConfigurado(t *testing.T) {
+	t.Parallel()
+
+	var recebido string
+	handler, err := NewHandler(
+		IngestFunc(func(context.Context, io.Reader, Encoding) error { return nil }),
+		Options{
+			Logs: IngestFunc(func(_ context.Context, reader io.Reader, _ Encoding) error {
+				corpo, _ := io.ReadAll(reader)
+				recebido = string(corpo)
+				return nil
+			}),
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	requisicao := httptest.NewRequest(http.MethodPost, LogsPath, strings.NewReader(`{"resourceLogs":[]}`))
+	requisicao.Header.Set("Content-Type", ContentTypeJSON)
+	resposta := httptest.NewRecorder()
+	handler.ServeHTTP(resposta, requisicao)
+
+	if resposta.Code != http.StatusOK {
+		t.Fatalf("status = %d, esperado 200; corpo = %s", resposta.Code, resposta.Body.String())
+	}
+	if recebido != `{"resourceLogs":[]}` {
+		t.Fatalf("o corpo não chegou ao ingester de logs: %q", recebido)
+	}
+}
+
+// TestHandlerNãoAnunciaLogsSemIngester garante que a rota não exista quando o
+// processo não sabe processá-la.
+func TestHandlerNãoAnunciaLogsSemIngester(t *testing.T) {
+	t.Parallel()
+
+	handler, err := NewHandler(
+		IngestFunc(func(context.Context, io.Reader, Encoding) error { return nil }),
+		Options{},
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	requisicao := httptest.NewRequest(http.MethodPost, LogsPath, strings.NewReader("{}"))
+	requisicao.Header.Set("Content-Type", ContentTypeJSON)
+	resposta := httptest.NewRecorder()
+	handler.ServeHTTP(resposta, requisicao)
+
+	if resposta.Code == http.StatusOK {
+		t.Fatal("o endpoint de logs respondeu sem ingester configurado")
+	}
+}

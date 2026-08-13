@@ -9,6 +9,10 @@ type SignalType string
 const (
 	// SignalTypeSpan representa um span distribuído normalizado a partir de um exportador OTLP.
 	SignalTypeSpan SignalType = "span"
+	// SignalTypeLog representa um registro de log correlacionado a um trace.
+	// Apenas seus metadados são preservados; o texto da mensagem nunca é
+	// armazenado, por ser onde dados sensíveis costumam aparecer.
+	SignalTypeLog SignalType = "log"
 )
 
 // Signal representa uma unidade de telemetria pronta para ser validada, protegida e persistida.

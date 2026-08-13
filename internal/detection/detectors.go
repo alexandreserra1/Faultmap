@@ -29,6 +29,9 @@ const (
 	RuleDependencyFailure = "dependency_failure"
 	// RuleTraceBreak identifica ligação entre serviços que existia na baseline e sumiu no incidente.
 	RuleTraceBreak = "trace_break"
+	// RuleLogCorrelation identifica crescimento de logs de erro ligados por trace
+	// a requisições que falharam.
+	RuleLogCorrelation = "log_correlation"
 	// RuleDatabaseLatencyDelta identifica banco que ficou mais lento sem falhar.
 	RuleDatabaseLatencyDelta = "database_latency_delta"
 	// RuleDatabaseError identifica crescimento de falhas de banco que não são timeout.
@@ -138,6 +141,9 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectRetryStorm(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectLogCorrelation(input); found {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectDatabaseLatencyDelta(input); found {
@@ -627,4 +633,10 @@ func exceedsLatencyNoise(baselineP95, incidentP95 float64) bool {
 		return true
 	}
 	return delta/baselineP95 >= minimumLatencyRatio
+}
+
+// httpStatusValue converte o código de resposta para inteiro usando a mesma
+// lista de convenções do restante do produto.
+func httpStatusValue(signal domain.Signal) (int, error) {
+	return strconv.Atoi(httpStatusCode(signal.Attributes))
 }

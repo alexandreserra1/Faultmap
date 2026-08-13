@@ -17,6 +17,9 @@ type Weights struct {
 	DatabaseEvidence    float64
 	GraphProximity      float64
 	LatencyDelta        float64
+	// LogCorrelation permaneceu configurado e sem uso enquanto o produto não
+	// ingeria logs. Ele passa a financiar a regra de correlação de logs.
+	LogCorrelation float64
 }
 
 // Config define os pesos e o limite de suspeitos devolvidos pelo motor.
@@ -180,6 +183,7 @@ const (
 	classDatabaseEvidence    = "database_evidence"
 	classGraphProximity      = "graph_proximity"
 	classDeploymentProximity = "deployment_proximity"
+	classLogCorrelation      = "log_correlation"
 )
 
 // weightClassForRule associa cada regra à classe de peso que a financia.
@@ -197,6 +201,8 @@ func weightClassForRule(rule string) (string, bool) {
 		return classGraphProximity, true
 	case detection.RuleDeploymentProximity, detection.RuleVersionRegression:
 		return classDeploymentProximity, true
+	case detection.RuleLogCorrelation:
+		return classLogCorrelation, true
 	default:
 		return "", false
 	}
@@ -214,6 +220,8 @@ func weightForClass(class string, weights Weights) float64 {
 		return weights.GraphProximity
 	case classDeploymentProximity:
 		return weights.DeploymentProximity
+	case classLogCorrelation:
+		return weights.LogCorrelation
 	default:
 		return 0
 	}

@@ -140,6 +140,12 @@ func Default() Config {
 				// apenas um deles deixaria SQL bruto ser gravado conforme a
 				// instrumentação usada pela aplicação.
 				"http.request.body", "db.statement", "db.query.text",
+				// O SDK de logs anexa o caminho absoluto do arquivo de origem a
+				// cada registro. É a mesma classe de informação do stacktrace,
+				// que já é descartado: revela a estrutura de diretórios da
+				// máquina sem sustentar nenhuma decisão. A função e a linha
+				// continuam permitidas, porque ajudam sem expor caminhos.
+				"code.file.path", "code.filepath",
 			},
 		},
 	}

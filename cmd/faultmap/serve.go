@@ -66,7 +66,23 @@ func newServeCommand() *cobra.Command {
 				}
 				return err
 			})
-			handler, err := otlphttp.NewHandler(ingester, otlphttp.Options{MaxRequestBodyBytes: loadedConfig.Server.MaxRequestBodyBytes})
+			// Os logs entram pelo mesmo pool e pela mesma política de privacidade;
+			// o que muda é o normalizador, porque o envelope é outro.
+			logIngester := otlphttp.IngestFunc(func(ctx context.Context, reader io.Reader, encoding otlphttp.Encoding) error {
+				normalizerEncoding, err := mapOTLPEncoding(encoding)
+				if err != nil {
+					return errors.Join(otlphttp.ErrInvalidPayload, err)
+				}
+				_, err = application.IngestLogs(ctx, reader, normalizerEncoding, privacyPolicy, repository)
+				if errors.Is(err, normalizer.ErrInvalidOTLP) {
+					return errors.Join(otlphttp.ErrInvalidPayload, err)
+				}
+				return err
+			})
+			handler, err := otlphttp.NewHandler(ingester, otlphttp.Options{
+				Logs:                logIngester,
+				MaxRequestBodyBytes: loadedConfig.Server.MaxRequestBodyBytes,
+			})
 			if err != nil {
 				return err
 			}

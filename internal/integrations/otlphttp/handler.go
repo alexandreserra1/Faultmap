@@ -18,6 +18,10 @@ import (
 const (
 	// TracePath é o endpoint HTTP padronizado pelo OTLP para exportação de traces.
 	TracePath = "/v1/traces"
+	// LogsPath é o endpoint padronizado pelo OTLP para exportação de logs. Ele
+	// só é registrado quando o processo sabe processá-lo: anunciar uma rota que
+	// não faz nada seria pior que não anunciá-la.
+	LogsPath = "/v1/logs"
 	// HealthPath é o endpoint simples de vivacidade, separado do protocolo OTLP.
 	HealthPath = "/health"
 
@@ -75,6 +79,9 @@ func (function IngestFunc) IngestTraces(ctx context.Context, reader io.Reader, e
 // Options reúne limites do handler. Timeouts e encerramento controlado
 // pertencem ao servidor HTTP que hospeda este handler.
 type Options struct {
+	// Logs recebe os lotes de logs OTLP. Sem ele, o endpoint de logs não é
+	// registrado e o processo continua atendendo apenas traces.
+	Logs                TraceIngester
 	MaxRequestBodyBytes int64
 }
 
@@ -100,12 +107,17 @@ func NewHandler(ingester TraceIngester, options Options) (http.Handler, error) {
 	if maxRequestBodyBytes == 0 {
 		maxRequestBodyBytes = DefaultMaxRequestBodyBytes
 	}
-	handler := &traceHandler{
+	mux := http.NewServeMux()
+	mux.Handle(TracePath, &traceHandler{
 		ingester:            ingester,
 		maxRequestBodyBytes: maxRequestBodyBytes,
+	})
+	if options.Logs != nil {
+		mux.Handle(LogsPath, &traceHandler{
+			ingester:            options.Logs,
+			maxRequestBodyBytes: maxRequestBodyBytes,
+		})
 	}
-	mux := http.NewServeMux()
-	mux.Handle(TracePath, handler)
 	return mux, nil
 }
 

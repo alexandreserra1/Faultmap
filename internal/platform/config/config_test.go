@@ -369,3 +369,28 @@ func TestRetentionDurationRejeitaValorInválido(t *testing.T) {
 		t.Fatal("RetentionDuration() erro = nil, esperado erro")
 	}
 }
+
+// TestDefaultBloqueiaCaminhoDeArquivoDoLog cobre um vazamento observado com
+// telemetria real: o SDK de logs anexa code.file.path a cada registro, com o
+// caminho absoluto do arquivo de origem.
+//
+// É a mesma classe de informação do stacktrace, que já é descartado por revelar
+// a estrutura de diretórios da máquina sem sustentar nenhuma decisão do
+// diagnóstico. A função e a linha continuam permitidas: elas ajudam quem
+// investiga e não expõem o sistema de arquivos.
+func TestDefaultBloqueiaCaminhoDeArquivoDoLog(t *testing.T) {
+	t.Parallel()
+
+	bloqueados := make(map[string]struct{})
+	for _, atributo := range Default().Privacy.BlockedAttributes {
+		bloqueados[atributo] = struct{}{}
+	}
+	if _, bloqueado := bloqueados["code.file.path"]; !bloqueado {
+		t.Fatalf("code.file.path não é bloqueado por padrão: %v", Default().Privacy.BlockedAttributes)
+	}
+	for _, permitido := range []string{"code.function.name", "code.line.number"} {
+		if _, bloqueado := bloqueados[permitido]; bloqueado {
+			t.Fatalf("%s foi bloqueado, mas ajuda a investigação sem expor caminhos", permitido)
+		}
+	}
+}

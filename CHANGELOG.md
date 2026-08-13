@@ -4,6 +4,32 @@
 
 ### Adicionado
 
+- **Ingestão de logs OTLP.** O receiver passa a atender `POST /v1/logs`, e o
+  detector `log_correlation` liga o crescimento de logs de erro às requisições
+  que falharam no mesmo trace. O peso `log_correlation` estava configurado desde
+  o início sem ser usado por regra nenhuma; agora os pesos somam `1.00`.
+
+  **O texto da mensagem nunca é armazenado.** O Faultmap guarda severidade,
+  instante, correlação de trace e atributos permitidos — quem precisa ler a
+  mensagem vai ao sistema de logs de origem. O corpo é usado apenas para compor
+  o identificador do registro, o que impede que reenvios dupliquem sinais, e é
+  descartado em seguida. Ver ADR 0011.
+
+  O detector exige **correlação, não volume**: crescimento de logs de erro sem
+  ligação com requisição que falhou pode ser migração ou rotina noturna.
+
+  Apenas o mapeamento JSON é aceito. Aceitar protobuf sem ter visto uma
+  instrumentação real exportando por ele repetiria o erro que já custou três
+  releases publicadas cegas.
+
+- **`code.file.path` bloqueado por padrão.** A captura de telemetria real
+  mostrou que o SDK de logs anexa o caminho absoluto do arquivo de origem a cada
+  registro — a mesma classe de informação do stacktrace, já descartado.
+  `code.function.name` e `code.line.number` seguem permitidos, porque ajudam a
+  investigar sem expor a estrutura de diretórios.
+
+### Adicionado (anterior)
+
 - **O commit implantado passa a ser suspeito por direito próprio no ranking.**
   Antes ele existia apenas dentro do texto da evidência do serviço: quem lia via
   "o checkout está suspeito" e precisava caçar, na explicação, qual mudança

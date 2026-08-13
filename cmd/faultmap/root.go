@@ -1096,6 +1096,7 @@ func rankingConfig(configuration config.Config) ranking.Config {
 			DatabaseEvidence:    configuration.Ranking.Weights.DatabaseEvidence,
 			GraphProximity:      configuration.Ranking.Weights.GraphProximity,
 			LatencyDelta:        configuration.Ranking.Weights.LatencyDelta,
+			LogCorrelation:      configuration.Ranking.Weights.LogCorrelation,
 		},
 		TopN: configuration.Investigation.TopSuspects,
 	}
