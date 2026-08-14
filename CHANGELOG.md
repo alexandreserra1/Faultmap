@@ -1,6 +1,10 @@
 # Changelog
 
-## Não publicado
+## v0.4.0 — 2026-08-14
+
+O diagnóstico passa a receber **logs** e a acusar o **commit implantado** como
+suspeito próprio. É mudança de comportamento: o ranking agrupa por sujeito, e
+um commit pode aparecer ao lado dos serviços.
 
 ### Adicionado
 
@@ -28,7 +32,18 @@
   `code.function.name` e `code.line.number` seguem permitidos, porque ajudam a
   investigar sem expor a estrutura de diretórios.
 
-### Adicionado (anterior)
+
+### Verificação
+
+- Matriz E2E: 6 de 6. Modo difícil: 5 de 5, sobre o código exato publicado.
+- Telemetria real do SDK oficial de logs ingerida ponta a ponta: severidade,
+  instante e correlação de trace preservados; nenhum texto de mensagem em disco.
+- O commit aparece no ranking em telemetria real, com deployment importado, sem
+  deslocar o serviço que acumula mais evidência.
+- Quatro linguagens exercitadas contra instrumentação de terceiros — Python,
+  Node, Go e Java — sem nenhuma cegueira de convenção nova.
+
+### Adicionado
 
 - **O commit implantado passa a ser suspeito por direito próprio no ranking.**
   Antes ele existia apenas dentro do texto da evidência do serviço: quem lia via
