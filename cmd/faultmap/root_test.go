@@ -1393,3 +1393,72 @@ func TestIngestFileNãoPersisteSQLBruto(t *testing.T) {
 		t.Fatal("nenhum sinal de banco persistido: a política removeu telemetria legítima")
 	}
 }
+
+// TestIngestFileNãoPersisteSQLBrutoComListaPrópriaDeBloqueios prova no disco o
+// que o teste de configuração prova na struct: declarar os atributos sensíveis
+// do próprio negócio não pode desligar as proteções padrão.
+//
+// A fixture é uma captura real de psycopg2, que anexa o SQL executado em
+// db.statement. Antes da união, uma lista própria substituía a padrão e o SQL
+// chegava ao banco — o vazamento que a v0.4.0 fechou, reaberto pela
+// configuração de quem estava justamente tentando proteger mais.
+func TestIngestFileNãoPersisteSQLBrutoComListaPrópriaDeBloqueios(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	initialize := newRootCommand()
+	initialize.SetArgs([]string{"init", "--directory", projectDir})
+	initialize.SetOut(io.Discard)
+	initialize.SetErr(io.Discard)
+	if err := initialize.Execute(); err != nil {
+		t.Fatalf("init command erro = %v", err)
+	}
+
+	// A lista própria cobre o vocabulário do negócio e não menciona db.statement,
+	// exatamente como faria quem confia que o padrão continua valendo.
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	ownList := "privacy:\n  blocked_attributes: [user.email, user.document]\n"
+	if err := os.WriteFile(configPath, []byte(ownList), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	fixturePath, err := filepath.Abs(filepath.Join("..", "..", "fixtures", "otel", "real", "postgres-psycopg2.json"))
+	if err != nil {
+		t.Fatalf("resolver caminho da fixture: %v", err)
+	}
+	ingest := newRootCommand()
+	ingest.SetArgs([]string{"ingest", "file", "--input", fixturePath, "--config", configPath})
+	ingest.SetOut(io.Discard)
+	ingest.SetErr(io.Discard)
+	if err := ingest.Execute(); err != nil {
+		t.Fatalf("ingest file erro = %v", err)
+	}
+
+	database, err := sql.Open("sqlite", filepath.Join(projectDir, "faultmap.db"))
+	if err != nil {
+		t.Fatalf("abrir banco: %v", err)
+	}
+	t.Cleanup(func() {
+		if closeErr := database.Close(); closeErr != nil {
+			t.Errorf("fechar banco: %v", closeErr)
+		}
+	})
+
+	// A verificação é sobre o que está gravado, não sobre o que a política diz
+	// bloquear: é o disco que vaza.
+	var ingested, leaked int
+	if err := database.QueryRow("SELECT COUNT(*) FROM signals").Scan(&ingested); err != nil {
+		t.Fatalf("contar sinais: %v", err)
+	}
+	if ingested == 0 {
+		t.Fatal("nenhum sinal foi ingerido; o teste não provaria nada")
+	}
+	if err := database.QueryRow(
+		"SELECT COUNT(*) FROM signals WHERE attributes_json LIKE '%db.statement%' OR attributes_json LIKE '%db.query.text%'",
+	).Scan(&leaked); err != nil {
+		t.Fatalf("procurar SQL bruto: %v", err)
+	}
+	if leaked != 0 {
+		t.Fatalf("%d sinais gravaram SQL bruto apesar dos bloqueios padrão", leaked)
+	}
+}

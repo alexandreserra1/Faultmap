@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -180,10 +181,36 @@ func Load(ctx context.Context, path string) (Config, error) {
 	if err := decoder.Decode(&loaded); err != nil {
 		return Config{}, fmt.Errorf("interpretar configuração %q: %w", path, err)
 	}
+	loaded.Privacy.BlockedAttributes = mergeBlockedAttributes(loaded.Privacy.BlockedAttributes)
 	if err := loaded.Validate(); err != nil {
 		return Config{}, err
 	}
 	return loaded, nil
+}
+
+// mergeBlockedAttributes acrescenta os bloqueios padrão à lista informada no
+// arquivo, em vez de deixar que ela os substitua.
+//
+// O YAML decodifica sobre uma struct já preenchida com os defaults, e isso
+// funciona campo a campo — mas uma sequência substitui o slice inteiro. Sem
+// esta união, declarar os atributos sensíveis do próprio negócio removia em
+// silêncio a proteção contra SQL bruto e caminho de arquivo de origem, que é o
+// oposto da intenção de quem escreve a seção.
+//
+// A ordenação e a deduplicação mantêm a configuração carregada determinística.
+func mergeBlockedAttributes(configured []string) []string {
+	unique := make(map[string]struct{}, len(configured))
+	for _, attribute := range append(append([]string{}, configured...), Default().Privacy.BlockedAttributes...) {
+		if trimmed := strings.TrimSpace(attribute); trimmed != "" {
+			unique[trimmed] = struct{}{}
+		}
+	}
+	merged := make([]string, 0, len(unique))
+	for attribute := range unique {
+		merged = append(merged, attribute)
+	}
+	sort.Strings(merged)
+	return merged
 }
 
 // Validate rejeita opções incompatíveis antes que sejam usadas pelo bootstrap.

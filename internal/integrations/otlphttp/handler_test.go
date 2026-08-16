@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -484,5 +485,51 @@ func TestHandlerNãoAnunciaLogsSemIngester(t *testing.T) {
 
 	if resposta.Code == http.StatusOK {
 		t.Fatal("o endpoint de logs respondeu sem ingester configurado")
+	}
+}
+
+// TestHandlerRelataRecusaAoOperador cobre uma falha que é invisível dos dois
+// lados: o Collector recebe uma mensagem estável e genérica, por decisão de
+// contrato, e até aqui o processo não registrava nada. Quem exportasse logs em
+// protobuf veria os traces entrarem, os logs sumirem e não teria onde ligar os
+// dois fatos.
+//
+// A mensagem detalhada vai para o operador do Faultmap, nunca para a resposta
+// HTTP, que continua sem expor detalhes internos.
+func TestHandlerRelataRecusaAoOperador(t *testing.T) {
+	t.Parallel()
+
+	recusado := make(chan error, 1)
+	handler, err := NewHandler(
+		IngestFunc(func(context.Context, io.Reader, Encoding) error { return nil }),
+		Options{
+			Logs: IngestFunc(func(context.Context, io.Reader, Encoding) error {
+				return errors.Join(ErrInvalidPayload, errors.New("logs OTLP só são aceitos em JSON"))
+			}),
+			OnRejected: func(path string, cause error) { recusado <- fmt.Errorf("%s: %w", path, cause) },
+		},
+	)
+	if err != nil {
+		t.Fatalf("NewHandler() erro = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodPost, LogsPath, bytes.NewReader([]byte{0x0a, 0x00}))
+	request.Header.Set("Content-Type", ContentTypeProtobuf)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, esperado 400", recorder.Code)
+	}
+	if strings.Contains(recorder.Body.String(), "JSON") {
+		t.Fatalf("a resposta HTTP expôs o detalhe interno: %s", recorder.Body.String())
+	}
+	select {
+	case relato := <-recusado:
+		if !strings.Contains(relato.Error(), LogsPath) || !strings.Contains(relato.Error(), "JSON") {
+			t.Fatalf("relato sem rota ou sem causa: %v", relato)
+		}
+	default:
+		t.Fatal("a recusa não foi relatada ao operador")
 	}
 }

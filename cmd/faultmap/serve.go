@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/faultmap/faultmap/internal/application"
@@ -82,6 +83,7 @@ func newServeCommand() *cobra.Command {
 			handler, err := otlphttp.NewHandler(ingester, otlphttp.Options{
 				Logs:                logIngester,
 				MaxRequestBodyBytes: loadedConfig.Server.MaxRequestBodyBytes,
+				OnRejected:          rejectionReporter(command.ErrOrStderr()),
 			})
 			if err != nil {
 				return err
@@ -91,6 +93,29 @@ func newServeCommand() *cobra.Command {
 	}
 	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
 	return command
+}
+
+// rejectionReporter escreve no terminal do operador cada motivo distinto de
+// recusa, uma única vez.
+//
+// Um exportador mal configurado repete o mesmo lote indefinidamente, então
+// registrar toda ocorrência afogaria a saída e esconderia justamente o que
+// precisa ser lido. Repetir a causa não acrescenta informação: ela descreve a
+// configuração, não o lote.
+func rejectionReporter(output io.Writer) func(string, error) {
+	var mutex sync.Mutex
+	reported := make(map[string]struct{})
+	return func(path string, cause error) {
+		message := fmt.Sprintf("Lote OTLP recusado em %s: %v\n", path, cause)
+		mutex.Lock()
+		defer mutex.Unlock()
+		if _, seen := reported[message]; seen {
+			return
+		}
+		reported[message] = struct{}{}
+		// A escrita é best-effort: falhar em relatar não pode derrubar a ingestão.
+		_, _ = io.WriteString(output, message)
+	}
 }
 
 func mapOTLPEncoding(encoding otlphttp.Encoding) (normalizer.OTLPEncoding, error) {

@@ -83,11 +83,27 @@ type Options struct {
 	// registrado e o processo continua atendendo apenas traces.
 	Logs                TraceIngester
 	MaxRequestBodyBytes int64
+	// OnRejected relata ao operador do processo cada lote recusado, com a causa
+	// interna que a resposta HTTP não pode conter.
+	//
+	// O protocolo exige mensagens estáveis e sem detalhes internos, e isso
+	// tornava a recusa invisível dos dois lados: o Collector recebe um 400
+	// genérico e o Faultmap não registrava nada. Sem este relato, exportar logs
+	// em protobuf faz os registros sumirem sem deixar rastro.
+	OnRejected func(path string, cause error)
 }
 
 type traceHandler struct {
 	ingester            TraceIngester
 	maxRequestBodyBytes int64
+	onRejected          func(path string, cause error)
+}
+
+// reportRejection entrega a causa ao operador quando há quem a receba.
+func (handler *traceHandler) reportRejection(path string, cause error) {
+	if handler.onRejected != nil && cause != nil {
+		handler.onRejected(path, cause)
+	}
 }
 
 // NewHandler cria um handler que atende somente o endpoint OTLP /v1/traces.
@@ -111,11 +127,13 @@ func NewHandler(ingester TraceIngester, options Options) (http.Handler, error) {
 	mux.Handle(TracePath, &traceHandler{
 		ingester:            ingester,
 		maxRequestBodyBytes: maxRequestBodyBytes,
+		onRejected:          options.OnRejected,
 	})
 	if options.Logs != nil {
 		mux.Handle(LogsPath, &traceHandler{
 			ingester:            options.Logs,
 			maxRequestBodyBytes: maxRequestBodyBytes,
+			onRejected:          options.OnRejected,
 		})
 	}
 	return mux, nil
@@ -203,6 +221,7 @@ func (handler *traceHandler) ServeHTTP(response http.ResponseWriter, request *ht
 	if request.Context().Err() != nil {
 		return
 	}
+	handler.reportRejection(request.URL.Path, err)
 	if errors.Is(err, ErrInvalidPayload) {
 		writeGoogleStatus(response, contentType, http.StatusBadRequest, googleCodeInvalidArgument, invalidPayloadMessage)
 		return

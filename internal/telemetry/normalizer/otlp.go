@@ -23,8 +23,6 @@ const (
 	OTLPEncodingProtobuf OTLPEncoding = "protobuf"
 )
 
-// ParseOTLPTraces interpreta traces OTLP no formato informado e produz o mesmo
-// contrato interno, independentemente do transporte que recebeu o payload.
 // ParseOTLPLogs normaliza um lote de logs OTLP. Apenas o mapeamento JSON é
 // aceito por ora: as instrumentações que exportam logs por HTTP usam protobuf
 // ou JSON, e acrescentar o protobuf sem telemetria real para exercitá-lo
@@ -37,7 +35,13 @@ func ParseOTLPLogs(ctx context.Context, reader io.Reader, encoding OTLPEncoding)
 		return nil, fmt.Errorf("interpretar logs OTLP: leitor é obrigatório")
 	}
 	if encoding != OTLPEncodingJSON {
-		return nil, fmt.Errorf("%w: logs OTLP só são aceitos em JSON", ErrInvalidOTLP)
+		// A orientação faz parte da mensagem porque esta recusa é invisível na
+		// origem: quem exporta tudo em protobuf vê os traces entrarem e os logs
+		// desaparecerem, sem nada que ligue os dois fatos.
+		return nil, fmt.Errorf(
+			"%w: logs OTLP só são aceitos em JSON; no OpenTelemetry Collector, declare `encoding: json` no exportador otlphttp da pipeline de logs (traces seguem aceitos em protobuf)",
+			ErrInvalidOTLP,
+		)
 	}
 	signals, err := ParseOTLPLogsJSON(ctx, reader)
 	return signals, classifyOTLPError(err)

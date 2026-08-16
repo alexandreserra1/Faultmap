@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 )
@@ -392,5 +393,76 @@ func TestDefaultBloqueiaCaminhoDeArquivoDoLog(t *testing.T) {
 		if _, bloqueado := bloqueados[permitido]; bloqueado {
 			t.Fatalf("%s foi bloqueado, mas ajuda a investigação sem expor caminhos", permitido)
 		}
+	}
+}
+
+// TestLoadSomaBloqueiosDoYAMLAosPadrões cobre a armadilha mais perigosa da
+// configuração: listas do YAML substituem o slice inteiro, então uma lista
+// própria de bloqueios apagava em silêncio as proteções padrão. Quem escreve
+// `blocked_attributes` está acrescentando o que o próprio negócio considera
+// sensível, não abrindo mão de esconder SQL bruto e caminho de arquivo.
+func TestLoadSomaBloqueiosDoYAMLAosPadrões(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `privacy:
+  blocked_attributes:
+    - user.email
+    - user.document
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	loaded, err := Load(context.Background(), configPath)
+	if err != nil {
+		t.Fatalf("Load() erro = %v", err)
+	}
+
+	bloqueados := make(map[string]struct{}, len(loaded.Privacy.BlockedAttributes))
+	for _, atributo := range loaded.Privacy.BlockedAttributes {
+		bloqueados[atributo] = struct{}{}
+	}
+	for _, esperado := range append([]string{"user.email", "user.document"}, Default().Privacy.BlockedAttributes...) {
+		if _, bloqueado := bloqueados[esperado]; !bloqueado {
+			t.Fatalf("%s deixou de ser bloqueado: %v", esperado, loaded.Privacy.BlockedAttributes)
+		}
+	}
+	// A ordem é estável para que a configuração carregada não dependa de
+	// iteração de mapa, e cada atributo aparece uma única vez.
+	if !sort.StringsAreSorted(loaded.Privacy.BlockedAttributes) {
+		t.Fatalf("lista fora de ordem: %v", loaded.Privacy.BlockedAttributes)
+	}
+	if len(bloqueados) != len(loaded.Privacy.BlockedAttributes) {
+		t.Fatalf("lista com duplicatas: %v", loaded.Privacy.BlockedAttributes)
+	}
+}
+
+// TestLoadNãoDuplicaBloqueioJáPadrão garante que repetir um padrão no YAML —
+// o que é natural quando alguém copia o exemplo e acrescenta um item — não
+// produz entrada duplicada.
+func TestLoadNãoDuplicaBloqueioJáPadrão(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `privacy:
+  blocked_attributes: [db.statement, user.email]
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	loaded, err := Load(context.Background(), configPath)
+	if err != nil {
+		t.Fatalf("Load() erro = %v", err)
+	}
+	ocorrências := 0
+	for _, atributo := range loaded.Privacy.BlockedAttributes {
+		if atributo == "db.statement" {
+			ocorrências++
+		}
+	}
+	if ocorrências != 1 {
+		t.Fatalf("db.statement apareceu %d vezes: %v", ocorrências, loaded.Privacy.BlockedAttributes)
 	}
 }

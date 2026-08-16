@@ -8,7 +8,7 @@ O Faultmap recebe telemetria, compara o comportamento normal com uma janela de i
 
 ## O que estamos construindo
 
-Um monólito modular em Go, distribuído como um único binário e orientado à CLI. A etapa atual recebe traces OpenTelemetry, correlaciona esses sinais com deploys e commits do GitHub e operações PostgreSQL, persiste o contexto localmente em SQLite e gera um ranking explicável de suspeitos. Logs e métricas fazem parte da evolução planejada, mas ainda não são recebidos pelo servidor OTLP.
+Um monólito modular em Go, distribuído como um único binário e orientado à CLI. A etapa atual recebe traces e logs OpenTelemetry, correlaciona esses sinais com deploys e commits do GitHub e operações PostgreSQL, persiste o contexto localmente em SQLite e gera um ranking explicável de suspeitos. Traces são aceitos em JSON e protobuf; logs, apenas em JSON, e sem o texto da mensagem — o Faultmap guarda severidade, instante, correlação de trace e atributos permitidos, e remete ao sistema de logs de origem para quem precisar ler o conteúdo ([ADR 0011](docs/adr/0011-logs-guardam-apenas-metadados.md)). Métricas fazem parte da evolução planejada.
 
 Em vez de responder apenas “algo está errado”, o objetivo é responder:
 
@@ -149,7 +149,7 @@ go run ./cmd/faultmap serve \
   --config ./faultmap-local/faultmap.yaml
 ```
 
-O processo mantém dois listeners independentes: `POST /v1/traces` recebe lotes OTLP no endereço `server.otlp_http_address`, enquanto `GET /health` responde no endereço `server.health_address`. A ingestão reutiliza o mesmo normalizador e o mesmo pool SQLite durante todo o ciclo de vida do processo. Reenviar spans com os mesmos IDs é seguro: a persistência ignora duplicidades.
+O processo mantém dois listeners independentes: `POST /v1/traces` e `POST /v1/logs` recebem lotes OTLP no endereço `server.otlp_http_address`, enquanto `GET /health` responde no endereço `server.health_address`. A ingestão reutiliza o mesmo normalizador e o mesmo pool SQLite durante todo o ciclo de vida do processo. Reenviar spans com os mesmos IDs é seguro: a persistência ignora duplicidades.
 
 Envie uma fixture no formato OTLP JSON:
 
@@ -161,6 +161,12 @@ curl --fail-with-body \
 ```
 
 Uma ingestão aceita retorna `200 OK` e o `ExportTraceServiceResponse` vazio, representado como `{}` em JSON. O endpoint também aceita OTLP protobuf com `Content-Type: application/x-protobuf`; nesse caso, o corpo de sucesso é um protobuf vazio. O formato é determinado pelo `Content-Type`, e não pela extensão ou pelo conteúdo aparente do corpo.
+
+**Logs são aceitos apenas em JSON.** Enviá-los em protobuf retorna `400`, e a resposta OTLP não pode explicar o motivo porque o protocolo exige mensagens estáveis e sem detalhes internos — então o processo escreve a causa no próprio terminal, uma vez por motivo distinto:
+
+```text
+Lote OTLP recusado em /v1/logs: payload OTLP inválido: logs OTLP só são aceitos em JSON; no OpenTelemetry Collector, declare `encoding: json` no exportador otlphttp da pipeline de logs (traces seguem aceitos em protobuf)
+```
 
 Verifique a saúde do processo separadamente:
 
@@ -174,7 +180,7 @@ Resposta esperada:
 {"status":"ok"}
 ```
 
-Para encaminhar traces de aplicações reais, configure um OpenTelemetry Collector. O exporter `otlp_http` acrescenta `/v1/traces` ao `endpoint` para o pipeline de traces:
+Para encaminhar telemetria de aplicações reais, configure um OpenTelemetry Collector. O exporter `otlphttp` acrescenta `/v1/traces` e `/v1/logs` ao `endpoint`. Note os dois exportadores: traces seguem em protobuf, que é o padrão, e logs exigem `encoding: json`.
 
 ```yaml
 receivers:
@@ -187,15 +193,22 @@ processors:
   batch:
 
 exporters:
-  otlp_http/faultmap:
+  otlphttp/faultmap:
     endpoint: http://faultmap:4318
+  otlphttp/faultmap-logs:
+    endpoint: http://faultmap:4318
+    encoding: json
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp_http/faultmap]
+      exporters: [otlphttp/faultmap]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/faultmap-logs]
 ```
 
 O receiver aceita corpo sem compactação ou com `Content-Encoding: gzip`. Ele limita cada requisição e também o corpo descompactado a 64 MiB por padrão, além de configurar timeouts de cabeçalho, leitura, escrita, conexão ociosa e encerramento. Payload inválido retorna `400`, método incorreto `405`, corpo acima do limite `413`, formato não suportado `415` e falha interna `500`, sem expor detalhes de persistência.
@@ -526,6 +539,23 @@ proveniência resumida. Uma contribuição sem evidência gravada aparece declar
 como tal, em vez de ser omitida. Como `incident show`, o comando lê o snapshot e
 não reexecuta detectores nem ranking.
 
+## Privacidade
+
+O Faultmap descarta atributos sensíveis **entre a normalização e a persistência**, então o que é bloqueado nunca chega ao disco. Por padrão saem de circulação o corpo de requisição (`http.request.body`), o SQL executado (`db.statement` e `db.query.text`, os dois nomes que a convenção já teve) e o caminho absoluto do arquivo de origem que o SDK de logs anexa a cada registro (`code.file.path` e `code.filepath`). `code.function.name` e `code.line.number` continuam permitidos: ajudam a investigar sem expor a estrutura de diretórios.
+
+A lista de `privacy.blocked_attributes` no YAML **soma** aos padrões em vez de substituí-los ([ADR 0012](docs/adr/0012-bloqueios-de-privacidade-somam-em-vez-de-substituir.md)):
+
+```yaml
+privacy:
+  blocked_attributes:
+    - user.email
+    - user.document
+```
+
+A configuração acima bloqueia esses dois atributos **e** os cinco padrões. Declarar o vocabulário sensível do próprio negócio é acrescentar proteção, nunca abrir mão dela.
+
+Logs entram sem o texto da mensagem. `privacy.store_raw_logs` permanece no arquivo por compatibilidade e não tem efeito.
+
 ## Decisões arquiteturais
 
 As decisões cujo motivo não é dedutível do código estão registradas em [`docs/adr/`](docs/adr/).
@@ -536,6 +566,10 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, gera a cronologia `timeline.json`, aplica a política de retenção, reconstrói o grafo de um trace e o exporta em Mermaid. Os detectores atuais cobrem aumento de erros, aumento de latência, timeout PostgreSQL, correlação desses impactos pelo mesmo `trace_id`, proximidade de deployment com correspondência de versão e repetição anormal da mesma operação por trace. O ranking agrega essas evidências com pesos configuráveis e contribuições auditáveis. A `demo-shop` instrumentada reproduz seis falhas controladas, e a matriz E2E automatizada cobre os seis cenários com bancos isolados, telemetria OTLP real e expectativas determinísticas; o cenário de timeout também importa commit/deployment de um mock GitHub local e comprova a correspondência com `service.version`.
+O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf e logs OTLP em JSON (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, gera a cronologia `timeline.json`, aplica a política de retenção, reconstrói o grafo de um trace e o exporta em Mermaid.
+
+São doze detectores: aumento de erros HTTP, aumento de latência, timeout PostgreSQL, erro de banco fora de timeout, aumento de latência de banco, correlação desses impactos pelo mesmo `trace_id`, repetição anormal da mesma operação por trace, proximidade de deployment com correspondência de versão, regressão entre versões que convivem na mesma janela, falha de dependência downstream, quebra de propagação de trace que surgiu no incidente, e logs de erro correlacionados a requisições que falharam. Todos comparam duas janelas: nenhum reporta estado absoluto, porque um serviço que sempre erra descreve o próprio sistema e não o incidente. O ranking agrega essas evidências com pesos configuráveis, contribuições auditáveis e teto por classe de peso.
+
+O que ainda **não** foi validado: nenhum incidente real, investigado por uma pessoa que não sabia a resposta, passou pelo produto. Os cenários automatizados cobrem falhas que nós mesmos desenhamos. A `demo-shop` instrumentada reproduz seis falhas controladas, e a matriz E2E automatizada cobre os seis cenários com bancos isolados, telemetria OTLP real e expectativas determinísticas; o cenário de timeout também importa commit/deployment de um mock GitHub local e comprova a correspondência com `service.version`.
 
 Cada cenário da matriz também mede as metas do MVP: top-1 e top-3 do serviço esperado, tempo de diagnóstico abaixo de 10 segundos, estabilidade do ranking entre execuções idênticas, 100% das evidências com proveniência e a geração válida de `report.json`, `report.md`, `timeline.json` e do grafo Mermaid.

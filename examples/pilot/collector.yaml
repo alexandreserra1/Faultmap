@@ -1,0 +1,35 @@
+# OpenTelemetry Collector para o piloto.
+#
+# O ponto que mais custa descobrir sozinho: traces e logs precisam de
+# exportadores separados, porque o Faultmap aceita logs apenas em JSON. Com um
+# único exportador em protobuf, os traces entram, os logs tomam 400 e somem sem
+# deixar rastro na aplicação — o Faultmap registra a causa no próprio terminal.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+processors:
+  batch:
+    # Um segundo mantém a espera curta entre o fim do tráfego e o diagnóstico.
+    timeout: 1s
+
+exporters:
+  otlphttp/faultmap-traces:
+    endpoint: http://127.0.0.1:4318
+  otlphttp/faultmap-logs:
+    endpoint: http://127.0.0.1:4318
+    encoding: json
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/faultmap-traces]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/faultmap-logs]
