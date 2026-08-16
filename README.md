@@ -165,8 +165,11 @@ Uma ingestão aceita retorna `200 OK` e o `ExportTraceServiceResponse` vazio, re
 **Logs são aceitos apenas em JSON.** Enviá-los em protobuf retorna `400`, e a resposta OTLP não pode explicar o motivo porque o protocolo exige mensagens estáveis e sem detalhes internos — então o processo escreve a causa no próprio terminal, uma vez por motivo distinto:
 
 ```text
-Lote OTLP recusado em /v1/logs: payload OTLP inválido: logs OTLP só são aceitos em JSON; no OpenTelemetry Collector, declare `encoding: json` no exportador otlphttp da pipeline de logs (traces seguem aceitos em protobuf)
+Lote OTLP recusado em /v1/logs: payload OTLP inválido
+normalizar logs: payload OTLP inválido: logs OTLP só são aceitos em JSON; no OpenTelemetry Collector, declare `encoding: json` no exportador otlphttp da pipeline de logs (traces seguem aceitos em protobuf)
 ```
+
+Reenvios do mesmo lote não repetem a mensagem: a causa descreve a configuração, não o lote, e um exportador mal configurado insiste indefinidamente.
 
 Verifique a saúde do processo separadamente:
 
