@@ -92,6 +92,13 @@ aceita logs apenas em JSON. Com um único exportador em protobuf os traces entra
 os logs tomam `400` e desaparecem — e o piloto concluiria, erradamente, que o
 detector de logs não funciona.
 
+**Não tente pular o Collector para os logs.** Os SDKs de aplicação não exportam
+OTLP em JSON: o SDK Python aceita apenas `grpc` e `http/protobuf`, e recusa
+`http/json` já na inicialização. Exportar direto da aplicação para o Faultmap
+funciona para traces e nunca para logs. Se o seu piloto não tem Collector,
+registre no resultado que `log_correlation` não foi exercitado, em vez de contar
+o silêncio dele como resultado.
+
 ## 6. Confirmar que a telemetria chega
 
 Faça algumas requisições saudáveis, espere o batch e verifique:

@@ -171,6 +171,8 @@ normalizar logs: payload OTLP inválido: logs OTLP só são aceitos em JSON; no 
 
 Reenvios do mesmo lote não repetem a mensagem: a causa descreve a configuração, não o lote, e um exportador mal configurado insiste indefinidamente.
 
+Isso torna o **Collector obrigatório para logs**, e não apenas recomendado: os SDKs de aplicação não exportam OTLP em JSON. O SDK Python, por exemplo, aceita apenas `grpc` e `http/protobuf`, e recusa `OTEL_EXPORTER_OTLP_PROTOCOL=http/json` na inicialização com `Unsupported OTLP protocol 'http/json' is configured`. Quem envia direto da aplicação consegue mandar traces, nunca logs; o Collector é quem converte para JSON no caminho.
+
 Verifique a saúde do processo separadamente:
 
 ```bash
