@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/demoruntime"
+	"github.com/faultmap/faultmap/examples/internal/demoruntime"
 )
 
 // TestLoadConfigConverteCheckout cobre todos os controles que alteram rede,

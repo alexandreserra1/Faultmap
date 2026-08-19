@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/demoruntime"
+	"github.com/faultmap/faultmap/examples/internal/demoruntime"
 )
 
 // TestLoadConfigConvertePoolPostgres verifica que todos os limites do pool são

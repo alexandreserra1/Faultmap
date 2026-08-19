@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/faultmap/faultmap/examples/demo-shop/internal/checkout"
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/demoruntime"
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/observability"
+	"github.com/faultmap/faultmap/examples/internal/demoruntime"
+	"github.com/faultmap/faultmap/examples/internal/observability"
 )
 
 const shutdownTimeout = 5 * time.Second

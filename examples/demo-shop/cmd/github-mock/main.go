@@ -10,8 +10,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/demoruntime"
 	"github.com/faultmap/faultmap/examples/demo-shop/internal/githubmock"
+	"github.com/faultmap/faultmap/examples/internal/demoruntime"
 )
 
 const shutdownTimeout = 5 * time.Second

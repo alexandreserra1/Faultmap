@@ -10,9 +10,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/demoruntime"
-	"github.com/faultmap/faultmap/examples/demo-shop/internal/observability"
 	"github.com/faultmap/faultmap/examples/demo-shop/internal/payment"
+	"github.com/faultmap/faultmap/examples/internal/demoruntime"
+	"github.com/faultmap/faultmap/examples/internal/observability"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
