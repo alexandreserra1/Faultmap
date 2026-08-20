@@ -8,6 +8,15 @@ set -euo pipefail
 #
 # Todos os cenários usam telemetria OTLP real, banco isolado e o mesmo binário
 # publicado na release. Nenhum deles substitui um incidente de produção.
+#
+# RODE COM A MÁQUINA EM REPOUSO. Estes cenários medem latência real de processos
+# reais, então contenção de CPU aparece como regressão de latência — que é o que
+# eles proíbem. Rodando logo depois da matriz E2E, com builds Docker ainda em
+# curso, sem-culpado já acusou latência de 9 ms para 64 ms e falhou; sozinho, na
+# máquina parada, passou três vezes seguidas com silêncio completo.
+#
+# Uma falha aqui merece ser repetida isolada antes de virar diagnóstico de
+# defeito: `run-hard-mode.sh sem-culpado`.
 
 SCRIPT_DIRECTORY="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIRECTORY}/../.." && pwd)"
