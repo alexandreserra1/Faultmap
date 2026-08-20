@@ -1,5 +1,91 @@
 # Changelog
 
+## v0.5.0 — 2026-08-20
+
+A primeira release moldada por um **piloto cego**: o produto foi levado a uma
+aplicação que não é nossa, com uma pessoa investigando sem saber qual falha havia
+sido injetada. Tudo aqui saiu de tentar usar a ferramenta, não de percorrer a
+lista de tarefas.
+
+### Corrigido
+
+- **`privacy.blocked_attributes` do YAML apagava as proteções padrão.** A
+  configuração é decodificada sobre os valores padrão, e isso funciona campo a
+  campo — mas uma sequência YAML substitui a lista inteira. Declarar o
+  vocabulário sensível do próprio negócio removia em silêncio o bloqueio de SQL
+  bruto (`db.statement`, `db.query.text`) e de caminho de arquivo de origem
+  (`code.file.path`, `code.filepath`).
+
+  O efeito era o oposto da intenção: quem escrevia a seção estava protegendo
+  mais, e acabava protegendo menos. A lista agora **soma** aos padrões. A prova é
+  no disco, não na estrutura de dados: ingerir uma captura real de psycopg2 com
+  uma lista própria gravava **49 sinais com SQL bruto**; com a união, zero. Ver
+  ADR 0012.
+
+  Consequência aceita: não é mais possível encolher a lista padrão.
+
+- **Recusa de logs em protobuf era invisível dos dois lados.** O protocolo OTLP
+  exige respostas estáveis e sem detalhes internos, e o processo não registrava
+  nada — quem exportava tudo em protobuf via os traces entrarem e os logs
+  desaparecerem, sem nada que ligasse os dois fatos. A causa passa a ir ao
+  terminal do operador, uma vez por motivo distinto, sem alterar o que vai pela
+  rede.
+
+- **README desatualizado em três pontos.** Afirmava que logs não eram recebidos,
+  usava `otlp_http` como nome do exportador do Collector — que não existe; o
+  correto é `otlphttp`, confirmado rodando `validate` na imagem oficial — e não
+  registrava que o **Collector é obrigatório para logs**: os SDKs de aplicação
+  não exportam OTLP em JSON, e o SDK Python recusa `http/json` na inicialização.
+
+### Adicionado
+
+- **Cada evidência diz o que aquele padrão costuma significar.** Nasceu do
+  resultado mais incômodo do piloto: diante de "a duração p95 das operações
+  duckdb aumentou de 3,54 ms para 150,73 ms" — medida correta, cuja causa real
+  era exatamente atraso nas consultas — a pessoa que investigava registrou como
+  hipótese *"usuário incompleto ou SQL injection"*. Duas hipóteses sobre os dados
+  estarem errados, quando a medida falava sobre tempo.
+
+  Nenhum teste nosso poderia ter encontrado isso, porque todos verificam se o
+  número está certo, e o número estava certo. O relatório era um termômetro:
+  mostrava a febre sem sugerir onde procurar.
+
+  Cada frase apresenta **mais de uma possibilidade**, e um teste rejeita regra com
+  causa única: uma só leria como veredito, e o produto não afirma causalidade. A
+  ordem de renderização mantém a ressalva com a última palavra. Um teste enumera
+  as doze regras e falha quando alguma não tem frase. Ver ADR 0013.
+
+- **Kit do piloto cego** em `examples/pilot/`: protocolo, configurações,
+  formulário do investigador, resultado e os roteiros usados. Inclui o
+  `pilot-gateway`, um proxy reverso instrumentado que existe para haver um
+  segundo serviço no trace — com uma aplicação só, o ranking não tem entre quem
+  escolher.
+
+### Verificação
+
+- `make verify`, matriz E2E 6 de 6 e modo difícil 5 de 5, sobre o código exato
+  publicado.
+- **Piloto cego contra aplicação de terceiro: top-1 em 3 de 3** cenários de
+  ranking. No caso difícil, culpado e vítima ficaram lentos quase igual — 326 ms
+  contra 329 ms — e o desempate veio da evidência de banco, que só o culpado
+  podia ter. A contraprova, com a lentidão nascendo no proxy, inverteu a
+  resposta.
+- `collector.yaml` do kit validado pela imagem oficial do OpenTelemetry
+  Collector.
+
+### Limitações conhecidas
+
+- **Dois dos doze detectores dispararam em telemetria real.** Os outros dez
+  seguem exercitados apenas por cenários que nós mesmos desenhamos. Isso não os
+  torna errados, e não é o mesmo que cobertura.
+- Não sabemos se a frase de causas comuns muda a hipótese que uma pessoa formula.
+  Sabemos que o relatório anterior levou a uma hipótese de natureza errada.
+- Nenhum incidente **inesperado**, que ninguém tenha planejado, passou pelo
+  produto.
+- O modo difícil mede latência de processos reais e **exige a máquina em
+  repouso**: sob contenção, `sem-culpado` acusou 9 ms para 64 ms e falhou;
+  isolado, passou três vezes com silêncio completo.
+
 ## v0.4.0 — 2026-08-14
 
 O diagnóstico passa a receber **logs** e a acusar o **commit implantado** como
