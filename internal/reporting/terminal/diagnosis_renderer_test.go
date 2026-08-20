@@ -209,3 +209,39 @@ func TestRenderDiagnosisDistingueCommitDeServiço(t *testing.T) {
 		t.Fatalf("o tipo do sujeito não foi declarado:\n%s", saida)
 	}
 }
+
+// TestRenderDiagnosisDizOQueAquelePadrãoCostumaSignificar cobre o que o piloto
+// cego mostrou faltar: diante de uma medida correta de latência de banco, quem
+// investigava formulou hipótese de natureza errada, porque o relatório não
+// oferecia a lista de causas que alguém experiente teria de imediato.
+//
+// A frase entra como orientação, não como veredito: ela cita alternativas e
+// convive com a limitação que nega causalidade.
+func TestRenderDiagnosisDizOQueAquelePadrãoCostumaSignificar(t *testing.T) {
+	t.Parallel()
+
+	findings := []detection.Finding{{
+		Rule:        detection.RuleDatabaseLatencyDelta,
+		Score:       0.98,
+		Confidence:  detection.ConfidenceHigh,
+		Limitations: []string{"Correlação entre sinais não comprova causalidade."},
+		Evidence: []detection.Evidence{{
+			Summary: "A duração p95 das operações duckdb aumentou de 3.54 ms para 150.73 ms.",
+		}},
+	}}
+
+	var output bytes.Buffer
+	RenderDiagnosis(&output, "strideredge-api", 456, 432, findings, nil)
+	rendered := output.String()
+
+	if !strings.Contains(rendered, "Costuma vir de") {
+		t.Fatalf("o relatório não diz o que aquele padrão costuma significar:\n%s", rendered)
+	}
+	if !strings.Contains(rendered, "lock") || !strings.Contains(rendered, "pool de") {
+		t.Fatalf("as causas comuns não chegaram à saída:\n%s", rendered)
+	}
+	// A orientação não pode substituir a ressalva: as duas coisas convivem.
+	if !strings.Contains(rendered, "não comprova causalidade") {
+		t.Fatalf("a limitação desapareceu ao acrescentar as causas comuns:\n%s", rendered)
+	}
+}

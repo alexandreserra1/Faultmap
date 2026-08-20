@@ -110,6 +110,9 @@ func renderFindings(output *strings.Builder, findings []detection.Finding) {
 		for _, evidence := range orderedEvidence {
 			fmt.Fprintf(output, "- **Evidência:** %s\n", markdownText(evidence.Summary))
 		}
+		if causes := detection.CommonCauses(finding.Rule); causes != "" {
+			fmt.Fprintf(output, "- **Por onde começar:** %s\n", markdownText(causes))
+		}
 	}
 }
 

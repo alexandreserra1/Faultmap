@@ -84,6 +84,11 @@ func renderSuspectFinding(output *strings.Builder, finding detection.Finding, in
 			fmt.Fprintf(output, "%s  %s\n", indent, provenanceSummary("mudança", "mudanças", evidence.ChangeIDs))
 		}
 	}
+	// O explain existe para quem já decidiu investigar aquele suspeito, e é
+	// justamente ali que a lista de causas prováveis mais ajuda.
+	if causes := detection.CommonCauses(finding.Rule); causes != "" {
+		fmt.Fprintf(output, "%s%s\n", indent, causes)
+	}
 	for _, limitation := range finding.Limitations {
 		fmt.Fprintf(output, "%sLimitação: %s\n", indent, limitation)
 	}

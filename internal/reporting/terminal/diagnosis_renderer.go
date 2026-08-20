@@ -64,6 +64,12 @@ func renderDiagnosisAnalysis(output *strings.Builder, findings []detection.Findi
 		for _, evidence := range orderedEvidence {
 			fmt.Fprintf(output, "  Evidência: %s\n", evidence.Summary)
 		}
+		// As causas comuns vêm depois da evidência e antes das limitações: elas
+		// orientam por onde começar, e a ressalva que nega causalidade continua
+		// tendo a última palavra.
+		if causes := detection.CommonCauses(finding.Rule); causes != "" {
+			fmt.Fprintf(output, "  %s\n", causes)
+		}
 		for _, limitation := range specificLimitations(finding.Limitations, generalLimitations) {
 			fmt.Fprintf(output, "  Limitação específica: %s\n", limitation)
 		}
