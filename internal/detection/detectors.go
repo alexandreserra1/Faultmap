@@ -541,11 +541,23 @@ func fraction(numerator, denominator int) float64 {
 }
 
 // signalIDs preserva referências aos sinais originais para que a camada de relatório possa explicar a hipótese.
+// signalIDs devolve a proveniência em ordem estável.
+//
+// A ordenação existe porque a lista chega até a saída: o `explain suspect`
+// imprime uma amostra dela, e os artefatos a gravam. Sem ordenar, a amostra
+// exibida mudava conforme a ordem em que a telemetria vinha do banco — o
+// produto promete mesma entrada, mesma saída, e isso só se sustentava porque a
+// consulta ordena, uma garantia que vive em outra camada e pode mudar sem que
+// ninguém relacione as duas coisas.
+//
+// Encontrado por teste aleatório: embaralhar os sinais de entrada alterava a
+// proveniência de todos os findings.
 func signalIDs(signals []domain.Signal) []string {
 	ids := make([]string, 0, len(signals))
 	for _, signal := range signals {
 		ids = append(ids, signal.ID)
 	}
+	sort.Strings(ids)
 	return ids
 }
 

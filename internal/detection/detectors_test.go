@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
 )
@@ -562,5 +563,68 @@ func TestLatencyDeltaAcusaRegressãoReal(t *testing.T) {
 				t.Fatal("detector silenciou uma regressão real de latência")
 			}
 		})
+	}
+}
+
+// TestProveniênciaNãoDependeDaOrdemDeChegada cobre um defeito encontrado por
+// teste aleatório: signalIDs preservava a ordem de chegada dos sinais, então a
+// amostra de proveniência impressa pelo `explain suspect` mudava conforme a
+// ordem em que a telemetria vinha do banco.
+//
+// O produto promete mesma entrada, mesma saída. Isso só se sustentava porque a
+// consulta ordena — uma garantia que vive em outra camada e pode mudar sem que
+// ninguém relacione as duas coisas.
+func TestProveniênciaNãoDependeDaOrdemDeChegada(t *testing.T) {
+	t.Parallel()
+
+	baseline := make([]domain.Signal, 0, 20)
+	incidente := make([]domain.Signal, 0, 20)
+	instante := time.Date(2026, time.August, 20, 10, 0, 0, 0, time.UTC)
+	for índice := 0; índice < 20; índice++ {
+		status := "200"
+		if índice < 8 {
+			status = "500"
+		}
+		baseline = append(baseline, domain.Signal{
+			ID: fmt.Sprintf("base-%02d", índice), Type: domain.SignalTypeSpan,
+			ServiceName: "checkout-service", Timestamp: instante.Add(time.Duration(índice) * time.Second),
+			TraceID:      fmt.Sprintf("t-base-%02d", índice),
+			Attributes:   map[string]string{"http.response.status_code": "200", "span.kind": "SPAN_KIND_SERVER"},
+			Measurements: map[string]float64{"duration_ms": 20},
+		})
+		incidente = append(incidente, domain.Signal{
+			ID: fmt.Sprintf("inc-%02d", índice), Type: domain.SignalTypeSpan,
+			ServiceName: "checkout-service", Timestamp: instante.Add(time.Hour + time.Duration(índice)*time.Second),
+			TraceID:      fmt.Sprintf("t-inc-%02d", índice),
+			Attributes:   map[string]string{"http.response.status_code": status, "span.kind": "SPAN_KIND_SERVER"},
+			Measurements: map[string]float64{"duration_ms": 20},
+		})
+	}
+
+	referência := Run(Input{ServiceName: "checkout-service", Baseline: baseline, Incident: incidente})
+	if len(referência) == 0 {
+		t.Fatal("nenhum finding; o teste não verificaria proveniência")
+	}
+
+	// A ordem invertida é suficiente e determinística: se a saída depende da
+	// ordem de entrada, inverter já expõe.
+	invertido := func(original []domain.Signal) []domain.Signal {
+		copiado := append([]domain.Signal(nil), original...)
+		for início, fim := 0, len(copiado)-1; início < fim; início, fim = início+1, fim-1 {
+			copiado[início], copiado[fim] = copiado[fim], copiado[início]
+		}
+		return copiado
+	}
+	obtido := Run(Input{ServiceName: "checkout-service", Baseline: invertido(baseline), Incident: invertido(incidente)})
+
+	for índice := range referência {
+		for posição := range referência[índice].Evidence {
+			esperada := strings.Join(referência[índice].Evidence[posição].SignalIDs, ",")
+			atual := strings.Join(obtido[índice].Evidence[posição].SignalIDs, ",")
+			if esperada != atual {
+				t.Fatalf("regra %s: proveniência mudou com a ordem de chegada\n  antes:  %s\n  depois: %s",
+					referência[índice].Rule, esperada, atual)
+			}
+		}
 	}
 }
