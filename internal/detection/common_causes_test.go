@@ -70,3 +70,53 @@ func TestCausasComunsIgnoraRegraDesconhecida(t *testing.T) {
 		t.Fatalf("regra desconhecida devolveu %q", causas)
 	}
 }
+
+// catálogoDeFalhasReais lista classes de falha do catálogo do OpenTelemetry
+// Demo — 15 falhas injetáveis de um projeto que não é nosso, em um sistema de
+// mais de vinte serviços poliglotas.
+//
+// Confrontar as nossas frases com uma taxonomia alheia responde a pergunta que
+// o piloto deixou: as causas que listamos correspondem ao que quebra de
+// verdade, ou inventamos um vocabulário que só serve aos nossos cenários?
+//
+// A verificação é por regra, e não por busca no texto inteiro. A primeira
+// tentativa procurou as palavras em todas as frases juntas e reportou cobertura
+// falsa: "cache" aparecia em version_regression falando de aquecimento após
+// deploy, "fila" aparecia em trace_break falando de propagação de contexto. A
+// palavra existia no lugar errado.
+var catálogoDeFalhasReais = []struct {
+	falha  string
+	regra  string
+	termos []string
+}{
+	{"adHighCpu — CPU saturada", RuleLatencyDelta, []string{"contenção"}},
+	{"intlShippingSlowdown — downstream lento", RuleLatencyDelta, []string{"dependência lenta"}},
+	{"loadGeneratorVUs — carga aumentada", RuleLatencyDelta, []string{"carga"}},
+	{"adManualGc — pausa de coleta de lixo", RuleLatencyDelta, []string{"coleta de lixo"}},
+	{"recommendationCacheFailure — cache parou de servir", RuleLatencyDelta, []string{"cache"}},
+	{"failedReadinessProbe — instância fora de rotação", RuleLatencyDelta, []string{"capacidade"}},
+	{"kafkaQueueProblems — acúmulo em fila", RuleLatencyDelta, []string{"fila"}},
+	{"paymentUnreachable — serviço fora do ar", RuleErrorRateDelta, []string{"indisponível"}},
+	{"productCatalogFailure — erro em entrada específica", RuleErrorRateDelta, []string{"entrada inesperada"}},
+	{"emailMemoryLeak — vazamento de memória", RuleErrorRateDelta, []string{"memória"}},
+}
+
+// TestCausasComunsCobremCatálogoDeTerceiro exige que cada classe de falha real
+// apareça na frase da regra que dispararia para ela.
+func TestCausasComunsCobremCatálogoDeTerceiro(t *testing.T) {
+	t.Parallel()
+
+	for _, caso := range catálogoDeFalhasReais {
+		frase := strings.ToLower(CommonCauses(caso.regra))
+		encontrado := false
+		for _, termo := range caso.termos {
+			if strings.Contains(frase, strings.ToLower(termo)) {
+				encontrado = true
+				break
+			}
+		}
+		if !encontrado {
+			t.Errorf("a frase de %s não orienta sobre %q\n  frase: %s", caso.regra, caso.falha, frase)
+		}
+	}
+}
