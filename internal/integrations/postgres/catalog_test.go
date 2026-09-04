@@ -62,8 +62,8 @@ func TestFetchNormalizaColunasIndicesERestricoes(t *testing.T) {
 
 	snapshot := coletar(t,
 		linhasDeColuna(),
-		sqlmock.NewRows([]string{"schemaname", "indexname"}).AddRow("public", "idx_payments_created_at"),
-		sqlmock.NewRows([]string{"table_schema", "constraint_name", "constraint_type"}).AddRow("public", "payments_pkey", "PRIMARY KEY"),
+		sqlmock.NewRows([]string{"schemaname", "tablename", "indexname"}).AddRow("public", "payments", "idx_payments_created_at"),
+		sqlmock.NewRows([]string{"table_schema", "table_name", "constraint_name", "constraint_type"}).AddRow("public", "payments", "payments_pkey", "PRIMARY KEY"),
 	)
 
 	if snapshot.DatabaseName != "payments" || !snapshot.CapturedAt.Equal(coletadoEm) {
@@ -103,8 +103,8 @@ func TestFetchNaoGuardaOTextoDoDefault(t *testing.T) {
 
 	snapshot := coletar(t,
 		linhasDeColuna(),
-		linhasVazias("schemaname", "indexname"),
-		linhasVazias("table_schema", "constraint_name", "constraint_type"),
+		linhasVazias("schemaname", "tablename", "indexname"),
+		linhasVazias("table_schema", "table_name", "constraint_name", "constraint_type"),
 	)
 
 	for _, object := range snapshot.Objects {
@@ -149,15 +149,15 @@ func TestFetchDevolveObjetosEmOrdemEstavel(t *testing.T) {
 		sqlmock.NewRows([]string{"table_schema", "table_name", "column_name", "data_type", "is_nullable", "column_default"}).
 			AddRow("public", "payments", "amount", "integer", "NO", nil).
 			AddRow("public", "refunds", "id", "uuid", "NO", nil),
-		sqlmock.NewRows([]string{"schemaname", "indexname"}).AddRow("public", "idx_b").AddRow("public", "idx_a"),
-		linhasVazias("table_schema", "constraint_name", "constraint_type"),
+		sqlmock.NewRows([]string{"schemaname", "tablename", "indexname"}).AddRow("public", "t", "idx_b").AddRow("public", "t", "idx_a"),
+		linhasVazias("table_schema", "table_name", "constraint_name", "constraint_type"),
 	)
 	segunda := coletar(t,
 		sqlmock.NewRows([]string{"table_schema", "table_name", "column_name", "data_type", "is_nullable", "column_default"}).
 			AddRow("public", "refunds", "id", "uuid", "NO", nil).
 			AddRow("public", "payments", "amount", "integer", "NO", nil),
-		sqlmock.NewRows([]string{"schemaname", "indexname"}).AddRow("public", "idx_a").AddRow("public", "idx_b"),
-		linhasVazias("table_schema", "constraint_name", "constraint_type"),
+		sqlmock.NewRows([]string{"schemaname", "tablename", "indexname"}).AddRow("public", "t", "idx_a").AddRow("public", "t", "idx_b"),
+		linhasVazias("table_schema", "table_name", "constraint_name", "constraint_type"),
 	)
 
 	if len(primeira.Objects) != len(segunda.Objects) {
@@ -206,10 +206,10 @@ func TestFetchIgnoraConstraintsInternasDeNotNull(t *testing.T) {
 
 	snapshot := coletar(t,
 		linhasVazias("table_schema", "table_name", "column_name", "data_type", "is_nullable", "column_default"),
-		linhasVazias("schemaname", "indexname"),
-		sqlmock.NewRows([]string{"table_schema", "constraint_name", "constraint_type"}).
-			AddRow("public", "2200_16385_1_not_null", "CHECK").
-			AddRow("public", "payments_pkey", "PRIMARY KEY"),
+		linhasVazias("schemaname", "tablename", "indexname"),
+		sqlmock.NewRows([]string{"table_schema", "table_name", "constraint_name", "constraint_type"}).
+			AddRow("public", "payments", "2200_16385_1_not_null", "CHECK").
+			AddRow("public", "payments", "payments_pkey", "PRIMARY KEY"),
 	)
 
 	for _, object := range snapshot.Objects {
@@ -237,12 +237,12 @@ func TestFetchQualificaObjetosPeloSchema(t *testing.T) {
 		sqlmock.NewRows([]string{"table_schema", "table_name", "column_name", "data_type", "is_nullable", "column_default"}).
 			AddRow("public", "pedidos", "valor", "integer", "NO", nil).
 			AddRow("tenant_a", "pedidos", "valor", "bigint", "NO", nil),
-		sqlmock.NewRows([]string{"schemaname", "indexname"}).
-			AddRow("public", "idx_pedidos_valor").
-			AddRow("tenant_a", "idx_pedidos_valor"),
-		sqlmock.NewRows([]string{"table_schema", "constraint_name", "constraint_type"}).
-			AddRow("public", "pedidos_pkey", "PRIMARY KEY").
-			AddRow("tenant_a", "pedidos_pkey", "PRIMARY KEY"),
+		sqlmock.NewRows([]string{"schemaname", "tablename", "indexname"}).
+			AddRow("public", "pedidos", "idx_pedidos_valor").
+			AddRow("tenant_a", "pedidos", "idx_pedidos_valor"),
+		sqlmock.NewRows([]string{"table_schema", "table_name", "constraint_name", "constraint_type"}).
+			AddRow("public", "pedidos", "pedidos_pkey", "PRIMARY KEY").
+			AddRow("tenant_a", "pedidos", "pedidos_pkey", "PRIMARY KEY"),
 	)
 
 	nomes := make(map[string]struct{}, len(snapshot.Objects))

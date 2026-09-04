@@ -42,9 +42,9 @@ func TestSaveSnapshotRecusaColetaVaziaContraCatalogoPovoado(t *testing.T) {
 
 	// A recusa precisa deixar o banco intacto: nenhuma mudança gravada e a
 	// coleta anterior preservada como linha de base para a próxima tentativa.
-	changes, err := repository.ListSchemaChangesForDatabases(ctx, []string{"payments"}, primeiraColeta, terceiraColeta, 100)
+	changes, err := repository.ListSchemaChangesForScope(ctx, []string{"payments"}, nil, primeiraColeta, terceiraColeta, 100)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() erro = %v", err)
 	}
 	if len(changes) != 0 {
 		t.Fatalf("a recusa deixou %d mudanças gravadas: %#v", len(changes), changes)
@@ -109,10 +109,10 @@ func TestSaveSnapshotFalhaComBancoFechado(t *testing.T) {
 	)); err == nil {
 		t.Fatal("SaveSnapshot() não relatou o banco fechado")
 	}
-	if _, err := repository.ListSchemaChangesForDatabases(
-		context.Background(), []string{"payments"}, primeiraColeta, terceiraColeta, 10,
+	if _, err := repository.ListSchemaChangesForScope(
+		context.Background(), []string{"payments"}, nil, primeiraColeta, terceiraColeta, 10,
 	); err == nil {
-		t.Fatal("ListSchemaChangesForDatabases() não relatou o banco fechado")
+		t.Fatal("ListSchemaChangesForScope() não relatou o banco fechado")
 	}
 }
 
@@ -192,18 +192,18 @@ func TestListSchemaChangesLimitaAConsulta(t *testing.T) {
 		t.Fatalf("SaveSnapshot() segunda erro = %v", err)
 	}
 
-	limitadas, err := repository.ListSchemaChangesForDatabases(ctx, []string{"payments"}, primeiraColeta, terceiraColeta, 5)
+	limitadas, err := repository.ListSchemaChangesForScope(ctx, []string{"payments"}, nil, primeiraColeta, terceiraColeta, 5)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() erro = %v", err)
 	}
 	if len(limitadas) != 5 {
 		t.Fatalf("mudanças = %d, esperado respeitar o limite de 5", len(limitadas))
 	}
 
 	// Limite absurdo cai para o teto interno em vez de varrer tudo.
-	comTeto, err := repository.ListSchemaChangesForDatabases(ctx, []string{"payments"}, primeiraColeta, terceiraColeta, 1<<30)
+	comTeto, err := repository.ListSchemaChangesForScope(ctx, []string{"payments"}, nil, primeiraColeta, terceiraColeta, 1<<30)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() com limite absurdo erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() com limite absurdo erro = %v", err)
 	}
 	if len(comTeto) != 39 {
 		t.Fatalf("mudanças = %d, esperado as 39 remoções", len(comTeto))

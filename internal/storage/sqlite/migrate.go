@@ -18,6 +18,7 @@ const (
 	deploymentsLookupIndexVersion         = 7
 	compactDeploymentsLookupIndexVersion  = 8
 	schemaCatalogVersion                  = 9
+	schemaChangesCarryTableVersion        = 10
 )
 
 type migration struct {
@@ -218,6 +219,18 @@ var migrations = []migration{
 			)`,
 			`CREATE INDEX idx_schema_changes_database_observed
 				ON schema_changes (database_name, observed_before DESC, id ASC)`,
+		},
+	},
+	{
+		// A tabela permite ligar uma migração ao serviço quando a telemetria não
+		// nomeia a base — o caso comum: medindo uma aplicação instrumentada,
+		// todos os spans de banco traziam db.collection.name e nenhum trazia
+		// db.namespace.
+		version: schemaChangesCarryTableVersion,
+		statements: []string{
+			`ALTER TABLE schema_changes ADD COLUMN table_name TEXT NOT NULL DEFAULT ''`,
+			`CREATE INDEX idx_schema_changes_table_observed
+				ON schema_changes (table_name, observed_before DESC, id ASC)`,
 		},
 	},
 }

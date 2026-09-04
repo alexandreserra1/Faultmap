@@ -86,11 +86,11 @@ func TestSchemaRepositoryComparaComAColetaAnteriorDaMesmaBase(t *testing.T) {
 		t.Fatalf("mudanças = %d, esperado 2 (índice removido, tipo alterado)", result.ChangesPersisted)
 	}
 
-	changes, err := repository.ListSchemaChangesForDatabases(
-		ctx, []string{"payments"}, primeiraColeta, terceiraColeta, 100,
+	changes, err := repository.ListSchemaChangesForScope(
+		ctx, []string{"payments"}, nil, primeiraColeta, terceiraColeta, 100,
 	)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() erro = %v", err)
 	}
 	if len(changes) != 2 {
 		t.Fatalf("mudanças lidas = %d, esperado 2: %#v", len(changes), changes)
@@ -175,25 +175,25 @@ func TestSchemaRepositoryFiltraPelaJanelaEPelaBase(t *testing.T) {
 		}
 	}
 
-	fora, err := repository.ListSchemaChangesForDatabases(ctx, []string{"payments"}, terceiraColeta, terceiraColeta.Add(time.Hour), 100)
+	fora, err := repository.ListSchemaChangesForScope(ctx, []string{"payments"}, nil, terceiraColeta, terceiraColeta.Add(time.Hour), 100)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() erro = %v", err)
 	}
 	if len(fora) != 0 {
 		t.Fatalf("mudanças fora da janela = %d, esperado 0", len(fora))
 	}
 
-	outraBase, err := repository.ListSchemaChangesForDatabases(ctx, []string{"catalog"}, primeiraColeta, terceiraColeta, 100)
+	outraBase, err := repository.ListSchemaChangesForScope(ctx, []string{"catalog"}, nil, primeiraColeta, terceiraColeta, 100)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() erro = %v", err)
 	}
 	if len(outraBase) != 0 {
 		t.Fatalf("mudanças de outra base = %d, esperado 0", len(outraBase))
 	}
 
-	semBase, err := repository.ListSchemaChangesForDatabases(ctx, nil, primeiraColeta, terceiraColeta, 100)
+	semBase, err := repository.ListSchemaChangesForScope(ctx, nil, nil, primeiraColeta, terceiraColeta, 100)
 	if err != nil {
-		t.Fatalf("ListSchemaChangesForDatabases() sem bases erro = %v", err)
+		t.Fatalf("ListSchemaChangesForScope() sem bases erro = %v", err)
 	}
 	if len(semBase) != 0 {
 		t.Fatalf("mudanças sem base informada = %d, esperado 0", len(semBase))

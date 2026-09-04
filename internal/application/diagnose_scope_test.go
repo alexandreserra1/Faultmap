@@ -619,8 +619,8 @@ type scopedSchemaReaderFake struct {
 	basesPedidas [][]string
 }
 
-func (fake *scopedSchemaReaderFake) ListSchemaChangesForDatabases(
-	_ context.Context, databases []string, _ time.Time, _ time.Time, _ int,
+func (fake *scopedSchemaReaderFake) ListSchemaChangesForScope(
+	_ context.Context, databases []string, _ []string, _ time.Time, _ time.Time, _ int,
 ) ([]changedomain.SchemaChange, error) {
 	fake.consultas++
 	fake.basesPedidas = append(fake.basesPedidas, append([]string(nil), databases...))
@@ -739,8 +739,8 @@ func TestDiagnoseScopeSemLeitorDeSchemaSegueFuncionando(t *testing.T) {
 
 type leitorDeSchemaQueFalha struct{ erro error }
 
-func (fake leitorDeSchemaQueFalha) ListSchemaChangesForDatabases(
-	_ context.Context, _ []string, _ time.Time, _ time.Time, _ int,
+func (fake leitorDeSchemaQueFalha) ListSchemaChangesForScope(
+	_ context.Context, _ []string, _ []string, _ time.Time, _ time.Time, _ int,
 ) ([]changedomain.SchemaChange, error) {
 	return nil, fake.erro
 }

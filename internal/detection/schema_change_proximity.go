@@ -47,14 +47,14 @@ func DetectSchemaChangeProximity(
 	changes []changedomain.SchemaChange,
 	incidentStart time.Time,
 ) (Finding, bool) {
-	databases := databasesQueriedBy(input.ServiceName, input.Incident)
-	if len(databases) == 0 {
+	databases, tables := databaseTargetsQueriedBy(input.ServiceName, input.Incident)
+	if len(databases) == 0 && len(tables) == 0 {
 		return Finding{}, false
 	}
 
 	candidates := make([]schemaChangeCandidate, 0, len(changes))
 	for _, change := range changes {
-		if _, queried := databases[strings.TrimSpace(change.DatabaseName)]; !queried {
+		if !changeReachesService(change, databases, tables) {
 			continue
 		}
 		age := incidentStart.Sub(change.ObservedBefore)
@@ -78,7 +78,7 @@ func DetectSchemaChangeProximity(
 	})
 	selected := candidates[0]
 
-	databaseSignals := signalsForDatabase(input.Incident, selected.change.DatabaseName)
+	databaseSignals := signalsForChange(input.Incident, selected.change)
 	captureGap := selected.change.ObservedBefore.Sub(selected.change.ObservedAfter)
 
 	confidence := ConfidenceHigh
@@ -101,8 +101,8 @@ func DetectSchemaChangeProximity(
 	if len(databaseSignals) < minimumSampleSize {
 		confidence = ConfidenceLow
 		limitations = append(limitations, fmt.Sprintf(
-			"Amostra pequena: %d operações observadas contra a base %s; mínimo recomendado de %d.",
-			len(databaseSignals), selected.change.DatabaseName, minimumSampleSize,
+			"Amostra pequena: %d operações observadas contra o alvo migrado; mínimo recomendado de %d.",
+			len(databaseSignals), minimumSampleSize,
 		))
 	}
 
@@ -121,10 +121,19 @@ func DetectSchemaChangeProximity(
 	}, true
 }
 
-// databasesQueriedBy devolve as bases que o serviço consultou na janela,
-// segundo a própria telemetria.
-func databasesQueriedBy(serviceName string, signals []telemetrydomain.Signal) map[string]struct{} {
-	databases := make(map[string]struct{})
+// databaseTargetsQueriedBy devolve as bases e as tabelas que o serviço tocou na
+// janela, segundo a própria telemetria.
+//
+// São dois conjuntos porque a instrumentação real raramente entrega os dois.
+// Medindo uma aplicação instrumentada de verdade, 199 spans de banco traziam
+// `db.collection.name` e nenhum trazia `db.namespace`: um detector que exigisse
+// o nome da base ficaria permanentemente calado ali, sem erro e sem aviso.
+func databaseTargetsQueriedBy(
+	serviceName string,
+	signals []telemetrydomain.Signal,
+) (databases, tables map[string]struct{}) {
+	databases = make(map[string]struct{})
+	tables = make(map[string]struct{})
 	for _, signal := range signals {
 		if serviceName != "" && signal.ServiceName != serviceName {
 			continue
@@ -135,14 +144,52 @@ func databasesQueriedBy(serviceName string, signals []telemetrydomain.Signal) ma
 		if name := strings.TrimSpace(semconv.DatabaseName(signal.Attributes)); name != "" {
 			databases[name] = struct{}{}
 		}
+		if table := strings.TrimSpace(semconv.DatabaseCollection(signal.Attributes)); table != "" {
+			tables[table] = struct{}{}
+		}
 	}
-	return databases
+	return databases, tables
 }
 
-func signalsForDatabase(signals []telemetrydomain.Signal, databaseName string) []telemetrydomain.Signal {
+// changeReachesService decide se a mudança atingiu algo que o serviço usa.
+//
+// A tabela é o vínculo mais estreito e vem primeiro: uma migração em `payments`
+// e um serviço que consulta `payments` é uma ligação mais forte do que "os dois
+// usam o mesmo PostgreSQL". O nome da base entra quando a telemetria o traz, ou
+// quando a mudança não pertence a tabela alguma.
+//
+// Nenhum dos dois observado significa silêncio. Aceitar apenas "ambos falam
+// PostgreSQL" faria qualquer migração acusar qualquer serviço com problema no
+// mesmo horário, que é exatamente a correlação vazia que esta regra evita.
+func changeReachesService(
+	change changedomain.SchemaChange,
+	databases, tables map[string]struct{},
+) bool {
+	if table := strings.TrimSpace(change.TableName); table != "" {
+		if _, queried := tables[table]; queried {
+			return true
+		}
+	}
+	if database := strings.TrimSpace(change.DatabaseName); database != "" {
+		if _, queried := databases[database]; queried {
+			return true
+		}
+	}
+	return false
+}
+
+// signalsForChange recolhe a proveniência: os spans que tocaram o alvo migrado.
+func signalsForChange(
+	signals []telemetrydomain.Signal,
+	change changedomain.SchemaChange,
+) []telemetrydomain.Signal {
+	table := strings.TrimSpace(change.TableName)
+	database := strings.TrimSpace(change.DatabaseName)
 	filtered := make([]telemetrydomain.Signal, 0, len(signals))
 	for _, signal := range signals {
-		if strings.TrimSpace(semconv.DatabaseName(signal.Attributes)) == strings.TrimSpace(databaseName) {
+		matchesTable := table != "" && strings.TrimSpace(semconv.DatabaseCollection(signal.Attributes)) == table
+		matchesDatabase := database != "" && strings.TrimSpace(semconv.DatabaseName(signal.Attributes)) == database
+		if matchesTable || matchesDatabase {
 			filtered = append(filtered, signal)
 		}
 	}
@@ -153,11 +200,15 @@ func signalsForDatabase(signals []telemetrydomain.Signal, databaseName string) [
 // produziu aquilo. Duas fotos do catálogo mostram efeito, não DDL.
 func schemaChangeSummary(candidate schemaChangeCandidate) string {
 	change := candidate.change
+	alvo := "da base " + change.DatabaseName
+	if table := strings.TrimSpace(change.TableName); table != "" {
+		alvo = "da tabela " + table + ", na base " + change.DatabaseName
+	}
 	summary := fmt.Sprintf(
-		"O %s %s da base %s foi %s, observado entre coletas até %s antes do incidente.",
+		"O %s %s %s foi %s, observado entre coletas até %s antes do incidente.",
 		schemaObjectLabel(change.ObjectKind),
 		change.ObjectName,
-		change.DatabaseName,
+		alvo,
 		schemaChangeLabel(change.ChangeKind),
 		roundedDuration(candidate.age),
 	)
@@ -197,6 +248,13 @@ func schemaChangeLabel(kind changedomain.SchemaChangeKind) string {
 
 // roundedDuration arredonda para minuto porque a precisão de segundos sugeriria
 // um conhecimento do instante que esta regra explicitamente não tem.
+//
+// Abaixo de um minuto o arredondamento produzia "0s", que não informa nada a
+// quem lê — apareceu na saída real de uma migração aplicada segundos antes da
+// janela. A frase substitui o número justamente onde o número perdeu o sentido.
 func roundedDuration(duration time.Duration) string {
+	if duration.Round(time.Minute) == 0 {
+		return "menos de um minuto"
+	}
 	return duration.Round(time.Minute).String()
 }

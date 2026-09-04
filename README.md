@@ -577,7 +577,7 @@ Objetos são identificados com o schema à frente (`public.pedidos.valor`), porq
 
 A DSN vem do ambiente e **não** é gravada no `faultmap.yaml`, que o `init` promete criar sem tokens nem credenciais. A coleta é somente leitura: nenhum slot de replicação, nenhuma extensão, nenhum privilégio além de `SELECT` no catálogo.
 
-O detector `schema_change_proximity` acusa um serviço quando uma mudança recente atingiu uma base que ele de fato consulta — o vínculo vem dos spans de banco da janela do incidente, e não de configuração declarada. A janela de busca é de 24 horas, mais larga que a do deployment porque uma migração raramente quebra no instante em que roda.
+O detector `schema_change_proximity` acusa um serviço quando uma mudança recente atingiu uma **tabela ou base que ele de fato consulta** — o vínculo vem dos spans de banco da janela do incidente, e não de configuração declarada. A tabela vem primeiro porque a instrumentação real quase sempre emite `db.collection.name` e quase nunca `db.namespace`, e porque ela é uma ligação mais estreita que a base. A janela de busca é de 24 horas, mais larga que a do deployment porque uma migração raramente quebra no instante em que roda.
 
 Duas limitações vão declaradas em todo finding produzido:
 

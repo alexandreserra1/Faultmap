@@ -83,12 +83,12 @@ func (repository *SchemaRepository) SaveSnapshot(
 		}
 		execution, err := transaction.ExecContext(ctx, `
 			INSERT INTO schema_changes (
-				id, database_name, object_kind, object_name, change_kind,
+				id, database_name, table_name, object_kind, object_name, change_kind,
 				detail, observed_after, observed_before, snapshot_id
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON CONFLICT(id) DO NOTHING
-		`, change.ID, change.DatabaseName, string(change.ObjectKind), change.ObjectName,
+		`, change.ID, change.DatabaseName, change.TableName, string(change.ObjectKind), change.ObjectName,
 			string(change.ChangeKind), change.Detail,
 			change.ObservedAfter.UTC(), change.ObservedBefore.UTC(), snapshot.ID)
 		if err != nil {
@@ -114,33 +114,47 @@ func (repository *SchemaRepository) SaveSnapshot(
 //
 // A consulta é em lote pelo mesmo motivo que a de deployments: perguntar base
 // por base seria um N+1 que cresce justamente quando o incidente é mais amplo.
-func (repository *SchemaRepository) ListSchemaChangesForDatabases(
+func (repository *SchemaRepository) ListSchemaChangesForScope(
 	ctx context.Context,
 	databases []string,
+	tables []string,
 	start time.Time,
 	end time.Time,
 	limit int,
 ) ([]changedomain.SchemaChange, error) {
-	names := normalizeDatabaseNames(databases)
-	if len(names) == 0 {
+	databaseNames := normalizeDatabaseNames(databases)
+	tableNames := normalizeDatabaseNames(tables)
+	if len(databaseNames) == 0 && len(tableNames) == 0 {
 		return nil, nil
 	}
 	if limit <= 0 || limit > maxSchemaChangesPerQuery {
 		limit = maxSchemaChangesPerQuery
 	}
 
-	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(names)), ",")
-	arguments := make([]any, 0, len(names)+3)
-	for _, name := range names {
-		arguments = append(arguments, name)
+	// Os dois alvos entram na mesma consulta, unidos por OR: a telemetria
+	// costuma trazer só um deles, e perguntar duas vezes seria duas idas ao
+	// banco para responder à mesma pergunta.
+	conditions := make([]string, 0, 2)
+	arguments := make([]any, 0, len(databaseNames)+len(tableNames)+3)
+	if len(databaseNames) > 0 {
+		conditions = append(conditions, "database_name IN ("+placeholdersFor(len(databaseNames))+")")
+		for _, name := range databaseNames {
+			arguments = append(arguments, name)
+		}
+	}
+	if len(tableNames) > 0 {
+		conditions = append(conditions, "table_name IN ("+placeholdersFor(len(tableNames))+")")
+		for _, name := range tableNames {
+			arguments = append(arguments, name)
+		}
 	}
 	arguments = append(arguments, start.UTC(), end.UTC(), limit)
 
 	rows, err := repository.database.QueryContext(ctx, `
-		SELECT id, database_name, object_kind, object_name, change_kind,
+		SELECT id, database_name, table_name, object_kind, object_name, change_kind,
 		       detail, observed_after, observed_before
 		FROM schema_changes
-		WHERE database_name IN (`+placeholders+`)
+		WHERE (`+strings.Join(conditions, " OR ")+`)
 		  AND observed_before >= ?
 		  AND observed_before <= ?
 		ORDER BY observed_before DESC, id ASC
@@ -156,7 +170,7 @@ func (repository *SchemaRepository) ListSchemaChangesForDatabases(
 		var change changedomain.SchemaChange
 		var objectKind, changeKind string
 		if err := rows.Scan(
-			&change.ID, &change.DatabaseName, &objectKind, &change.ObjectName,
+			&change.ID, &change.DatabaseName, &change.TableName, &objectKind, &change.ObjectName,
 			&changeKind, &change.Detail, &change.ObservedAfter, &change.ObservedBefore,
 		); err != nil {
 			return nil, fmt.Errorf("ler mudança de schema: %w", err)
@@ -228,6 +242,10 @@ func validateSnapshot(snapshot changedomain.SchemaSnapshot) error {
 		)
 	}
 	return nil
+}
+
+func placeholdersFor(count int) string {
+	return strings.TrimSuffix(strings.Repeat("?,", count), ",")
 }
 
 func normalizeDatabaseNames(databases []string) []string {

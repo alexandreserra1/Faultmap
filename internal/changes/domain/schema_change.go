@@ -47,9 +47,16 @@ const (
 // regra de negócio, exatamente o que a política de privacidade barra na
 // ingestão de telemetria.
 type SchemaObject struct {
-	Kind   SchemaObjectKind
-	Name   string
-	Detail string
+	Kind SchemaObjectKind
+	Name string
+	// TableName é a tabela a que o objeto pertence, sem o schema.
+	//
+	// Existe porque a instrumentação real frequentemente não emite o nome da
+	// base: medindo 199 spans de banco de uma aplicação instrumentada, havia
+	// `db.collection.name` e nunca `db.namespace`. É por este campo que uma
+	// migração se liga ao serviço que consulta aquela tabela.
+	TableName string
+	Detail    string
 	// ExpressionDigest é o resumo da expressão de DEFAULT ou de CHECK. Guardar
 	// o resumo, e não o texto, é o que permite acusar a mudança sem armazenar o
 	// valor: dois resumos diferentes provam que a expressão mudou e não dizem
@@ -86,8 +93,11 @@ type SchemaSnapshot struct {
 // campos de observação preservam esse intervalo para que o detector possa
 // declará-lo como limitação em vez de inventar uma precisão que não foi medida.
 type SchemaChange struct {
-	ID             string
-	DatabaseName   string
+	ID           string
+	DatabaseName string
+	// TableName permite ligar a mudança ao serviço pela tabela quando a
+	// telemetria não nomeia a base.
+	TableName      string
 	ObjectKind     SchemaObjectKind
 	ObjectName     string
 	ChangeKind     SchemaChangeKind
@@ -269,6 +279,7 @@ func newSchemaChange(
 			string(kind), current.CapturedAt.UTC().Format(time.RFC3339Nano),
 		}, ":"),
 		DatabaseName:   current.DatabaseName,
+		TableName:      object.TableName,
 		ObjectKind:     object.Kind,
 		ObjectName:     object.Name,
 		ChangeKind:     kind,

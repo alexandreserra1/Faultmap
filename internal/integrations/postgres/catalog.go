@@ -120,6 +120,7 @@ func (client *Client) fetchColumns(ctx context.Context) ([]changedomain.SchemaOb
 		objects = append(objects, changedomain.SchemaObject{
 			Kind:             changedomain.SchemaObjectColumn,
 			Name:             qualify(tableSchema, tableName, columnName),
+			TableName:        tableName,
 			Detail:           detail,
 			ExpressionDigest: changedomain.DigestExpression(columnDefault.String),
 		})
@@ -132,7 +133,7 @@ func (client *Client) fetchColumns(ctx context.Context) ([]changedomain.SchemaOb
 
 func (client *Client) fetchIndexes(ctx context.Context) ([]changedomain.SchemaObject, error) {
 	rows, err := client.database.QueryContext(ctx, `
-		SELECT schemaname, indexname
+		SELECT schemaname, tablename, indexname
 		FROM pg_indexes
 		WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
 		ORDER BY schemaname, indexname
@@ -144,16 +145,17 @@ func (client *Client) fetchIndexes(ctx context.Context) ([]changedomain.SchemaOb
 
 	objects := make([]changedomain.SchemaObject, 0, 64)
 	for rows.Next() {
-		var indexSchema, indexName string
-		if err := rows.Scan(&indexSchema, &indexName); err != nil {
+		var indexSchema, indexTable, indexName string
+		if err := rows.Scan(&indexSchema, &indexTable, &indexName); err != nil {
 			return nil, fmt.Errorf("ler índice do catálogo: %w", err)
 		}
 		// A definição do índice não é lida: ela contém expressões, e um índice
 		// parcial carrega o predicado inteiro. Nome e existência bastam para
 		// acusar que um índice sumiu, que é o caso que quebra consulta.
 		objects = append(objects, changedomain.SchemaObject{
-			Kind: changedomain.SchemaObjectIndex,
-			Name: qualify(indexSchema, indexName),
+			Kind:      changedomain.SchemaObjectIndex,
+			Name:      qualify(indexSchema, indexName),
+			TableName: indexTable,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -199,7 +201,7 @@ func isImplicitNotNullConstraint(constraintName string) bool {
 
 func (client *Client) fetchConstraints(ctx context.Context) ([]changedomain.SchemaObject, error) {
 	rows, err := client.database.QueryContext(ctx, `
-		SELECT table_schema, constraint_name, constraint_type
+		SELECT table_schema, table_name, constraint_name, constraint_type
 		FROM information_schema.table_constraints
 		WHERE `+systemSchemaFilter+`
 		ORDER BY table_schema, constraint_name
@@ -211,17 +213,18 @@ func (client *Client) fetchConstraints(ctx context.Context) ([]changedomain.Sche
 
 	objects := make([]changedomain.SchemaObject, 0, 64)
 	for rows.Next() {
-		var constraintSchema, constraintName, constraintType string
-		if err := rows.Scan(&constraintSchema, &constraintName, &constraintType); err != nil {
+		var constraintSchema, constraintTable, constraintName, constraintType string
+		if err := rows.Scan(&constraintSchema, &constraintTable, &constraintName, &constraintType); err != nil {
 			return nil, fmt.Errorf("ler restrição do catálogo: %w", err)
 		}
 		if isImplicitNotNullConstraint(constraintName) {
 			continue
 		}
 		objects = append(objects, changedomain.SchemaObject{
-			Kind:   changedomain.SchemaObjectConstraint,
-			Name:   qualify(constraintSchema, constraintName),
-			Detail: strings.ToLower(constraintType),
+			Kind:      changedomain.SchemaObjectConstraint,
+			Name:      qualify(constraintSchema, constraintName),
+			TableName: constraintTable,
+			Detail:    strings.ToLower(constraintType),
 		})
 	}
 	if err := rows.Err(); err != nil {

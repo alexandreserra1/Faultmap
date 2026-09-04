@@ -256,3 +256,127 @@ func TestSchemaChangeProximityTemCausasComuns(t *testing.T) {
 		t.Fatal("CommonCauses(RuleSchemaChangeProximity) está vazio")
 	}
 }
+
+// spansDeBancoComoAInstrumentacaoReal reproduz o que a demo-shop de fato emite,
+// medido em 199 spans: sistema, operação e tabela — e nenhum nome de base.
+func spansDeBancoComoAInstrumentacaoReal(prefixo, servico, tabela string, total int) []domain.Signal {
+	signals := make([]domain.Signal, 0, total)
+	for index := range total {
+		signals = append(signals, domain.Signal{
+			ID:          fmt.Sprintf("%s-%d", prefixo, index),
+			ServiceName: servico,
+			Timestamp:   incidenteEm.Add(time.Duration(index) * time.Second),
+			Attributes: map[string]string{
+				"db.system.name":     "postgresql",
+				"db.operation.name":  "INSERT",
+				"db.collection.name": tabela,
+				"span.kind":          "SPAN_KIND_CLIENT",
+			},
+			Measurements: map[string]float64{"duration_ms": 12},
+		})
+	}
+	return signals
+}
+
+// TestDetectSchemaChangeProximityUsaATabelaQuandoNaoHaNomeDeBase é a lição de
+// rodar contra uma aplicação instrumentada de verdade.
+//
+// A demo-shop emite `db.collection.name` e `db.system.name`, e nunca
+// `db.namespace` nem `db.name`. Um detector que exigisse o nome da base ficaria
+// permanentemente calado ali — sem erro e sem aviso, só "nenhuma anomalia
+// encontrada", que é exatamente o defeito que as ADRs 0006 e 0011 registram.
+//
+// A tabela é um vínculo melhor que a base, não um consolo: uma migração em
+// `payments` e um serviço que consulta `payments` é uma ligação mais estreita
+// do que "os dois usam o mesmo PostgreSQL".
+func TestDetectSchemaChangeProximityUsaATabelaQuandoNaoHaNomeDeBase(t *testing.T) {
+	t.Parallel()
+
+	mudanca := changedomain.SchemaChange{
+		ID:             "schema:demo:index:public.payments_created_at_id_idx:removed",
+		DatabaseName:   "demo",
+		TableName:      "payments",
+		ObjectKind:     changedomain.SchemaObjectIndex,
+		ObjectName:     "public.payments_created_at_id_idx",
+		ChangeKind:     changedomain.SchemaChangeRemoved,
+		ObservedAfter:  incidenteEm.Add(-3 * time.Hour),
+		ObservedBefore: incidenteEm.Add(-2 * time.Hour),
+	}
+	input := Input{
+		ServiceName: "payment-service",
+		Baseline:    spansDeBancoComoAInstrumentacaoReal("baseline", "payment-service", "payments", 8),
+		Incident:    spansDeBancoComoAInstrumentacaoReal("incident", "payment-service", "payments", 8),
+	}
+
+	finding, found := DetectSchemaChangeProximity(input, []changedomain.SchemaChange{mudanca}, incidenteEm)
+	if !found {
+		t.Fatal("o detector ficou calado com a telemetria que a instrumentação real produz")
+	}
+	if !strings.Contains(finding.Evidence[0].Summary, "payments") {
+		t.Fatalf("resumo = %q, esperado nomear a tabela", finding.Evidence[0].Summary)
+	}
+}
+
+// TestDetectSchemaChangeProximityIgnoraTabelaDeOutroNome mantém o vínculo
+// estreito: consultar outra tabela não é ser afetado pela migração.
+func TestDetectSchemaChangeProximityIgnoraTabelaDeOutroNome(t *testing.T) {
+	t.Parallel()
+
+	mudanca := changedomain.SchemaChange{
+		ID: "schema:demo:column:public.pedidos.valor:altered", DatabaseName: "demo", TableName: "pedidos",
+		ObjectKind: changedomain.SchemaObjectColumn, ObjectName: "public.pedidos.valor",
+		ChangeKind:     changedomain.SchemaChangeAltered,
+		ObservedAfter:  incidenteEm.Add(-2 * time.Hour),
+		ObservedBefore: incidenteEm.Add(-time.Hour),
+	}
+	input := Input{
+		ServiceName: "payment-service",
+		Incident:    spansDeBancoComoAInstrumentacaoReal("incident", "payment-service", "payments", 8),
+	}
+
+	if _, found := DetectSchemaChangeProximity(input, []changedomain.SchemaChange{mudanca}, incidenteEm); found {
+		t.Fatal("o detector acusou uma migração em tabela que o serviço não consulta")
+	}
+}
+
+// TestDetectSchemaChangeProximitySemNomeDeBaseNemTabelaSeCala fecha a porta do
+// vínculo frouxo: só "os dois falam PostgreSQL" não liga nada a nada.
+func TestDetectSchemaChangeProximitySemNomeDeBaseNemTabelaSeCala(t *testing.T) {
+	t.Parallel()
+
+	mudanca := mudancaDeSchema("payments", time.Hour, time.Minute)
+	input := Input{
+		ServiceName: "payment-service",
+		Incident: []domain.Signal{{
+			ID: "db-1", ServiceName: "payment-service", Timestamp: incidenteEm,
+			Attributes: map[string]string{"db.system.name": "postgresql", "span.kind": "SPAN_KIND_CLIENT"},
+		}},
+	}
+
+	if _, found := DetectSchemaChangeProximity(input, []changedomain.SchemaChange{mudanca}, incidenteEm); found {
+		t.Fatal("o detector acusou sem nenhum vínculo observado além do sistema de banco")
+	}
+}
+
+// TestSchemaChangeSummaryNaoDiz0s vem de ler a saída real contra a demo-shop:
+// uma migração vinte e poucos segundos antes do incidente era arredondada para
+// minuto e o texto saía "observado entre coletas até 0s antes do incidente".
+// "0s antes" não quer dizer nada para quem lê.
+func TestSchemaChangeSummaryNaoDiz0s(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaDeSchema("payments", 26*time.Second, time.Minute)},
+		incidenteEm,
+	)
+	if !found {
+		t.Fatal("DetectSchemaChangeProximity() found = false")
+	}
+	if strings.Contains(finding.Evidence[0].Summary, "0s") {
+		t.Fatalf("resumo diz 0s, que não informa nada: %q", finding.Evidence[0].Summary)
+	}
+	if !strings.Contains(finding.Evidence[0].Summary, "menos de um minuto") {
+		t.Fatalf("resumo = %q, esperado dizer que foi menos de um minuto", finding.Evidence[0].Summary)
+	}
+}

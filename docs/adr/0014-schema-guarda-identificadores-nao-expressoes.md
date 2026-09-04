@@ -44,6 +44,17 @@ O Faultmap registra **que** a expressão mudou, e não qual ela é. A evidência
 Quem investiga tem o ponteiro exato para olhar no banco, que é onde a informação
 já está.
 
+**A tabela é guardada junto do objeto.** O vínculo entre uma migração e um
+serviço vem da telemetria, e a telemetria real frequentemente não nomeia a base:
+medindo 199 spans de banco de uma aplicação instrumentada, todos traziam
+`db.collection.name` e nenhum trazia `db.namespace`. Exigir o nome da base
+deixaria a regra permanentemente calada ali.
+
+A tabela é também o vínculo mais estreito: uma migração em `payments` e um
+serviço que consulta `payments` é uma ligação mais forte do que "os dois usam o
+mesmo PostgreSQL". O nome da base entra quando a telemetria o traz; nenhum dos
+dois observados significa silêncio.
+
 **O nome do objeto carrega o schema.** Um banco PostgreSQL quase nunca tem um
 schema só: há `public` mais os da aplicação, e instalações multi-inquilino usam
 um schema por cliente. Objetos são identificados como `schema.tabela.coluna` e

@@ -103,8 +103,9 @@ type ScopedDeploymentReader interface {
 // ScopedSchemaChangeReader carrega as mudanças de catálogo de todas as bases do
 // escopo em uma consulta.
 type ScopedSchemaChangeReader interface {
-	ListSchemaChangesForDatabases(
-		ctx context.Context, databases []string, start time.Time, end time.Time, limit int,
+	ListSchemaChangesForScope(
+		ctx context.Context, databases []string, tables []string,
+		start time.Time, end time.Time, limit int,
 	) ([]changedomain.SchemaChange, error)
 }
 
@@ -458,13 +459,14 @@ func loadScopeSchemaChanges(
 	if schemaReader == nil {
 		return nil, nil
 	}
-	databases := databasesInWindow(incident)
-	if len(databases) == 0 {
+	databases, tables := databaseTargetsInWindow(incident)
+	if len(databases) == 0 && len(tables) == 0 {
 		return nil, nil
 	}
-	changes, err := schemaReader.ListSchemaChangesForDatabases(
+	changes, err := schemaReader.ListSchemaChangesForScope(
 		ctx,
 		databases,
+		tables,
 		request.Windows.Incident.Start.Add(-detection.SchemaChangeLookback),
 		request.Windows.Incident.Start,
 		request.Limit,
@@ -475,24 +477,37 @@ func loadScopeSchemaChanges(
 	return changes, nil
 }
 
-// databasesInWindow lista, em ordem estável, as bases nomeadas pelos spans de
-// banco da janela.
-func databasesInWindow(signals []domain.Signal) []string {
-	seen := make(map[string]struct{})
+// databaseTargetsInWindow lista, em ordem estável, as bases e as tabelas
+// nomeadas pelos spans de banco da janela.
+//
+// As duas listas existem porque a instrumentação real raramente traz ambas:
+// medindo uma aplicação instrumentada, todos os spans de banco declaravam a
+// tabela e nenhum declarava a base. Pedir só por base deixaria a consulta vazia
+// e o detector permanentemente calado.
+func databaseTargetsInWindow(signals []domain.Signal) (databases, tables []string) {
+	seenDatabases := make(map[string]struct{})
+	seenTables := make(map[string]struct{})
 	for _, signal := range signals {
 		if semconv.DatabaseSystem(signal.Attributes) == "" {
 			continue
 		}
 		if name := strings.TrimSpace(semconv.DatabaseName(signal.Attributes)); name != "" {
-			seen[name] = struct{}{}
+			seenDatabases[name] = struct{}{}
+		}
+		if table := strings.TrimSpace(semconv.DatabaseCollection(signal.Attributes)); table != "" {
+			seenTables[table] = struct{}{}
 		}
 	}
-	databases := make([]string, 0, len(seen))
-	for name := range seen {
-		databases = append(databases, name)
+	return sortedKeys(seenDatabases), sortedKeys(seenTables)
+}
+
+func sortedKeys(values map[string]struct{}) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
 	}
-	sort.Strings(databases)
-	return databases
+	sort.Strings(keys)
+	return keys
 }
 
 func deploymentsForService(deployments []changedomain.Deployment, service string) []changedomain.Deployment {

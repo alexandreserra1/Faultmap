@@ -44,7 +44,7 @@ func TestFetchPropagaFalhaDeCadaConsulta(t *testing.T) {
 		},
 		"restrições": func(mock sqlmock.Sqlmock) {
 			mock.ExpectQuery("information_schema.columns").WillReturnRows(linhasVazias("table_schema", "table_name", "column_name", "data_type", "is_nullable", "column_default"))
-			mock.ExpectQuery("pg_indexes").WillReturnRows(linhasVazias("schemaname", "indexname"))
+			mock.ExpectQuery("pg_indexes").WillReturnRows(linhasVazias("schemaname", "tablename", "indexname"))
 			mock.ExpectQuery("information_schema.table_constraints").WillReturnError(falha)
 		},
 	} {

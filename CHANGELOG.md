@@ -56,6 +56,25 @@
 
 ### Corrigido
 
+- **O detector de schema nunca dispararia contra instrumentação real.** Ele
+  exigia o nome da base (`db.namespace` ou `db.name`) para ligar uma migração ao
+  serviço. Medindo 199 spans de banco de uma aplicação instrumentada, todos
+  traziam `db.collection.name` e **nenhum** trazia o nome da base: a regra ficaria
+  permanentemente calada ali, sem erro e sem aviso, exatamente o defeito que as
+  ADRs 0006 e 0011 registram.
+
+  O vínculo passa a aceitar a tabela, que é uma ligação mais estreita que a base:
+  uma migração em `payments` e um serviço que consulta `payments` diz mais do que
+  "os dois usam o mesmo PostgreSQL". Sem nenhum dos dois observados o detector
+  continua calado — só "ambos falam PostgreSQL" nunca liga nada a nada.
+
+  Encontrado rodando contra a `demo-shop`; todos os testes passavam porque a
+  telemetria deles fui eu quem escreveu, com `db.namespace` dentro.
+
+- **"observado até 0s antes do incidente".** O arredondamento para minuto
+  transformava uma migração de vinte e poucos segundos em "0s", que não informa
+  nada. Apareceu na saída real da demo-shop.
+
 - **Uma requisição grande demais encerrava a sessão MCP inteira.** O
   enquadramento por linha usava `bufio.Scanner`, que trata linha acima do teto
   como falha de leitura — e não como uma mensagem ruim. Um cliente defeituoso
