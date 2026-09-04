@@ -1,5 +1,95 @@
 # Changelog
 
+## Não publicado
+
+### Adicionado
+
+- **Mudança de schema como sinal de incidente.** O produto já dizia, em duas
+  regras, que migração de schema é uma explicação frequente — o texto de causas
+  comuns de `deployment_proximity` cita "migração de schema que acompanhou o
+  deploy", e o de `database_error` cita "migração de schema incompatível com o
+  código em execução" — e não observava nenhuma. Quem investigava recebia a
+  hipótese e tinha que sair do Faultmap para verificá-la.
+
+  `faultmap ingest schema --database <base>` lê o catálogo PostgreSQL, compara
+  com a leitura anterior e registra o que mudou. A nova regra
+  `schema_change_proximity` acusa o serviço quando uma mudança recente atingiu
+  uma base que ele de fato consulta — o vínculo vem dos spans de banco da janela,
+  não de configuração declarada. Sem esse vínculo seria coincidência temporal:
+  qualquer migração em qualquer base acusaria qualquer serviço com problema no
+  mesmo horário.
+
+  A janela de busca é de 24 horas, contra uma hora do deployment. Um deploy que
+  quebra costuma quebrar de imediato; uma migração quebra quando o código que a
+  pressupõe encontra o schema, ou quando o volume cresce o bastante para que a
+  falta do índice apareça.
+
+  A regra divide a classe de peso com `deployment_proximity` em vez de ter peso
+  próprio, porque na prática costumam ser o mesmo evento. Com pesos separados, um
+  único deploy com migração somaria duas vezes e passaria à frente de um serviço
+  que está de fato falhando; o teto por classe da ADR 0010 impede isso.
+
+  Custo aceito: o instante da mudança é um **intervalo entre duas coletas**, não
+  um instante, e isso vai declarado como limitação em todo finding. Uma mudança
+  feita e revertida entre duas coletas é invisível — o produto prefere não ver a
+  inventar um instante que não mediu. A replicação lógica daria precisão maior e
+  não serve: ela não decodifica DDL, e capturá-lo por ali exigiria instalar event
+  triggers na base de quem usa o produto. Ver ADR 0014.
+
+- **Servidor MCP somente leitura.** `faultmap mcp` expõe os diagnósticos já
+  registrados a clientes MCP por três ferramentas — `list_incidents`,
+  `get_incident` e `explain_suspect`. Não há ferramenta que dispare investigação,
+  ingira dados ou apague nada, e isso é posição do produto: o motor é
+  determinístico, e o papel de um LLM é consumir e explicar o resultado
+  estruturado, não participar da análise.
+
+  Ser somente leitura também zera a superfície de privacidade: tudo que sai já
+  passou pela política aplicada na ingestão, então o servidor não tem como
+  revelar o que a ingestão barrou. As evidências viajam acompanhadas da frase de
+  causas comuns da ADR 0013, pelo mesmo motivo que a apresentação ao humano:
+  uma medida sozinha não evoca a lista que alguém experiente teria de imediato.
+
+  O protocolo é escrito à mão, sem SDK: MCP sobre stdio é pequeno, o `go.mod`
+  segue com as mesmas 12 dependências diretas e a sessão inteira é exercitada em
+  memória, sem subir processo. O custo é acompanhar a evolução da especificação
+  manualmente.
+
+### Corrigido
+
+- **Uma requisição grande demais encerrava a sessão MCP inteira.** O
+  enquadramento por linha usava `bufio.Scanner`, que trata linha acima do teto
+  como falha de leitura — e não como uma mensagem ruim. Um cliente defeituoso
+  derrubava a investigação de quem estava do outro lado, exatamente a propriedade
+  que o servidor prometia ter. Agora responde erro, descarta o excedente até a
+  quebra de linha e segue atendendo.
+
+- **Perder privilégio no banco viraria "o schema inteiro foi removido".**
+  `information_schema` filtra por privilégio: um usuário sem `SELECT` nas tabelas
+  recebe zero linhas **com sucesso**, sem erro nenhum. A comparação leria isso
+  como remoção em massa, e no incidente seguinte todo serviço que fala com a base
+  apareceria acusado por uma mudança produzida por uma permissão revogada.
+
+  Medindo contra um PostgreSQL real, a coleta cega não chega vazia:
+  `information_schema.columns` devolve nada enquanto `pg_indexes` continua
+  devolvendo os índices. Uma guarda que olhasse só o total deixaria passar
+  justamente esse caso. O critério passou a ser a ausência total de colunas, que
+  é onde ele não tem falso positivo — tabela não existe sem coluna.
+
+- **Objetos de schemas diferentes colidiam.** O nome era `tabela.coluna`, sem o
+  schema, então `public.pedidos.valor` e `tenant_a.pedidos.valor` viravam a mesma
+  chave: uma mudança mascarava a outra. Encontrado pela suíte de integração,
+  quando dois testes criaram tabelas homônimas em schemas diferentes na mesma
+  base — a situação normal de qualquer instalação multi-inquilino.
+
+- **Restrições implícitas de NOT NULL apareceriam como migração fantasma.** O
+  PostgreSQL as nomeia com OIDs — `2200_16385_1_not_null` —, e o OID muda quando
+  a tabela é recriada: recriar uma tabela sem alterar nada acusaria uma restrição
+  removida e outra adicionada durante um incidente. Descoberto rodando a coleta
+  contra um PostgreSQL real, e não contra o mock.
+
+- **Índice das ADRs estava sem a 0012 e a 0013.** Os arquivos existiam e não
+  apareciam na tabela de `docs/adr/README.md`.
+
 ## v0.5.0 — 2026-08-20
 
 A primeira release moldada por um **piloto cego**: o produto foi levado a uma
