@@ -199,7 +199,13 @@ func weightClassForRule(rule string) (string, bool) {
 	case detection.RuleTraceCorrelation, detection.RuleRetryStorm,
 		detection.RuleDependencyFailure, detection.RuleTraceBreak:
 		return classGraphProximity, true
-	case detection.RuleDeploymentProximity, detection.RuleVersionRegression:
+	// A mudança de schema divide a classe com o deployment porque, na prática,
+	// costuma ser o mesmo evento: a migração acompanha o deploy. Com pesos
+	// separados, um único deploy com migração somaria duas vezes e passaria à
+	// frente de um serviço que está de fato falhando. O teto por classe resolve
+	// isso sem que o produto precise decidir qual dos dois sinais é "o real".
+	case detection.RuleDeploymentProximity, detection.RuleVersionRegression,
+		detection.RuleSchemaChangeProximity:
 		return classDeploymentProximity, true
 	case detection.RuleLogCorrelation:
 		return classLogCorrelation, true

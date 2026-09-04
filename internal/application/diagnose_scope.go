@@ -12,6 +12,7 @@ import (
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/ranking"
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 const (
@@ -99,6 +100,14 @@ type ScopedDeploymentReader interface {
 	ListCommitMessagesBySHA(ctx context.Context, shas []string, limit int) (map[string]string, error)
 }
 
+// ScopedSchemaChangeReader carrega as mudanças de catálogo de todas as bases do
+// escopo em uma consulta.
+type ScopedSchemaChangeReader interface {
+	ListSchemaChangesForDatabases(
+		ctx context.Context, databases []string, start time.Time, end time.Time, limit int,
+	) ([]changedomain.SchemaChange, error)
+}
+
 // DiagnoseIncidentInScope compara vários serviços na mesma investigação.
 //
 // Antes desta função o diagnóstico analisava um serviço por vez, então o
@@ -116,6 +125,7 @@ func DiagnoseIncidentInScope(
 	scopeReader ScopeReader,
 	signalReader ScopedSignalReader,
 	deploymentReader ScopedDeploymentReader,
+	schemaReader ScopedSchemaChangeReader,
 ) (Diagnosis, error) {
 	if err := request.validate(); err != nil {
 		return Diagnosis{}, err
@@ -153,6 +163,11 @@ func DiagnoseIncidentInScope(
 		return Diagnosis{}, err
 	}
 
+	schemaChanges, err := loadScopeSchemaChanges(ctx, request, incident, schemaReader)
+	if err != nil {
+		return Diagnosis{}, err
+	}
+
 	baselineByService := signalsByService(baseline)
 	incidentByService := signalsByService(incident)
 	findings := make([]detection.Finding, 0, len(scope.Services)*3)
@@ -163,6 +178,13 @@ func DiagnoseIncidentInScope(
 			Incident:    incidentByService[service],
 		}
 		findings = append(findings, detection.Run(input)...)
+		if len(schemaChanges) > 0 {
+			if finding, found := detection.DetectSchemaChangeProximity(
+				input, schemaChanges, request.Windows.Incident.Start,
+			); found {
+				findings = append(findings, finding)
+			}
+		}
 		if deploymentReader == nil {
 			continue
 		}
@@ -418,6 +440,59 @@ func loadCommitMessages(
 		return nil, fmt.Errorf("diagnosticar incidente: carregar mensagens de commit: %w", err)
 	}
 	return messages, nil
+}
+
+// loadScopeSchemaChanges busca em lote as mudanças das bases que o escopo de
+// fato consultou na janela.
+//
+// As bases saem da telemetria, e não de configuração: quem responde de quem é a
+// dependência é o span que foi observado. Isso também mantém a consulta
+// pequena, porque uma instalação com dezenas de bases só pergunta pelas poucas
+// que apareceram no incidente.
+func loadScopeSchemaChanges(
+	ctx context.Context,
+	request ScopedDiagnosisRequest,
+	incident []domain.Signal,
+	schemaReader ScopedSchemaChangeReader,
+) ([]changedomain.SchemaChange, error) {
+	if schemaReader == nil {
+		return nil, nil
+	}
+	databases := databasesInWindow(incident)
+	if len(databases) == 0 {
+		return nil, nil
+	}
+	changes, err := schemaReader.ListSchemaChangesForDatabases(
+		ctx,
+		databases,
+		request.Windows.Incident.Start.Add(-detection.SchemaChangeLookback),
+		request.Windows.Incident.Start,
+		request.Limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("diagnosticar incidente: carregar mudanças de schema: %w", err)
+	}
+	return changes, nil
+}
+
+// databasesInWindow lista, em ordem estável, as bases nomeadas pelos spans de
+// banco da janela.
+func databasesInWindow(signals []domain.Signal) []string {
+	seen := make(map[string]struct{})
+	for _, signal := range signals {
+		if semconv.DatabaseSystem(signal.Attributes) == "" {
+			continue
+		}
+		if name := strings.TrimSpace(semconv.DatabaseName(signal.Attributes)); name != "" {
+			seen[name] = struct{}{}
+		}
+	}
+	databases := make([]string, 0, len(seen))
+	for name := range seen {
+		databases = append(databases, name)
+	}
+	sort.Strings(databases)
+	return databases
 }
 
 func deploymentsForService(deployments []changedomain.Deployment, service string) []changedomain.Deployment {

@@ -17,6 +17,7 @@ const (
 	diagnosisReadIndexesVersion           = 6
 	deploymentsLookupIndexVersion         = 7
 	compactDeploymentsLookupIndexVersion  = 8
+	schemaCatalogVersion                  = 9
 )
 
 type migration struct {
@@ -183,6 +184,40 @@ var migrations = []migration{
 			`DROP INDEX idx_deployments_service_environment_time_id`,
 			`CREATE INDEX idx_deployments_service_environment_time_id
 				ON deployments (service_name, environment, deployed_at DESC, id ASC)`,
+		},
+	},
+	{
+		version: schemaCatalogVersion,
+		statements: []string{
+			`CREATE TABLE schema_snapshots (
+				id TEXT PRIMARY KEY,
+				database_name TEXT NOT NULL,
+				captured_at DATETIME NOT NULL,
+				objects_json TEXT NOT NULL
+			)`,
+			// A leitura mais quente é "a coleta anterior desta base", feita a cada
+			// nova coleta. O índice descendente a resolve com uma única linha.
+			`CREATE INDEX idx_schema_snapshots_database_captured
+				ON schema_snapshots (database_name, captured_at DESC, id ASC)`,
+			`CREATE TABLE schema_changes (
+				id TEXT PRIMARY KEY,
+				database_name TEXT NOT NULL,
+				object_kind TEXT NOT NULL,
+				object_name TEXT NOT NULL,
+				change_kind TEXT NOT NULL,
+				detail TEXT NOT NULL,
+				observed_after DATETIME NOT NULL,
+				observed_before DATETIME NOT NULL,
+				snapshot_id TEXT NOT NULL,
+				-- O CASCADE é um alerta para quem for mexer na retenção: apagar uma
+				-- coleta apaga as mudanças que ela revelou. Por isso schema_snapshots
+				-- fica fora da política de retenção, que remove telemetria e preserva
+				-- o que sustenta um diagnóstico (ADR 0003). O volume também não pede
+				-- limpeza: é uma linha por coleta, não uma por span.
+				FOREIGN KEY (snapshot_id) REFERENCES schema_snapshots(id) ON DELETE CASCADE
+			)`,
+			`CREATE INDEX idx_schema_changes_database_observed
+				ON schema_changes (database_name, observed_before DESC, id ASC)`,
 		},
 	},
 }

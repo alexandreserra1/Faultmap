@@ -16,3 +16,6 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0009](0009-investigacao-compara-servicos-por-escopo-de-traces.md) | A investigação compara serviços descobertos pelos traces |
 | [0010](0010-teto-por-classe-de-peso-no-ranking.md) | Teto por classe de peso no ranking |
 | [0011](0011-logs-guardam-apenas-metadados.md) | Logs entram sem o texto da mensagem |
+| [0012](0012-bloqueios-de-privacidade-somam-em-vez-de-substituir.md) | A lista de bloqueios do YAML soma aos padrões |
+| [0013](0013-evidencia-diz-o-que-o-padrao-costuma-significar.md) | Cada evidência diz o que aquele padrão costuma significar |
+| [0014](0014-schema-guarda-identificadores-nao-expressoes.md) | A coleta de schema guarda identificadores, não expressões |

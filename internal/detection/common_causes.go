@@ -61,6 +61,10 @@ var commonCauses = map[string]string{
 	RuleDatabaseError: "Costuma vir de violação de restrição por dado inesperado, migração de " +
 		"schema incompatível com o código em execução, permissão alterada, ou " +
 		"transação abortada por conflito.",
+	RuleSchemaChangeProximity: "Costuma vir de coluna adicionada ou removida que o código em " +
+		"execução ainda espera de outra forma, índice removido ou ainda não " +
+		"construído, tipo alterado que muda o plano de consulta, ou lock retido pela " +
+		"própria migração enquanto ela rodava.",
 	RuleVersionRegression: "Costuma vir da diferença de código entre as versões, mas também de " +
 		"configuração distinta entre as instâncias, ou de rollout parcial em que a " +
 		"versão nova ainda não aqueceu caches e conexões.",

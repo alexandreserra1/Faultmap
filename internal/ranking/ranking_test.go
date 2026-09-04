@@ -433,3 +433,68 @@ func TestRankMantémFindingsSemSujeitoComoServiço(t *testing.T) {
 		t.Fatalf("sujeito = %q/%q, esperado serviço payment-service", suspects[0].Kind, suspects[0].ID)
 	}
 }
+
+// TestSchemaEDeployCompartilhamOTetoDaClasse é a razão de a regra de schema não
+// ter peso próprio. A migração normalmente acompanha o deploy: são o mesmo
+// evento visto por dois sinais. Com pesos separados, um único deploy com
+// migração somaria duas vezes e passaria à frente de um serviço que está de
+// fato falhando. O teto por classe da ADR 0010 é o que impede isso.
+func TestSchemaEDeployCompartilhamOTetoDaClasse(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{DeploymentProximity: 0.30},
+		TopN:    3,
+	}
+	findings := []detection.Finding{
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "payment-service",
+			Score: 0.90, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+			Score: 0.80, Confidence: detection.ConfidenceHigh,
+		},
+	}
+
+	suspects, err := ranking.Rank(findings, config)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	if suspects[0].Score > config.Weights.DeploymentProximity+1e-9 {
+		t.Fatalf("score = %v, esperado no máximo o teto da classe %v",
+			suspects[0].Score, config.Weights.DeploymentProximity)
+	}
+	// O teto limita o score, nunca a explicação: as duas evidências continuam
+	// visíveis para quem investiga.
+	if len(suspects[0].Contributions) != 2 {
+		t.Fatalf("contribuições = %d, esperado 2 mesmo com o teto aplicado", len(suspects[0].Contributions))
+	}
+}
+
+// TestSchemaSozinhoContribuiComOPesoDeMudanca garante que compartilhar a classe
+// não signifique depender de um deploy: uma migração aplicada sem deploy nenhum
+// precisa pontuar por si.
+func TestSchemaSozinhoContribuiComOPesoDeMudanca(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank(
+		[]detection.Finding{{
+			Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+			Score: 0.50, Confidence: detection.ConfidenceHigh,
+		}},
+		ranking.Config{Weights: ranking.Weights{DeploymentProximity: 0.30}, TopN: 3},
+	)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	if math.Abs(suspects[0].Score-0.15) > 1e-9 {
+		t.Fatalf("score = %v, esperado 0.15 (0.50 × 0.30)", suspects[0].Score)
+	}
+}
