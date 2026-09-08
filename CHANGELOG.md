@@ -56,6 +56,24 @@
 
 ### Corrigido
 
+- **O modo difícil não exercitava regra de proximidade de mudança nenhuma.** Os
+  cinco cenários nunca coletam schema nem ingerem deployments, então tanto
+  `schema_change_proximity` quanto `deployment_proximity` passavam por eles sem
+  serem executados uma única vez. Uma regra que o modo difícil não consegue
+  exercitar não está protegida por ele — foi por essa fresta que o falso positivo
+  abaixo entrou.
+
+  O cenário `migracao-inofensiva` fecha isso: aplica uma migração real antes da
+  janela, mantém o sistema saudável e exige silêncio. Ele recusa passar por
+  vacuidade — se a coleta não registrar mudança alguma, falha, porque aí o
+  silêncio não provaria nada. `schema_change_proximity` também entrou na lista de
+  regras proibidas do `sem-culpado`.
+
+  O cenário inclui uma rodada de aquecimento descartada antes da baseline. Sem
+  ela a primeira janela mede processo frio e a segunda mede processo quente, e a
+  diferença aparece como regressão de latência real — o cenário passaria a medir
+  o quanto a máquina está ocupada em vez do que se propõe a medir.
+
 - **Uma migração inofensiva acusava um sistema saudável.** A regra de schema
   disparava sozinha: bastava existir uma mudança recente numa tabela que o
   serviço consulta. Contra a `demo-shop`, com 200 requisições e zero falhas, o

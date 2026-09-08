@@ -79,6 +79,7 @@ Os alvos individuais continuam disponíveis: `make fmt`, `make fmt-check`,
 - `make test` executa a suíte de testes;
 - `make test-race` executa a suíte com detecção de condições de corrida;
 - `make test-integration` sobe um PostgreSQL descartável e roda os testes que exigem um servidor real; sem ele, esses testes se marcam como ignorados e o `make verify` segue verde;
+- `make demo-test-hard` roda os cenários de falso positivo, incluindo `migracao-inofensiva`, que aplica uma migração real e exige silêncio em sistema saudável;
 - `make vet` executa as verificações estáticas padrão do Go.
 
 ### Criar um workspace local

@@ -23,7 +23,7 @@ REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIRECTORY}/../.." && pwd)"
 BASE_COMPOSE="${SCRIPT_DIRECTORY}/compose.yaml"
 PROJECT_NAME="${FAULTMAP_HARD_PROJECT_NAME:-faultmap-demo-shop-hard}"
 CHECKOUT_URL="${FAULTMAP_HARD_CHECKOUT_URL:-http://127.0.0.1:18080/checkout}"
-ALL_SCENARIOS="ruido-cronico sem-culpado janela-imprecisa fan-out-legitimo causas-concorrentes"
+ALL_SCENARIOS="ruido-cronico sem-culpado janela-imprecisa fan-out-legitimo causas-concorrentes migracao-inofensiva"
 # O SDK do Go agrupa spans por 5 segundos antes de exportar, e o coletor
 # acrescenta o próprio lote. Esperar 6 deixava menos de um segundo de margem, e a
 # janela do incidente chegava vazia de forma intermitente — o diagnóstico
@@ -105,6 +105,28 @@ diagnose() {
     --limit 500 2>&1
 }
 
+# collect_schema roda a coleta do catálogo contra a base da própria demo.
+#
+# O modo difícil não coletava schema em cenário nenhum, e por isso a regra de
+# proximidade de migração passava por ele sem nunca ser exercitada — assim como
+# deployment_proximity, que também depende de uma ingestão que estes cenários
+# não fazem. Uma regra que o modo difícil não consegue exercitar não está
+# protegida por ele.
+collect_schema() {
+  compose exec -T \
+    -e FAULTMAP_PG_DSN="postgres://demo:demo@postgres:5432/demo?sslmode=disable" \
+    faultmap faultmap ingest schema \
+    --config /etc/faultmap/faultmap.yaml --database demo 2>&1
+}
+
+# apply_harmless_migration adiciona uma coluna que nenhuma consulta usa. É a
+# migração mais inofensiva possível: se o produto acusar por causa dela, acusaria
+# por qualquer uma.
+apply_harmless_migration() {
+  compose exec -T postgres \
+    psql -U demo -d demo -q -c "ALTER TABLE payments ADD COLUMN observacao_modo_dificil TEXT" >/dev/null
+}
+
 # assert_no_finding é a asserção central do modo difícil: a regra citada NÃO
 # pode aparecer. Ela detecta o falso positivo que a matriz E2E nunca procura.
 assert_no_finding() {
@@ -138,6 +160,7 @@ run_scenario() {
 
   local baseline_start incident_start until_epoch until_rfc
   local incident_seconds baseline_seconds output service
+  local schema_collected=""
 
   case "${scenario}" in
     ruido-cronico)
@@ -151,6 +174,30 @@ run_scenario() {
       sleep "${OTEL_FLUSH_WAIT_SECONDS}"
       incident_start="$(date +%s)"
       generate_traffic incidente 16 ruido
+      ;;
+    migracao-inofensiva)
+      # Uma migração real aconteceu antes da janela, e o sistema está saudável.
+      # Proximidade de mudança não é sintoma: sem nada observado para sustentar,
+      # a migração é ruído, e apresentá-la seria acusar quem está bem.
+      printf 'Migração aplicada antes da janela; sistema saudável nas duas.\n'
+      service="payment-service"
+      start_stack
+      collect_schema >/dev/null
+      apply_harmless_migration
+      schema_collected="$(collect_schema)"
+      printf 'Coleta após a migração: %s' "${schema_collected}"
+      # Uma rodada descartada antes da baseline. Sem ela, a primeira janela mede
+      # processo frio — conexões não abertas, planos não cacheados, JIT do
+      # runtime — e a segunda mede processo quente: a diferença aparece como
+      # regressão de latência real, e este cenário passaria a depender de quão
+      # ocupada está a máquina em vez de medir o que se propõe a medir.
+      generate_traffic aquecimento 16 migracao
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      baseline_start="$(date +%s)"
+      generate_traffic baseline 16 migracao
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      incident_start="$(date +%s)"
+      generate_traffic incidente 16 migracao
       ;;
     sem-culpado)
       # Nenhuma mudança entre as janelas. O sistema está saudável nas duas.
@@ -223,12 +270,26 @@ run_scenario() {
       assert_no_finding "${output}" "database_timeout" || return 1
       printf 'Não acusou regressão de erro com ruído idêntico nas duas janelas: PASS\n'
       ;;
+    migracao-inofensiva)
+      # A migração precisa ter sido registrada, senão o cenário passaria por
+      # vacuidade: sem mudança no banco, nenhuma regra de schema teria o que
+      # disparar e o silêncio não provaria coisa alguma.
+      if [[ "${schema_collected}" == *"0 mudanças"* || -z "${schema_collected}" ]]; then
+        printf 'A migração não foi registrada; o silêncio seria vacuidade: %s\n' \
+          "${schema_collected}" >&2
+        return 1
+      fi
+      assert_no_finding "${output}" "schema_change_proximity" || return 1
+      assert_contains "${output}" "Nenhuma anomalia determinística" || return 1
+      printf 'Migração sem efeito observável não virou acusação: PASS\n'
+      ;;
     sem-culpado)
       # Este cenário é a rede de proteção de todo detector novo: nada mudou
       # entre as janelas, então qualquer regra que dispare aqui é falso
       # positivo por definição.
       for regra in error_rate_delta latency_delta retry_storm \
-        database_error dependency_failure trace_break version_regression; do
+        database_error dependency_failure trace_break version_regression \
+        schema_change_proximity; do
         assert_no_finding "${output}" "${regra}" || return 1
       done
       assert_contains "${output}" "Nenhuma anomalia determinística" || return 1
