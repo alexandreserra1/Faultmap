@@ -99,6 +99,12 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 
 	suspects := make([]Suspect, 0, len(bySubject))
 	for _, accumulator := range bySubject {
+		score := clamp(accumulator.score(config.Weights))
+		// Um sujeito cujo score inteiro foi limitado a zero não é suspeito de
+		// nada: só havia proximidade, e proximidade sozinha não acusa ninguém.
+		if score == 0 {
+			continue
+		}
 		sort.Slice(accumulator.contributions, func(first, second int) bool {
 			return accumulator.contributions[first].RuleID < accumulator.contributions[second].RuleID
 		})
@@ -106,7 +112,7 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 			Kind:          accumulator.kind,
 			ID:            accumulator.identifier,
 			Label:         accumulator.label,
-			Score:         clamp(accumulator.score(config.Weights)),
+			Score:         score,
 			Confidence:    accumulator.confidence,
 			Contributions: accumulator.contributions,
 			Limitations:   sortedSet(accumulator.limitations),
@@ -148,11 +154,53 @@ type suspectAccumulator struct {
 // As contribuições individuais continuam todas visíveis na explicação: o que é
 // limitado é o total da classe, não o que é apresentado.
 func (accumulator *suspectAccumulator) score(weights Weights) float64 {
-	total := 0.0
+	measured, support := 0.0, 0.0
 	for class, accumulated := range accumulator.byWeightClass {
-		total += math.Min(accumulated, weightForClass(class, weights))
+		capped := math.Min(accumulated, weightForClass(class, weights))
+		if class == classDeploymentProximity {
+			support += capped
+			continue
+		}
+		measured += capped
 	}
-	return total
+	return measured + accumulator.limitSupport(support, measured)
+}
+
+// limitSupport impede que a evidência de apoio pese mais que a evidência que
+// ela apoia.
+//
+// Proximidade de mudança — deploy ou migração — não é sintoma: ela não mede
+// nada do serviço, só constata que algo mudou por perto. Medindo na demo-shop,
+// uma latência que regrediu de 4 ms para 12 ms valia 0.07 e a migração recente
+// valia 0.20 sozinha: o apoio superava em três vezes tudo o que ele deveria
+// apenas sustentar.
+//
+// A causa está na janela. `1 - idade/24h` dá score máximo a qualquer mudança
+// recente, e "houve migração há pouco" carrega muito menos informação em 24
+// horas do que em uma. O teto relativo corrige sem inventar constante nova, e se
+// ajusta sozinho: sintoma forte, o apoio pesa; sintoma marginal, o apoio fica
+// marginal junto.
+//
+// Sem sintoma algum o apoio vira zero, e o serviço deixa de ser suspeito. Isso
+// fecha estruturalmente a exposição que deployment_proximity sempre teve —
+// disparar sozinho em sistema saudável quando houve deploy na última hora —, que
+// nunca apareceu porque nenhum cenário do modo difícil ingere deployments.
+//
+// O commit fica de fora do teto. Ele só tem evidência de mudança por construção,
+// já que nasce do mesmo finding que acusa o serviço; aplicá-lo ali zeraria todo
+// commit e apagaria a acusação que é a informação mais acionável de um incidente
+// causado por deploy. O teto compara sintoma com apoio, e o commit não é um
+// serviço com sintomas: ele é a mudança.
+//
+// O custo é assumido: uma migração que foi a causa única, com sintoma pequeno
+// mas real, fica presa ao tamanho do sintoma. É a mesma troca conservadora de
+// exceedsSamplingNoise — preferir calar sinal fraco a apresentar ruído como
+// evidência.
+func (accumulator *suspectAccumulator) limitSupport(support, measured float64) float64 {
+	if accumulator.kind == detection.SubjectCommit {
+		return support
+	}
+	return math.Min(support, measured)
 }
 
 // Validate rejeita limites e pesos que violariam o contrato normalizado antes de qualquer processamento.

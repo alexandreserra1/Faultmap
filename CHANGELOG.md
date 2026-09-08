@@ -56,6 +56,32 @@
 
 ### Corrigido
 
+- **Evidência de apoio pesava mais que a evidência que ela apoia.** Medindo na
+  demo-shop, uma latência que regrediu de 4 ms para 12 ms valia 0.07 e a
+  proximidade de migração valia 0.20 sozinha: o apoio superava em três vezes
+  tudo o que deveria apenas sustentar.
+
+  A causa está na janela. `1 - idade/24h` dá score máximo a qualquer mudança
+  recente, e "houve migração há pouco" carrega muito menos informação em 24
+  horas do que na janela de uma hora do deployment.
+
+  A contribuição da classe de mudança passa a ser limitada à soma das evidências
+  medidas do mesmo suspeito. O teto se ajusta sozinho — sintoma forte, o apoio
+  pesa; sintoma marginal, o apoio fica marginal junto — e não inventa constante
+  nova para ninguém defender depois.
+
+  Sem sintoma algum o apoio vira zero e o serviço deixa de ser suspeito, o que
+  fecha estruturalmente a exposição que `deployment_proximity` sempre teve:
+  disparar sozinho em sistema saudável quando houve deploy na última hora.
+
+  O commit fica de fora do teto. Ele só tem evidência de mudança por construção,
+  então aplicá-lo ali zeraria todo commit e apagaria a acusação que é a
+  informação mais acionável de um incidente causado por deploy.
+
+  Custo assumido: uma migração que foi a causa única, com sintoma pequeno mas
+  real, fica presa ao tamanho do sintoma. É a mesma troca conservadora de
+  `exceedsSamplingNoise`.
+
 - **O modo difícil não exercitava regra de proximidade de mudança nenhuma.** Os
   cinco cenários nunca coletam schema nem ingerem deployments, então tanto
   `schema_change_proximity` quanto `deployment_proximity` passavam por eles sem
