@@ -643,6 +643,11 @@ func escopoSpanDeBanco(servico, base string, indice int, instante time.Time) dom
 
 // TestDiagnoseScopeCorrelacionaMudancaDeSchema liga as pontas: a coleta do
 // catálogo vira suspeita no diagnóstico do serviço que fala com aquela base.
+//
+// O incidente traz consultas lentas de propósito. A mudança de schema é
+// evidência de apoio, não acusação isolada: sem nenhum sintoma observado ela
+// não é apresentada, o que TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel
+// cobre do outro lado.
 func TestDiagnoseScopeCorrelacionaMudancaDeSchema(t *testing.T) {
 	t.Parallel()
 
@@ -657,13 +662,22 @@ func TestDiagnoseScopeCorrelacionaMudancaDeSchema(t *testing.T) {
 	baseline := make([]domain.Signal, 0, 20)
 	incident := make([]domain.Signal, 0, 20)
 	for indice := 0; indice < 10; indice++ {
-		baseline = append(baseline, escopoSpanDeBanco("payment-service", "payments", indice, incidentStart.Add(-time.Minute)))
-		incident = append(incident, escopoSpanDeBanco("payment-service", "payments", indice, incidentStart))
+		rapido := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart.Add(-time.Minute))
+		rapido.Measurements = map[string]float64{"duration_ms": 10}
+		baseline = append(baseline, rapido)
+
+		// O índice removido deixou as consultas lentas: é o sintoma que a
+		// mudança de schema passa a corroborar em vez de acusar sozinha.
+		lento := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart)
+		lento.ID = "incident-" + strconv.Itoa(indice)
+		lento.Measurements = map[string]float64{"duration_ms": 800}
+		incident = append(incident, lento)
 	}
 
 	schema := &scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
 		ID:           "schema:payments:index:idx_payments_created_at:removed",
-		DatabaseName: "payments", ObjectKind: changedomain.SchemaObjectIndex,
+		DatabaseName: "payments", TableName: "payments",
+		ObjectKind: changedomain.SchemaObjectIndex,
 		ObjectName: "idx_payments_created_at", ChangeKind: changedomain.SchemaChangeRemoved,
 		ObservedAfter:  incidentStart.Add(-3 * time.Hour),
 		ObservedBefore: incidentStart.Add(-2 * time.Hour),
@@ -813,5 +827,128 @@ func TestDiagnoseScopeNaoConsultaSchemaSemSpanDeBanco(t *testing.T) {
 	}
 	if schema.consultas != 0 {
 		t.Fatalf("consultas de schema = %d, esperado 0 sem span de banco na janela", schema.consultas)
+	}
+}
+
+// TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel é o modo difícil aplicado à
+// regra de schema, e vem de vê-la falhar contra a demo-shop.
+//
+// Com 200 requisições bem-sucedidas, zero falhas e nenhuma anomalia de qualquer
+// tipo, o produto acusava o serviço com confiança alta porque alguém havia
+// adicionado uma coluna que ninguém usa. Uma migração sem efeito observável não
+// é evidência de nada, e o cenário `sem-culpado` exige silêncio exatamente aí:
+// um ranking que sempre acha um culpado é indistinguível de um que adivinha.
+func TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	// Baseline e incidente idênticos: nada mudou no comportamento do serviço.
+	saudavel := func(prefixo string, instante time.Time) []domain.Signal {
+		signals := make([]domain.Signal, 0, 20)
+		for indice := 0; indice < 20; indice++ {
+			signals = append(signals, escopoSpanDeBanco("payment-service", "payments", indice, instante))
+			signals[len(signals)-1].ID = prefixo + "-" + strconv.Itoa(indice)
+		}
+		return signals
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{
+			baseline: saudavel("baseline", incidentStart.Add(-time.Minute)),
+			incident: saudavel("incident", incidentStart),
+		},
+		nil,
+		&scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
+			ID:           "schema:payments:column:public.payments.nota:added",
+			DatabaseName: "payments", TableName: "payments",
+			ObjectKind: changedomain.SchemaObjectColumn, ObjectName: "public.payments.nota",
+			ChangeKind:     changedomain.SchemaChangeAdded,
+			ObservedAfter:  incidentStart.Add(-2 * time.Hour),
+			ObservedBefore: incidentStart.Add(-time.Hour),
+		}}},
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleSchemaChangeProximity {
+			t.Fatalf("acusou mudança de schema sem nenhum sintoma observado: %#v", finding)
+		}
+	}
+	if len(diagnosis.Suspects) != 0 {
+		t.Fatalf("sistema saudável produziu %d suspeito(s): %#v", len(diagnosis.Suspects), diagnosis.Suspects)
+	}
+}
+
+// TestDiagnoseScopeAcusaSchemaQuandoHaSintoma é o outro lado: a migração vira
+// evidência assim que existe algo observado para ela sustentar. Nenhum caso
+// real se perde com a corroboração — uma migração que quebrou alguma coisa
+// sempre acende também erro, latência ou falha de banco.
+func TestDiagnoseScopeAcusaSchemaQuandoHaSintoma(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	baseline := make([]domain.Signal, 0, 20)
+	incident := make([]domain.Signal, 0, 20)
+	for indice := 0; indice < 20; indice++ {
+		rapido := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart.Add(-time.Minute))
+		rapido.ID = "baseline-" + strconv.Itoa(indice)
+		rapido.Measurements = map[string]float64{"duration_ms": 10}
+		baseline = append(baseline, rapido)
+
+		// O índice removido pela migração deixou as consultas lentas.
+		lento := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart)
+		lento.ID = "incident-" + strconv.Itoa(indice)
+		lento.Measurements = map[string]float64{"duration_ms": 800}
+		incident = append(incident, lento)
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{baseline: baseline, incident: incident},
+		nil,
+		&scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
+			ID:           "schema:payments:index:public.idx_payments_created_at:removed",
+			DatabaseName: "payments", TableName: "payments",
+			ObjectKind: changedomain.SchemaObjectIndex, ObjectName: "public.idx_payments_created_at",
+			ChangeKind:     changedomain.SchemaChangeRemoved,
+			ObservedAfter:  incidentStart.Add(-2 * time.Hour),
+			ObservedBefore: incidentStart.Add(-time.Hour),
+		}}},
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	var encontrado bool
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleSchemaChangeProximity {
+			encontrado = true
+		}
+	}
+	if !encontrado {
+		t.Fatalf("a migração não foi apresentada apesar do sintoma observado: %#v", diagnosis.Findings)
 	}
 }

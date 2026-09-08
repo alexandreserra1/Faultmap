@@ -56,6 +56,22 @@
 
 ### Corrigido
 
+- **Uma migração inofensiva acusava um sistema saudável.** A regra de schema
+  disparava sozinha: bastava existir uma mudança recente numa tabela que o
+  serviço consulta. Contra a `demo-shop`, com 200 requisições e zero falhas, o
+  produto apontava o `payment-service` com **confiança alta** porque alguém havia
+  adicionado uma coluna que ninguém usa.
+
+  É o falso positivo que o cenário `sem-culpado` do modo difícil existe para
+  proibir — ele exige "Nenhuma anomalia determinística" em sistema saudável — e a
+  regra passava por ele apenas porque nenhum cenário do modo difícil coleta
+  schema.
+
+  A mudança de schema passa a ser **evidência de apoio**, apresentada só quando o
+  serviço já tem algum sintoma observado. Nenhum caso real se perde: uma migração
+  que quebrou alguma coisa acende também erro, latência ou falha de banco. O que
+  deixa de aparecer é exatamente a migração que não fez nada.
+
 - **O detector de schema nunca dispararia contra instrumentação real.** Ele
   exigia o nome da base (`db.namespace` ou `db.name`) para ligar uma migração ao
   serviço. Medindo 199 spans de banco de uma aplicação instrumentada, todos

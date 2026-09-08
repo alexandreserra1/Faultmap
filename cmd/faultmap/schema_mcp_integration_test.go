@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -49,7 +50,10 @@ func executar(t *testing.T, args ...string) (string, error) {
 // teste exercita é a ligação entre catálogo e diagnóstico: precisamos de spans
 // com `db.namespace` em uma janela conhecida, e montar isso como payload OTLP
 // afastaria o teste do que ele quer provar.
-func gravarTelemetriaDeBanco(t *testing.T, configPath, serviceName, databaseName string, instante time.Time, total int) {
+func gravarTelemetriaDeBanco(
+	t *testing.T, configPath, serviceName, databaseName string,
+	instante time.Time, total int, prefixo string, duracaoMS float64,
+) {
 	t.Helper()
 
 	database, err := sql.Open("sqlite", filepath.Join(filepath.Dir(configPath), "faultmap.db"))
@@ -72,13 +76,13 @@ func gravarTelemetriaDeBanco(t *testing.T, configPath, serviceName, databaseName
 			INSERT INTO signals (id, signal_type, service_name, timestamp, trace_id, span_id, severity, attributes_json, measurements_json)
 			VALUES (?, 'span', ?, ?, ?, ?, 'INFO', ?, ?)
 		`,
-			serviceName+"-db-"+string(rune('a'+indice)),
+			prefixo+"-"+serviceName+"-db-"+string(rune('a'+indice)),
 			serviceName,
 			instante.Add(time.Duration(indice)*time.Second).UTC(),
-			"trace-"+string(rune('a'+indice)),
-			"span-"+string(rune('a'+indice)),
+			prefixo+"-trace-"+string(rune('a'+indice)),
+			prefixo+"-span-"+string(rune('a'+indice)),
 			string(attributes),
-			`{"duration_ms":12}`,
+			fmt.Sprintf(`{"duration_ms":%.0f}`, duracaoMS),
 		); err != nil {
 			t.Fatalf("inserir sinal: %v", err)
 		}
@@ -117,7 +121,13 @@ func TestPipelineDeSchemaChegaAoDiagnosticoEAoMCP(t *testing.T) {
 	configPath := workspaceInicializado(t)
 	incidente := time.Now().UTC().Add(-2 * time.Minute)
 
-	gravarTelemetriaDeBanco(t, configPath, "payment-service", "payments", incidente, 10)
+	// A baseline é rápida e o incidente é lento: a mudança de schema é evidência
+	// de apoio, e sem sintoma observado ela não é apresentada. O índice removido
+	// deixando as consultas lentas é justamente o sintoma que ela corrobora.
+	gravarTelemetriaDeBanco(t, configPath, "payment-service", "payments",
+		incidente.Add(-30*time.Minute), 10, "baseline", 10)
+	gravarTelemetriaDeBanco(t, configPath, "payment-service", "payments",
+		incidente, 10, "incident", 800)
 	gravarColetasDeCatalogo(t, configPath,
 		changedomain.SchemaSnapshot{
 			ID: "catalog:payments:1", DatabaseName: "payments", CapturedAt: incidente.Add(-4 * time.Hour),

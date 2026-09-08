@@ -44,6 +44,17 @@ O Faultmap registra **que** a expressão mudou, e não qual ela é. A evidência
 Quem investiga tem o ponteiro exato para olhar no banco, que é onde a informação
 já está.
 
+**A mudança é evidência de apoio, não acusação isolada.** O finding só é
+apresentado quando o serviço já tem algum sintoma observado na janela. Uma
+migração sem efeito observável não é evidência de nada: sem esta regra, o
+produto apontava com confiança alta um serviço em que 200 requisições passaram
+sem uma única falha, porque uma coluna não usada havia sido adicionada.
+
+Nenhum caso real se perde. Uma migração que quebrou alguma coisa acende também
+erro, latência ou falha de banco — o índice removido aparece como
+`database_latency_delta`, a coluna incompatível como `error_rate_delta`. O que
+deixa de aparecer é a migração que não fez nada, que é ruído.
+
 **A tabela é guardada junto do objeto.** O vínculo entre uma migração e um
 serviço vem da telemetria, e a telemetria real frequentemente não nomeia a base:
 medindo 199 spans de banco de uma aplicação instrumentada, todos traziam

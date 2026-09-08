@@ -579,6 +579,8 @@ A DSN vem do ambiente e **não** é gravada no `faultmap.yaml`, que o `init` pro
 
 O detector `schema_change_proximity` acusa um serviço quando uma mudança recente atingiu uma **tabela ou base que ele de fato consulta** — o vínculo vem dos spans de banco da janela do incidente, e não de configuração declarada. A tabela vem primeiro porque a instrumentação real quase sempre emite `db.collection.name` e quase nunca `db.namespace`, e porque ela é uma ligação mais estreita que a base. A janela de busca é de 24 horas, mais larga que a do deployment porque uma migração raramente quebra no instante em que roda.
 
+A mudança de schema é **evidência de apoio**: ela só aparece quando o serviço já tem algum sintoma observado na janela. Uma migração sem efeito observável não é evidência de nada, e um ranking que sempre acha um culpado é indistinguível de um que adivinha.
+
 Duas limitações vão declaradas em todo finding produzido:
 
 - o instante da mudança é um **intervalo entre duas coletas**, não um instante — coletas mais frequentes estreitam o intervalo;

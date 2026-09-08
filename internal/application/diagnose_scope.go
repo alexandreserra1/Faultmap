@@ -179,13 +179,6 @@ func DiagnoseIncidentInScope(
 			Incident:    incidentByService[service],
 		}
 		findings = append(findings, detection.Run(input)...)
-		if len(schemaChanges) > 0 {
-			if finding, found := detection.DetectSchemaChangeProximity(
-				input, schemaChanges, request.Windows.Incident.Start,
-			); found {
-				findings = append(findings, finding)
-			}
-		}
 		if deploymentReader == nil {
 			continue
 		}
@@ -200,6 +193,10 @@ func DiagnoseIncidentInScope(
 	// finding já vem com o serviço a que pertence.
 	findings = append(findings, detection.DetectDependencyFailure(baseline, incident)...)
 	findings = append(findings, detection.DetectTraceBreak(baseline, incident)...)
+
+	findings = append(findings, corroboratedSchemaFindings(
+		scope, incidentByService, baselineByService, schemaChanges, findings, request.Windows.Incident.Start,
+	)...)
 
 	suspects, err := ranking.Rank(findings, request.Ranking)
 	if err != nil {
@@ -222,6 +219,59 @@ func DiagnoseIncidentInScope(
 		Suspects:            suspects,
 		Scope:               scope,
 	}, nil
+}
+
+// corroboratedSchemaFindings só apresenta a mudança de schema de um serviço que
+// já tem algum sintoma observado.
+//
+// Uma migração sem efeito observável não é evidência de nada. Sem esta
+// corroboração o produto acusava, com confiança alta, um serviço em que 200
+// requisições passaram sem uma única falha — porque alguém havia adicionado uma
+// coluna que ninguém usa. É o falso positivo que o cenário `sem-culpado`
+// existe para proibir: um ranking que sempre acha um culpado é indistinguível
+// de um que adivinha.
+//
+// Nenhum caso real se perde. Uma migração que quebrou alguma coisa acende
+// também erro, latência ou falha de banco — o índice removido aparece como
+// database_latency_delta, a coluna incompatível como error_rate_delta. O que
+// deixa de aparecer é exatamente a migração que não fez nada.
+//
+// A corroboração roda depois dos detectores entre serviços, e não dentro do
+// laço por serviço, porque dependency_failure e trace_break também são sintoma:
+// um serviço cujo único sinal é falhar sob outro merece a mudança de schema na
+// explicação tanto quanto um que registrou erro próprio.
+func corroboratedSchemaFindings(
+	scope DiagnosisScope,
+	incidentByService, baselineByService map[string][]domain.Signal,
+	schemaChanges []changedomain.SchemaChange,
+	observed []detection.Finding,
+	incidentStart time.Time,
+) []detection.Finding {
+	if len(schemaChanges) == 0 {
+		return nil
+	}
+	withSymptom := make(map[string]struct{}, len(scope.Services))
+	for _, finding := range observed {
+		if service := strings.TrimSpace(finding.ServiceName); service != "" {
+			withSymptom[service] = struct{}{}
+		}
+	}
+
+	corroborated := make([]detection.Finding, 0, len(scope.Services))
+	for _, service := range scope.Services {
+		if _, symptomatic := withSymptom[service]; !symptomatic {
+			continue
+		}
+		finding, found := detection.DetectSchemaChangeProximity(detection.Input{
+			ServiceName: service,
+			Baseline:    baselineByService[service],
+			Incident:    incidentByService[service],
+		}, schemaChanges, incidentStart)
+		if found {
+			corroborated = append(corroborated, finding)
+		}
+	}
+	return corroborated
 }
 
 func (request ScopedDiagnosisRequest) validate() error {
