@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
 	"github.com/faultmap/faultmap/internal/integrations/postgres"
+	"github.com/faultmap/faultmap/internal/platform/identifier"
 )
 
 var coletadoEm = time.Date(2026, time.September, 3, 9, 30, 0, 0, time.UTC)
@@ -263,5 +264,50 @@ func TestFetchQualificaObjetosPeloSchema(t *testing.T) {
 		if _, existe := nomes[esperado]; !existe {
 			t.Fatalf("objeto %q ausente: %#v", esperado, nomes)
 		}
+	}
+}
+
+// TestFetchProduzIdentificadorCurtoEOrdenavel aplica à coleta as mesmas
+// exigências das mudanças: o ID era "catalog:<base>:<RFC3339Nano>", 43
+// caracteres começando pelo prefixo fixo "catalog", o que faz duas bases
+// diferentes ordenarem juntas e o tempo só desempatar no fim.
+func TestFetchProduzIdentificadorCurtoEOrdenavel(t *testing.T) {
+	t.Parallel()
+
+	coletar := func(quando time.Time) changedomain.SchemaSnapshot {
+		database, mock, err := sqlmock.New()
+		if err != nil {
+			t.Fatalf("sqlmock.New() erro = %v", err)
+		}
+		t.Cleanup(func() { _ = database.Close() })
+		esperarCatalogo(mock,
+			linhasVazias("table_schema", "table_name", "data_type", "is_nullable", "column_default"),
+			linhasVazias("schemaname", "tablename", "indexname"),
+			linhasVazias("table_schema", "table_name", "constraint_name", "constraint_type"),
+		)
+		client, err := postgres.NewClient(database, "payments", func() time.Time { return quando })
+		if err != nil {
+			t.Fatalf("NewClient() erro = %v", err)
+		}
+		snapshot, err := client.Fetch(context.Background())
+		if err != nil {
+			t.Fatalf("Fetch() erro = %v", err)
+		}
+		return snapshot
+	}
+
+	antiga := coletar(coletadoEm)
+	recente := coletar(coletadoEm.Add(time.Hour))
+
+	if len(antiga.ID) != identifier.Length {
+		t.Fatalf("comprimento do ID = %d, esperado %d", len(antiga.ID), identifier.Length)
+	}
+	if !(antiga.ID < recente.ID) {
+		t.Fatalf("a coleta antiga %q não ordena antes da recente %q", antiga.ID, recente.ID)
+	}
+	// Duas coletas do mesmo instante e da mesma base são a mesma coleta: o ID
+	// precisa repetir para que a persistência as trate como uma só.
+	if coletar(coletadoEm).ID != antiga.ID {
+		t.Fatal("duas coletas idênticas produziram IDs diferentes; a idempotência quebraria")
 	}
 }

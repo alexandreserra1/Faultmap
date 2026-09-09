@@ -56,6 +56,32 @@
 
 ### Corrigido
 
+- **Identificadores de catálogo curtos e ordenáveis por tempo.** Os IDs de
+  coleta e de mudança eram concatenações de até 90 caracteres começando pelo
+  nome do objeto, então ordenar por ID ordenava por tabela e nunca por tempo.
+
+  O novo formato tem 26 caracteres: 48 bits de instante em milissegundos, base32
+  de Crockford, seguidos de 80 bits de resumo do conteúdo. A ordenação
+  lexicográfica passa a ser a cronológica, e o mesmo índice do SQLite serve às
+  duas.
+
+  Os 80 bits finais são resumo, e não entropia aleatória como no ULID e no
+  UUIDv7, porque a persistência é idempotente por `ON CONFLICT(id) DO NOTHING` e
+  o produto promete que a mesma entrada produz a mesma saída. Com entropia,
+  recoletar o mesmo catálogo gravaria tudo de novo como se fossem mudanças
+  inéditas. O que se perde é a imprevisibilidade — quem conhece o conteúdo
+  recalcula o ID —, e isso não pesa aqui porque nenhum identificador do Faultmap
+  é segredo nem serve de credencial.
+
+  O alfabeto exclui I, L, O e U, então não há confusão entre 1 e I ou 0 e O para
+  quem lê um ID em um relatório.
+
+  Coletas feitas antes desta mudança mantêm os identificadores antigos e
+  continuam sendo lidas normalmente — o ID é opaco e nunca é interpretado. Só a
+  ordenação por ID mistura os dois formatos, com os antigos no fim. Como a
+  funcionalidade nunca foi publicada, nenhuma instalação é afetada; um workspace
+  local de desenvolvimento pode ser recriado se a ordenação incomodar.
+
 - **Evidência de apoio pesava mais que a evidência que ela apoia.** Medindo na
   demo-shop, uma latência que regrediu de 4 ms para 12 ms valia 0.07 e a
   proximidade de migração valia 0.20 sozinha: o apoio superava em três vezes

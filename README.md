@@ -574,6 +574,8 @@ faultmap ingest schema --database payments
 
 A primeira execução estabelece a linha de base e não acusa nada. A partir da segunda, cada coleta registra o que mudou desde a anterior: tabela, coluna, índice ou restrição adicionada, removida ou alterada.
 
+Coletas e mudanças recebem identificadores de 26 caracteres com o instante à frente, então ordenar por ID é ordenar cronologicamente. Eles são derivados do conteúdo, e não sorteados: recoletar o mesmo catálogo produz os mesmos identificadores, que é o que mantém a coleta idempotente.
+
 Objetos são identificados com o schema à frente (`public.pedidos.valor`), porque um banco PostgreSQL quase nunca tem um schema só. Uma coleta que volte sem coluna nenhuma é **recusada** em vez de comparada: é a assinatura de um usuário que perdeu `SELECT` no catálogo, e não de uma migração.
 
 A DSN vem do ambiente e **não** é gravada no `faultmap.yaml`, que o `init` promete criar sem tokens nem credenciais. A coleta é somente leitura: nenhum slot de replicação, nenhuma extensão, nenhum privilégio além de `SELECT` no catálogo.

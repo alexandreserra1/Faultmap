@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/faultmap/faultmap/internal/platform/identifier"
 )
 
 // ErrEmptyCollection sinaliza uma coleta vazia sobre uma base que tinha
@@ -274,10 +276,12 @@ func newSchemaChange(
 	detail string,
 ) SchemaChange {
 	return SchemaChange{
-		ID: strings.Join([]string{
-			"schema", current.DatabaseName, string(object.Kind), object.Name,
-			string(kind), current.CapturedAt.UTC().Format(time.RFC3339Nano),
-		}, ":"),
+		// O instante vem do identificador, não do texto: ele fica no prefixo, e
+		// ordenar por ID passa a ordenar cronologicamente. O formato anterior
+		// concatenava tudo e começava pelo nome do objeto, então ordenar por ID
+		// ordenava por tabela — e custava 80 caracteres em vez de 26.
+		ID: identifier.New(current.CapturedAt,
+			"schema", current.DatabaseName, string(object.Kind), object.Name, string(kind)),
 		DatabaseName:   current.DatabaseName,
 		TableName:      object.TableName,
 		ObjectKind:     object.Kind,

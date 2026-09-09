@@ -2,11 +2,14 @@ package domain
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/faultmap/faultmap/internal/platform/identifier"
 )
 
 var (
@@ -367,5 +370,80 @@ func TestCheckCollectionNaoAtrapalhaRemocaoParcial(t *testing.T) {
 		if err := CheckCollection(caso.anterior, caso.atual); err != nil {
 			t.Fatalf("%s: CheckCollection() recusou migração legítima: %v", nome, err)
 		}
+	}
+}
+
+// TestDiffProduzIdentificadoresCurtosEOrdenaveis fixa as propriedades exigidas
+// dos identificadores de mudança, que o formato anterior não tinha: ele era uma
+// concatenação de 80 caracteres começando pelo nome do objeto, então ordenar
+// por ID ordenava por tabela e nunca por tempo.
+func TestDiffProduzIdentificadoresCurtosEOrdenaveis(t *testing.T) {
+	t.Parallel()
+
+	antigas := Diff(
+		snapshotWith(firstCapture, column("payments.zzz", "integer")),
+		snapshotWith(firstCapture.Add(time.Minute), column("payments.zzz", "bigint")),
+	)
+	recentes := Diff(
+		snapshotWith(secondCapture, column("payments.aaa", "integer")),
+		snapshotWith(secondCapture.Add(time.Minute), column("payments.aaa", "bigint")),
+	)
+	if len(antigas) != 1 || len(recentes) != 1 {
+		t.Fatalf("esperado uma mudança de cada lado: %d e %d", len(antigas), len(recentes))
+	}
+
+	if len(antigas[0].ID) != identifier.Length {
+		t.Fatalf("comprimento do ID = %d, esperado %d", len(antigas[0].ID), identifier.Length)
+	}
+	// O nome mais recente começa com "a" e o antigo com "z": se o conteúdo
+	// mandasse na ordem, a comparação inverteria.
+	if !(antigas[0].ID < recentes[0].ID) {
+		t.Fatalf("a mudança mais antiga %q não ordena antes da recente %q", antigas[0].ID, recentes[0].ID)
+	}
+}
+
+// TestDiffMantemIdentificadorEstavelEntreExecucoes protege a idempotência da
+// persistência: o mesmo par de coletas precisa produzir os mesmos IDs, senão
+// recoletar gravaria tudo de novo como se fossem mudanças inéditas.
+func TestDiffMantemIdentificadorEstavelEntreExecucoes(t *testing.T) {
+	t.Parallel()
+
+	anterior := snapshotWith(firstCapture, column("payments.amount", "integer"), index("idx_a"))
+	atual := snapshotWith(secondCapture, column("payments.amount", "bigint"))
+
+	primeira := Diff(anterior, atual)
+	segunda := Diff(anterior, atual)
+	if len(primeira) != len(segunda) {
+		t.Fatalf("execuções produziram %d e %d mudanças", len(primeira), len(segunda))
+	}
+	for posicao := range primeira {
+		if primeira[posicao].ID != segunda[posicao].ID {
+			t.Fatalf("ID divergiu entre execuções: %q e %q", primeira[posicao].ID, segunda[posicao].ID)
+		}
+	}
+}
+
+// TestDiffNaoColideEntreObjetosDaMesmaColeta cobre o risco concreto do resumo:
+// duas mudanças da mesma coleta compartilham o prefixo de tempo inteiro, então
+// a distinção depende só do conteúdo. Colisão aqui apagaria uma delas em
+// silêncio, porque a persistência usa ON CONFLICT DO NOTHING.
+func TestDiffNaoColideEntreObjetosDaMesmaColeta(t *testing.T) {
+	t.Parallel()
+
+	anteriores := make([]SchemaObject, 0, 500)
+	for indice := range 500 {
+		anteriores = append(anteriores, column(fmt.Sprintf("payments.coluna_%d", indice), "integer"))
+	}
+	mudancas := Diff(snapshotWith(firstCapture, anteriores...), snapshotWith(secondCapture))
+
+	if len(mudancas) != 500 {
+		t.Fatalf("mudanças = %d, esperado 500 remoções", len(mudancas))
+	}
+	vistos := make(map[string]string, len(mudancas))
+	for _, mudanca := range mudancas {
+		if anterior, colidiu := vistos[mudanca.ID]; colidiu {
+			t.Fatalf("colisão entre %q e %q no ID %q", anterior, mudanca.ObjectName, mudanca.ID)
+		}
+		vistos[mudanca.ID] = mudanca.ObjectName
 	}
 }

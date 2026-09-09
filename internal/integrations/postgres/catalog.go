@@ -18,6 +18,7 @@ import (
 	"time"
 
 	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
+	"github.com/faultmap/faultmap/internal/platform/identifier"
 )
 
 // systemSchemas ficam de fora: elas descrevem o PostgreSQL, não a aplicação, e
@@ -83,7 +84,11 @@ func (client *Client) Fetch(ctx context.Context) (changedomain.SchemaSnapshot, e
 
 	capturedAt := client.now().UTC()
 	return changedomain.SchemaSnapshot{
-		ID:           fmt.Sprintf("catalog:%s:%s", client.databaseName, capturedAt.Format(time.RFC3339Nano)),
+		// O instante à frente faz a ordenação por ID coincidir com a cronológica,
+		// que é como a coleta anterior é buscada. O formato anterior começava
+		// pelo literal "catalog", então todas as bases ordenavam juntas e o tempo
+		// só desempatava no fim.
+		ID:           identifier.New(capturedAt, "catalog", client.databaseName),
 		DatabaseName: client.databaseName,
 		CapturedAt:   capturedAt,
 		Objects:      objects,
