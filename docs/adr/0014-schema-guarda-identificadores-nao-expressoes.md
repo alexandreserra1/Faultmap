@@ -97,8 +97,15 @@ credenciais. O nome da base é gravado; a forma de conectar nela, não.
 
 - O instante de uma mudança é um **intervalo entre duas coletas**, não um
   instante. Isso é pior que o dado que a replicação lógica daria e é declarado
-  como limitação em todo finding produzido, em vez de escondido. Coletas mais
-  frequentes estreitam o intervalo; a decisão sobre a frequência é de quem opera.
+  como limitação em todo finding produzido, em vez de escondido.
+- A pontuação sai da **ponta pessimista** do intervalo, e a inclusão na janela de
+  busca sai da otimista. Incluir com generosidade e pontuar com cautela evita
+  perder uma migração real por causa de uma coleta espaçada, sem pagar por isso
+  em confiança. O efeito prático é que a frequência de coleta dispensa
+  recomendação: coletar de raro em raro custa score por si, e quem coleta mais
+  vezes recebe evidência mais forte. Com coleta diária o score vai a zero — sem
+  saber em qual das 24 horas anteriores a migração rodou, não há proximidade a
+  afirmar, e a mudança aparece no relatório sem pontuar.
 - Uma mudança feita e revertida entre duas coletas é invisível. É a troca
   aceita: o produto prefere não ver a inventar um instante que não mediu.
 - A comparação vê o efeito, não o comando. `ALTER TABLE ... RENAME COLUMN`

@@ -586,8 +586,27 @@ A mudança de schema é **evidência de apoio**: ela só aparece quando o servi�
 
 Duas limitações vão declaradas em todo finding produzido:
 
-- o instante da mudança é um **intervalo entre duas coletas**, não um instante — coletas mais frequentes estreitam o intervalo;
+- o instante da mudança é um **intervalo entre duas coletas**, não um instante;
 - proximidade temporal não prova causalidade, como em todo o resto do produto.
+
+### De quanto em quanto tempo coletar
+
+O produto não recomenda uma frequência: ele a cobra. A pontuação sai da ponta
+**pessimista** do intervalo — o instante mais antigo em que a mudança poderia ter
+ocorrido —, então coletar de raro em raro custa evidência por si:
+
+| Frequência da coleta | Score de uma migração 1h antes | Confiança |
+| --- | --- | --- |
+| a cada 5 minutos | 0,95 | alta |
+| de hora em hora | 0,92 | alta |
+| a cada 6 horas | 0,71 | baixa |
+| uma vez por dia | 0,00 | baixa |
+
+Com coleta diária a mudança continua aparecendo no relatório, com a ressalva de
+que o intervalo é maior que a proximidade afirmada — mas não pontua. É honesto:
+sem saber em qual das 24 horas anteriores a migração rodou, não há proximidade a
+afirmar. A evidência diz "entre 1h e 25h antes do incidente" em vez de escolher a
+ponta mais favorável.
 
 Sobre o que é guardado, ver [ADR 0014](docs/adr/0014-schema-guarda-identificadores-nao-expressoes.md): entram nome de tabela, coluna, índice, restrição e tipo de dado; **não** entram as expressões de `DEFAULT` e de `CHECK`, que carregam valor e regra de negócio. Uma mudança de expressão é registrada como "a expressão associada mudou", sem os dois valores.
 

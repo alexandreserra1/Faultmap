@@ -373,10 +373,101 @@ func TestSchemaChangeSummaryNaoDiz0s(t *testing.T) {
 	if !found {
 		t.Fatal("DetectSchemaChangeProximity() found = false")
 	}
-	if strings.Contains(finding.Evidence[0].Summary, "0s") {
-		t.Fatalf("resumo diz 0s, que não informa nada: %q", finding.Evidence[0].Summary)
+	// A asserção é sobre duração zero apresentada como informação, não sobre a
+	// substring: "1m0s" contém "0s" e é legítimo.
+	for _, ruim := range []string{" 0s ", " 0s.", "entre 0s", "e 0s"} {
+		if strings.Contains(finding.Evidence[0].Summary, ruim) {
+			t.Fatalf("resumo apresenta duração zero como informação: %q", finding.Evidence[0].Summary)
+		}
 	}
 	if !strings.Contains(finding.Evidence[0].Summary, "menos de um minuto") {
 		t.Fatalf("resumo = %q, esperado dizer que foi menos de um minuto", finding.Evidence[0].Summary)
+	}
+}
+
+// TestIntervaloLargoCustaScore é a resposta à pergunta que o produto não
+// respondia: de quanto em quanto tempo coletar o catálogo.
+//
+// O score usava a ponta otimista do intervalo — o instante da coleta que
+// revelou a mudança —, então coletar uma vez por dia produzia a mesma pontuação
+// que coletar a cada minuto. Uma migração que rodou 22 horas antes do incidente
+// aparecia como "até 1 hora antes", porque foi só na coleta seguinte que ela foi
+// vista.
+//
+// Passando a pontuar pela ponta pessimista, a largura do intervalo custa score
+// por si. A frequência de coleta deixa de precisar de recomendação em
+// documentação: quem coleta mais vezes recebe evidência mais forte, e a
+// matemática explica o porquê sozinha.
+func TestIntervaloLargoCustaScore(t *testing.T) {
+	t.Parallel()
+
+	estreito, achouEstreito := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaDeSchema("payments", time.Hour, time.Minute)},
+		incidenteEm,
+	)
+	largo, achouLargo := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaDeSchema("payments", time.Hour, 20*time.Hour)},
+		incidenteEm,
+	)
+
+	if !achouEstreito || !achouLargo {
+		t.Fatal("as duas mudanças estão na janela e deveriam ser apresentadas")
+	}
+	if largo.Score >= estreito.Score {
+		t.Fatalf("intervalo de 20h pontuou %v, não menos que o de 1 min (%v)", largo.Score, estreito.Score)
+	}
+	// Coleta a cada minuto: a incerteza é desprezível e o score continua alto.
+	if estreito.Score < 0.94 {
+		t.Fatalf("score com intervalo estreito = %v, esperado próximo do máximo", estreito.Score)
+	}
+}
+
+// TestIntervaloMaiorQueAProximidadeRebaixaConfianca troca um limiar que não
+// dizia nada por um que diz.
+//
+// Antes, a confiança só caía quando o intervalo passava de 24 horas — então uma
+// coleta diária afirmava, com confiança alta, que a mudança ocorreu "1 hora
+// antes" sem saber em qual das 23 horas anteriores ela realmente ocorreu. O que
+// importa não é o intervalo contra a janela de busca, é o intervalo contra a
+// proximidade que se está afirmando.
+func TestIntervaloMaiorQueAProximidadeRebaixaConfianca(t *testing.T) {
+	t.Parallel()
+
+	coletaDiaria, found := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaDeSchema("payments", time.Hour, 23*time.Hour)},
+		incidenteEm,
+	)
+	if !found {
+		t.Fatal("DetectSchemaChangeProximity() found = false")
+	}
+	if coletaDiaria.Confidence != ConfidenceLow {
+		t.Fatalf("confiança = %q com intervalo de 23h para proximidade de 1h, esperado baixa",
+			coletaDiaria.Confidence)
+	}
+	if !containsLimitation(coletaDiaria.Limitations, "intervalo") {
+		t.Fatalf("limitações = %#v, esperado ressalva sobre o intervalo", coletaDiaria.Limitations)
+	}
+}
+
+// TestResumoDeclaraALarguraDoIntervalo garante que quem lê saiba o quanto a
+// proximidade é precisa, em vez de receber só a ponta mais favorável.
+func TestResumoDeclaraALarguraDoIntervalo(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaDeSchema("payments", time.Hour, 6*time.Hour)},
+		incidenteEm,
+	)
+	if !found {
+		t.Fatal("DetectSchemaChangeProximity() found = false")
+	}
+	// Com 6h de intervalo, a mudança pode ter ocorrido entre 1h e 7h antes.
+	resumo := finding.Evidence[0].Summary
+	if !strings.Contains(resumo, "1h") || !strings.Contains(resumo, "7h") {
+		t.Fatalf("resumo = %q, esperado declarar as duas pontas do intervalo", resumo)
 	}
 }

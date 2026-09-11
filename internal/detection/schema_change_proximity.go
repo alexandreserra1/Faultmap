@@ -25,7 +25,14 @@ const SchemaChangeLookback = 24 * time.Hour
 // detectSchemaChangeProximity é a forma interna, sem o vínculo com o serviço.
 type schemaChangeCandidate struct {
 	change changedomain.SchemaChange
-	age    time.Duration
+	// age é a distância até a coleta que revelou a mudança: a hipótese mais
+	// favorável, em que ela ocorreu no último instante possível.
+	age time.Duration
+	// oldestAge é a distância até a coleta anterior: a hipótese mais
+	// desfavorável, em que ela ocorreu no primeiro instante possível. É esta
+	// que pontua.
+	oldestAge  time.Duration
+	captureGap time.Duration
 }
 
 // DetectSchemaChangeProximity acusa o serviço quando uma mudança recente de
@@ -57,11 +64,20 @@ func DetectSchemaChangeProximity(
 		if !changeReachesService(change, databases, tables) {
 			continue
 		}
+		// A inclusão usa a ponta otimista: basta que a mudança POSSA ter ocorrido
+		// dentro da janela. A pontuação, mais abaixo, usa a pessimista. Incluir
+		// com generosidade e pontuar com cautela evita perder uma migração real
+		// por causa de uma coleta espaçada, sem pagar por isso em confiança.
 		age := incidentStart.Sub(change.ObservedBefore)
 		if age < 0 || age > SchemaChangeLookback {
 			continue
 		}
-		candidates = append(candidates, schemaChangeCandidate{change: change, age: age})
+		candidates = append(candidates, schemaChangeCandidate{
+			change:     change,
+			age:        age,
+			oldestAge:  incidentStart.Sub(change.ObservedAfter),
+			captureGap: change.ObservedBefore.Sub(change.ObservedAfter),
+		})
 	}
 	if len(candidates) == 0 {
 		return Finding{}, false
@@ -79,23 +95,31 @@ func DetectSchemaChangeProximity(
 	selected := candidates[0]
 
 	databaseSignals := signalsForChange(input.Incident, selected.change)
-	captureGap := selected.change.ObservedBefore.Sub(selected.change.ObservedAfter)
+	// A pontuação sai da ponta pessimista do intervalo. Com a otimista, coletar
+	// uma vez por dia rendia o mesmo score que coletar a cada minuto: uma
+	// migração de 22 horas antes aparecia como "1 hora antes" só porque foi a
+	// coleta seguinte que a revelou. Assim a largura do intervalo custa score
+	// por si, e a frequência de coleta dispensa recomendação em documentação —
+	// quem coleta mais vezes recebe evidência mais forte, e a matemática explica
+	// o porquê sozinha.
+	score := clamp(1 - selected.oldestAge.Seconds()/SchemaChangeLookback.Seconds())
 
 	confidence := ConfidenceHigh
 	limitations := []string{
 		"Proximidade temporal não prova causalidade.",
 		"A mudança foi observada entre duas coletas do catálogo; o instante exato não é conhecido.",
 	}
-	// Um intervalo entre coletas maior que a própria janela de busca torna a
-	// proximidade quase sem informação: a mudança pode ter acontecido logo antes
-	// do incidente ou muito antes dele, e o produto não tem como distinguir.
-	// Ainda assim o finding é emitido, com ressalva — silenciar esconderia uma
+	// O que importa não é o intervalo contra a janela de busca, é o intervalo
+	// contra a proximidade que se está afirmando. Uma coleta diária afirmando
+	// "ocorreu 1 hora antes" não sabe em qual das 23 horas anteriores a mudança
+	// de fato ocorreu, e chamar isso de confiança alta seria mentir sobre a
+	// precisão. O finding continua sendo emitido: silenciar esconderia uma
 	// migração real de quem investiga.
-	if captureGap > SchemaChangeLookback {
+	if selected.captureGap > selected.age {
 		confidence = ConfidenceLow
 		limitations = append(limitations, fmt.Sprintf(
-			"O intervalo entre as duas coletas foi de %s, maior que a janela de busca de %s: a proximidade com o incidente é fraca.",
-			roundedDuration(captureGap), roundedDuration(SchemaChangeLookback),
+			"O intervalo entre as coletas foi de %s, maior que a proximidade de %s afirmada: colete o catálogo com mais frequência para estreitar a evidência.",
+			roundedDuration(selected.captureGap), roundedDuration(selected.age),
 		))
 	}
 	if len(databaseSignals) < minimumSampleSize {
@@ -109,13 +133,13 @@ func DetectSchemaChangeProximity(
 	return Finding{
 		Rule:        RuleSchemaChangeProximity,
 		ServiceName: input.ServiceName,
-		Score:       clamp(1 - selected.age.Seconds()/SchemaChangeLookback.Seconds()),
+		Score:       score,
 		Confidence:  confidence,
 		Evidence: []Evidence{{
 			Summary:       schemaChangeSummary(selected),
 			ChangeIDs:     []string{selected.change.ID},
 			SignalIDs:     signalIDs(databaseSignals),
-			IncidentValue: clamp(1 - selected.age.Seconds()/SchemaChangeLookback.Seconds()),
+			IncidentValue: score,
 		}},
 		Limitations: limitations,
 	}, true
@@ -204,13 +228,16 @@ func schemaChangeSummary(candidate schemaChangeCandidate) string {
 	if table := strings.TrimSpace(change.TableName); table != "" {
 		alvo = "da tabela " + table + ", na base " + change.DatabaseName
 	}
+	// As duas pontas do intervalo vão no texto. Mostrar só a mais favorável
+	// sugeriria uma precisão que a comparação de duas fotos do catálogo não tem.
 	summary := fmt.Sprintf(
-		"O %s %s %s foi %s, observado entre coletas até %s antes do incidente.",
+		"O %s %s %s foi %s, entre %s e %s antes do incidente.",
 		schemaObjectLabel(change.ObjectKind),
 		change.ObjectName,
 		alvo,
 		schemaChangeLabel(change.ChangeKind),
 		roundedDuration(candidate.age),
+		roundedDuration(candidate.oldestAge),
 	)
 	if detail := strings.TrimSpace(change.Detail); detail != "" {
 		summary += " " + strings.ToUpper(detail[:1]) + detail[1:] + "."
@@ -253,8 +280,16 @@ func schemaChangeLabel(kind changedomain.SchemaChangeKind) string {
 // quem lê — apareceu na saída real de uma migração aplicada segundos antes da
 // janela. A frase substitui o número justamente onde o número perdeu o sentido.
 func roundedDuration(duration time.Duration) string {
-	if duration.Round(time.Minute) == 0 {
+	rounded := duration.Round(time.Minute)
+	if rounded == 0 {
 		return "menos de um minuto"
 	}
-	return duration.Round(time.Minute).String()
+	// O formato do Go escreve "1m0s" e "2h0m0s"; os zeros à direita só existem
+	// porque a unidade menor não foi suprimida, e arrastá-los para o relatório
+	// sugere uma precisão de segundos que o arredondamento acabou de descartar.
+	texto := rounded.String()
+	for _, sufixo := range []string{"m0s", "h0m"} {
+		texto = strings.TrimSuffix(texto, sufixo[1:])
+	}
+	return texto
 }

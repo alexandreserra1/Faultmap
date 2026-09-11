@@ -56,6 +56,23 @@
 
 ### Corrigido
 
+- **A frequência de coleta passou a se cobrar sozinha.** O score usava a ponta
+  otimista do intervalo — o instante da coleta que revelou a mudança —, então
+  coletar uma vez por dia rendia a mesma pontuação que coletar a cada minuto. Uma
+  migração que rodou 22 horas antes do incidente era apresentada como "até 1 hora
+  antes", com confiança alta, porque foi só na coleta seguinte que ela foi vista.
+
+  A pontuação passa a sair da ponta pessimista e a inclusão continua na otimista:
+  inclui com generosidade, pontua com cautela. Uma migração 1h antes vale 0,95
+  com coleta de 5 em 5 minutos e 0,00 com coleta diária.
+
+  A confiança também trocou de limiar. Ela caía quando o intervalo passava de 24
+  horas, o que nunca acontecia na prática; agora cai quando o intervalo é maior
+  que a proximidade afirmada — que é o que de fato torna a afirmação imprecisa.
+
+  O resumo declara as duas pontas: "entre 1h e 7h antes do incidente", em vez de
+  escolher a mais favorável.
+
 - **Identificadores de catálogo curtos e ordenáveis por tempo.** Os IDs de
   coleta e de mudança eram concatenações de até 90 caracteres começando pelo
   nome do objeto, então ordenar por ID ordenava por tabela e nunca por tempo.
