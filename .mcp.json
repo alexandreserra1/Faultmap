@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "postgres-demo": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "postgres-mcp",
+        "--access-mode=restricted"
+      ],
+      "env": {
+        "DATABASE_URI": "postgresql://demo:demo@127.0.0.1:55433/demo"
+      }
+    }
+  }
+}

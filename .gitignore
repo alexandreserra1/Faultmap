@@ -8,7 +8,14 @@ faultmap.yaml
 # Saídas locais de ferramentas Go.
 coverage.out
 
-# Grafo de conhecimento: regenerável por `graphify update`; o cache e o HTML
-# são grandes e mudam a cada execução.
+# Grafo de conhecimento.
+#
+# graph.json É versionado: a regra do CLAUDE.md manda consultá-lo antes de mudar
+# código, e um clone novo sem grafo não consegue seguir a regra. São 2,7 MB de
+# JSON que o git comprime para ~0,2 MB.
+#
+# O cache e o HTML ficam de fora: somam 7 MB, mudam inteiros a cada execução, e
+# `graphify update` os regenera. O cache guarda a extração das ADRs, que é a
+# parte cara — quem o tiver localmente não paga de novo.
 graphify-out/cache/
 graphify-out/graph.html

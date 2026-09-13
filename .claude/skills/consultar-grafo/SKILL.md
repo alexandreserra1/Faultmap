@@ -5,9 +5,18 @@ description: Use ANTES de alterar qualquer código deste repositório e antes de
 
 # Consultar o grafo antes de mudar
 
-O grafo em `graphify-out/graph.json` tem 1.565 nós e 4.665 arestas extraídas por
-AST dos arquivos Go: funções, tipos, arquivos e as ligações entre eles —
-chamadas, referências de tipo, implementações de interface.
+O grafo em `graphify-out/graph.json` tem 1.770 nós e 5.100 arestas. São duas
+camadas ligadas entre si:
+
+- **código** (1.565 nós), extraído por AST dos arquivos Go: funções, tipos,
+  arquivos, chamadas, referências de tipo, implementações de interface;
+- **razão** (205 nós), extraída das 14 ADRs, do README, do CHANGELOG, da spec do
+  MVP, dos cenários da demo e do diagrama de arquitetura — ligada ao código por
+  cerca de 90 arestas `rationale_for` e `references`.
+
+A segunda camada é a que responde *por que* o código é assim. A ADR 0014 alcança
+`CheckCollection()` em um salto; `exceedsSamplingNoise()` mostra seus chamadores
+Go e a decisão de ranking que o cita.
 
 ## Por que isso existe
 
@@ -66,14 +75,17 @@ graphify update
 3. **A que comunidade pertence?** As 18 comunidades nomeadas dizem qual parte do
    produto está sendo tocada — se a mudança atravessa fronteira de comunidade,
    ela é maior do que parece.
-4. **Existe ADR sobre isso?** O grafo cobre código, não os 14 ADRs em
-   `docs/adr/`. Se o nó estiver em ranking, privacidade, retenção ou detecção,
-   leia a ADR correspondente antes — ela registra por que a decisão é o que é.
+4. **Que decisão governa isto?** `graphify path "<nó>" "<ADR>"`, ou procure na
+   saída do `affected` os nós de razão. Quatorze ADRs estão no grafo, cada uma
+   carregando o porquê, a troca aceita e o custo assumido. Mudar código sem ler a
+   ADR que o governa é desfazer uma decisão sem saber que ela existiu.
 
 ## Limites que você precisa saber
 
-- **Só código Go.** Os 47 arquivos de documentação, incluindo as ADRs, não estão
-  no grafo. Esta é a lacuna que o item 4 acima cobre à mão.
+- **Camada de razão é inferida, não estrutural.** As arestas de código vêm de
+  AST e são fatos; as que ligam documento a símbolo foram extraídas por leitura e
+  vêm marcadas `EXTRACTED` só quando a ADR cita o símbolo pelo nome. As
+  `INFERRED` são interpretação — confira antes de tratá-las como contrato.
 - **1.144 arestas de ponta solta** (19%): referências a `time.Duration`, cobra,
   otel e stdlib, que não viram nó por estarem fora do corpus. A estrutura interna
   está íntegra; ausência de aresta para fora do projeto não significa ausência de
