@@ -433,3 +433,235 @@ func TestRankMantémFindingsSemSujeitoComoServiço(t *testing.T) {
 		t.Fatalf("sujeito = %q/%q, esperado serviço payment-service", suspects[0].Kind, suspects[0].ID)
 	}
 }
+
+// TestSchemaEDeployCompartilhamOTetoDaClasse é a razão de a regra de schema não
+// ter peso próprio. A migração normalmente acompanha o deploy: são o mesmo
+// evento visto por dois sinais. Com pesos separados, um único deploy com
+// migração somaria duas vezes e passaria à frente de um serviço que está de
+// fato falhando. O teto por classe da ADR 0010 é o que impede isso.
+func TestSchemaEDeployCompartilhamOTetoDaClasse(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{DeploymentProximity: 0.30, ErrorRateDelta: 0.50},
+		TopN:    3,
+	}
+	// O sintoma medido é forte de propósito, para que o teto relativo não morda
+	// e o que se meça aqui seja só o teto por classe.
+	findings := []detection.Finding{
+		{
+			Rule: detection.RuleErrorRateDelta, ServiceName: "payment-service",
+			Score: 1.00, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "payment-service",
+			Score: 0.90, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+			Score: 0.80, Confidence: detection.ConfidenceHigh,
+		},
+	}
+
+	suspects, err := ranking.Rank(findings, config)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	// 0.50 do sintoma mais no máximo 0.30 da classe de mudança.
+	if suspects[0].Score > config.Weights.ErrorRateDelta+config.Weights.DeploymentProximity+1e-9 {
+		t.Fatalf("score = %v, esperado no máximo sintoma + teto da classe", suspects[0].Score)
+	}
+	if math.Abs(suspects[0].Score-0.80) > 1e-9 {
+		t.Fatalf("score = %v, esperado 0.80 (0.50 medido + 0.30 de classe limitada)", suspects[0].Score)
+	}
+	// O teto limita o score, nunca a explicação: as três evidências continuam
+	// visíveis para quem investiga.
+	if len(suspects[0].Contributions) != 3 {
+		t.Fatalf("contribuições = %d, esperado 3 mesmo com o teto aplicado", len(suspects[0].Contributions))
+	}
+}
+
+// TestSchemaContribuiSemDependerDeDeploy garante que compartilhar a classe de
+// peso não signifique depender de um deploy: uma migração aplicada sozinha
+// precisa pontuar por si, desde que haja sintoma para ela sustentar.
+func TestSchemaContribuiSemDependerDeDeploy(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank(
+		[]detection.Finding{
+			{
+				Rule: detection.RuleErrorRateDelta, ServiceName: "payment-service",
+				Score: 1.00, Confidence: detection.ConfidenceHigh,
+			},
+			{
+				Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+				Score: 0.50, Confidence: detection.ConfidenceHigh,
+			},
+		},
+		ranking.Config{
+			Weights: ranking.Weights{DeploymentProximity: 0.30, ErrorRateDelta: 0.25},
+			TopN:    3,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+	// 0.25 do sintoma mais 0.15 da migração (0.50 × 0.30), que cabe no teto.
+	if math.Abs(suspects[0].Score-0.40) > 1e-9 {
+		t.Fatalf("score = %v, esperado 0.40", suspects[0].Score)
+	}
+}
+
+// TestApoioNaoPesaMaisQueOQueEleApoia é a calibração que faltava, medida na
+// demo-shop: com latência regredindo de 4 ms para 12 ms, as duas evidências
+// medidas somavam 0.20 e a proximidade de migração sozinha valia 0.20. A
+// evidência de apoio empatava com tudo o que ela deveria apenas sustentar.
+//
+// A causa é a janela: `1 - idade/24h` dá score máximo a qualquer mudança
+// recente, e "houve migração há pouco" carrega muito menos informação numa
+// janela de 24 horas do que numa de uma. O teto relativo corrige sem inventar
+// constante nova — sintoma forte, o apoio pesa; sintoma marginal, o apoio fica
+// marginal junto.
+func TestApoioNaoPesaMaisQueOQueEleApoia(t *testing.T) {
+	t.Parallel()
+
+	config := ranking.Config{
+		Weights: ranking.Weights{
+			DeploymentProximity: 0.30,
+			LatencyDelta:        0.10,
+		},
+		TopN: 3,
+	}
+	suspects, err := ranking.Rank([]detection.Finding{
+		{
+			Rule: detection.RuleLatencyDelta, ServiceName: "payment-service",
+			Score: 0.60, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+			Score: 1.00, Confidence: detection.ConfidenceHigh,
+		},
+	}, config)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 1 {
+		t.Fatalf("suspeitos = %d, esperado 1", len(suspects))
+	}
+
+	// Sintoma medido: 0.60 × 0.10 = 0.06. O apoio valeria 1.00 × 0.30 = 0.30 e
+	// fica limitado a 0.06, então o total é 0.12.
+	if math.Abs(suspects[0].Score-0.12) > 1e-9 {
+		t.Fatalf("score = %v, esperado 0.12 (0.06 medido + 0.06 de apoio limitado)", suspects[0].Score)
+	}
+	// O teto limita o score, nunca a explicação: é a mesma doutrina da ADR 0010.
+	if len(suspects[0].Contributions) != 2 {
+		t.Fatalf("contribuições = %d, esperado as duas visíveis", len(suspects[0].Contributions))
+	}
+}
+
+// TestApoioIntactoQuandoOSintomaEhForte garante que o teto não castigue o caso
+// que a regra existe para servir: migração recente com regressão grande junto.
+func TestApoioIntactoQuandoOSintomaEhForte(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank([]detection.Finding{
+		{
+			Rule: detection.RuleErrorRateDelta, ServiceName: "payment-service",
+			Score: 1.00, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleSchemaChangeProximity, ServiceName: "payment-service",
+			Score: 1.00, Confidence: detection.ConfidenceHigh,
+		},
+	}, ranking.Config{
+		Weights: ranking.Weights{ErrorRateDelta: 0.25, DeploymentProximity: 0.20},
+		TopN:    3,
+	})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	// Sintoma 0.25 é maior que o apoio 0.20: o teto não morde e o total é 0.45.
+	if math.Abs(suspects[0].Score-0.45) > 1e-9 {
+		t.Fatalf("score = %v, esperado 0.45 sem o teto morder", suspects[0].Score)
+	}
+}
+
+// TestServicoSoComProximidadeNaoEhSuspeito fecha estruturalmente a exposição que
+// deployment_proximity sempre teve: ele dispara em sistema saudável se houve
+// deploy na última hora, e nunca apareceu porque nenhum cenário do modo difícil
+// ingere deployments. Sem sintoma, o apoio é limitado a zero e não sobra
+// suspeito nenhum.
+func TestServicoSoComProximidadeNaoEhSuspeito(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank([]detection.Finding{{
+		Rule: detection.RuleDeploymentProximity, ServiceName: "payment-service",
+		Score: 0.95, Confidence: detection.ConfidenceHigh,
+	}}, ranking.Config{
+		Weights: ranking.Weights{DeploymentProximity: 0.30, ErrorRateDelta: 0.25},
+		TopN:    3,
+	})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(suspects) != 0 {
+		t.Fatalf("suspeitos = %d, esperado nenhum: proximidade sozinha não é sintoma: %#v",
+			len(suspects), suspects)
+	}
+}
+
+// TestCommitContinuaSuspeitoMesmoSemSintomaProprio protege a decisão de acusar
+// o commit implantado, que é a informação mais acionável de um incidente
+// causado por deploy.
+//
+// Um commit só tem evidência de mudança por construção: ele nasce do mesmo
+// finding de proximidade que acusa o serviço. Aplicar o teto relativo a ele o
+// zeraria sempre, apagando o recurso inteiro. O teto vale para serviço, que tem
+// sintoma próprio a comparar; o commit não é um serviço com sintomas, ele é a
+// mudança.
+func TestCommitContinuaSuspeitoMesmoSemSintomaProprio(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank([]detection.Finding{
+		{
+			Rule: detection.RuleErrorRateDelta, ServiceName: "payment-service",
+			Score: 0.80, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "payment-service",
+			Score: 0.90, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "payment-service",
+			SubjectKind: detection.SubjectCommit, SubjectID: "abc123",
+			SubjectLabel: "commit abc123 — trocar índice",
+			Score:        0.90, Confidence: detection.ConfidenceHigh,
+		},
+	}, ranking.Config{
+		Weights: ranking.Weights{ErrorRateDelta: 0.25, DeploymentProximity: 0.30},
+		TopN:    5,
+	})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+
+	var commit *ranking.Suspect
+	for indice := range suspects {
+		if suspects[indice].Kind == detection.SubjectCommit {
+			commit = &suspects[indice]
+		}
+	}
+	if commit == nil {
+		t.Fatalf("o commit sumiu do ranking: %#v", suspects)
+	}
+	if math.Abs(commit.Score-0.27) > 1e-9 {
+		t.Fatalf("score do commit = %v, esperado 0.27 (0.90 × 0.30) sem teto relativo", commit.Score)
+	}
+}

@@ -80,3 +80,25 @@ func TestFailureMessageUsaStatusAntesDaExceção(t *testing.T) {
 		t.Fatalf("FailureMessage() = %q, esperado a mensagem do status", valor)
 	}
 }
+
+// TestDatabaseNameAceitaAsDuasConvencoes protege a ligação entre uma mudança de
+// schema e o serviço que fala com aquela base. O OpenTelemetry estabilizou
+// `db.namespace`, mas as instrumentações em uso seguem emitindo `db.name`;
+// reconhecer só uma delas deixaria o detector de schema cego exatamente como o
+// produto já ficou duas vezes com `db.system` e `http.status_code`.
+func TestDatabaseNameAceitaAsDuasConvencoes(t *testing.T) {
+	t.Parallel()
+
+	for name, attributes := range map[string]map[string]string{
+		"convenção estável":        {"db.namespace": "payments"},
+		"convenção anterior":       {"db.name": "payments"},
+		"as duas, vence a estável": {"db.namespace": "payments", "db.name": "legado"},
+	} {
+		if got := semconv.DatabaseName(attributes); got != "payments" {
+			t.Fatalf("%s: DatabaseName() = %q, esperado %q", name, got, "payments")
+		}
+	}
+	if got := semconv.DatabaseName(map[string]string{"db.system": "postgresql"}); got != "" {
+		t.Fatalf("DatabaseName() sem o atributo = %q, esperado vazio", got)
+	}
+}

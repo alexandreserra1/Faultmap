@@ -89,6 +89,48 @@ diferente de silêncio por não ter olhado.
 exercitados apenas por cenários que nós desenhamos. Isso não os torna errados,
 mas é honesto registrar que não foram confrontados com a realidade.
 
+## Confronto com um catálogo de falhas alheio
+
+As frases de causas comuns foram escritas por quem conhece o produto, o que é
+exatamente o problema: elas poderiam descrever um vocabulário que só serve aos
+nossos cenários. O teste foi confrontá-las com as **15 falhas injetáveis do
+OpenTelemetry Demo** — um sistema de mais de vinte serviços poliglotas, com uma
+taxonomia de falhas que não escrevemos.
+
+O detector mais exigido, `latency_delta`, orientava sobre **três das sete**
+classes de falha que produzem latência naquele catálogo. Faltavam:
+
+| Falha real | Estava na frase? |
+| --- | --- |
+| `adManualGc` — pausa de coleta de lixo | não |
+| `recommendationCacheFailure` — cache parou de servir | não |
+| `kafkaQueueProblems` — acúmulo em fila com consumidor atrasado | não |
+| `failedReadinessProbe` — instância fora de rotação | não, como perda de capacidade |
+
+A frase foi reescrita e um teste passou a exigir que cada classe do catálogo
+apareça na regra que dispararia para ela.
+
+**A primeira versão da minha verificação passou por acidente**, e vale registrar
+como: ela procurava as palavras no texto de todas as regras juntas, e encontrava
+"cache" em `version_regression` — falando de aquecimento após deploy — e "fila"
+em `trace_break` — falando de perda de contexto por proxy ou fila no caminho. A
+palavra existia no lugar errado, e o relatório dizia 9 de 11 cobertas quando a
+resposta honesta era 3 de 7 na regra que importava.
+
+### Uma lacuna que texto não resolve
+
+`kafkaQueueProblems` expõe algo além da frase: **não existe detector de atraso de
+consumidor**. O `semconv` lê `messaging.operation.name` e
+`messaging.destination.name`, e o `retry_storm` os usa para distinguir operações
+repetidas — mas nada mede acúmulo de fila ou defasagem de consumo.
+
+Num sistema com fila, esse é um modo de falha de primeira classe: o produtor
+segue saudável, o consumidor atrasa, e o sintoma aparece minutos depois em outro
+lugar. Hoje o Faultmap veria o efeito e não a origem.
+
+Fica registrado como limitação conhecida, não como trabalho a antecipar: um
+detector novo só se justifica depois de ver telemetria real de fila.
+
 ## O que este piloto NÃO valida
 
 ```text

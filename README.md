@@ -31,11 +31,11 @@ O resultado deve listar os suspeitos mais prováveis, suas contribuições de sc
 1. Aplicações enviam traces por OTLP ao OpenTelemetry Collector.
 2. O Faultmap normaliza e armazena os sinais no SQLite.
 3. Ao diagnosticar um incidente, ele compara a janela atual com uma baseline anterior.
-4. Detectores determinísticos encontram mudanças como aumento de erros, latência, timeout e falhas de banco, retry storm, regressão entre versões, falha propagada por dependência e perda de ligação entre serviços.
+4. Detectores determinísticos encontram mudanças como aumento de erros, latência, timeout e falhas de banco, retry storm, regressão entre versões, falha propagada por dependência, perda de ligação entre serviços e mudança recente de schema numa base que o serviço consulta.
 5. Um grafo de evidências conecta serviços, traces, deploys, commits e operações de banco.
 6. O mecanismo de ranking gera os principais suspeitos e relatórios em terminal, JSON, Markdown e Mermaid.
 
-O motor de diagnóstico não depende de LLM. Integrações futuras com LLMs, agentes ou MCP apenas consumirão e explicarão os resultados estruturados.
+O motor de diagnóstico não depende de LLM. O servidor MCP (`faultmap mcp`) apenas **lê** o que o motor já produziu: ele não investiga, não ingere e não apaga nada.
 
 ## Escopo do MVP
 
@@ -43,7 +43,7 @@ O motor de diagnóstico não depende de LLM. Integrações futuras com LLMs, age
 - ingestão OTLP e importação de fixtures;
 - comparação entre incident e baseline;
 - detectores determinísticos e ranking auditável;
-- correlação inicial com GitHub e PostgreSQL;
+- correlação inicial com GitHub e PostgreSQL, incluindo mudanças de catálogo;
 - ambiente `demo-shop` reproduzível com Docker Compose;
 - relatórios para terminal, JSON, Markdown e Mermaid.
 
@@ -78,6 +78,8 @@ Os alvos individuais continuam disponíveis: `make fmt`, `make fmt-check`,
 - `make fmt` aplica a formatação padrão do Go;
 - `make test` executa a suíte de testes;
 - `make test-race` executa a suíte com detecção de condições de corrida;
+- `make test-integration` sobe um PostgreSQL descartável e roda os testes que exigem um servidor real; sem ele, esses testes se marcam como ignorados e o `make verify` segue verde;
+- `make demo-test-hard` roda os cenários de falso positivo, incluindo `migracao-inofensiva`, que aplica uma migração real e exige silêncio em sistema saudável;
 - `make vet` executa as verificações estáticas padrão do Go.
 
 ### Criar um workspace local
@@ -561,6 +563,73 @@ A configuração acima bloqueia esses dois atributos **e** os cinco padrões. De
 
 Logs entram sem o texto da mensagem. `privacy.store_raw_logs` permanece no arquivo por compatibilidade e não tem efeito.
 
+## Mudanças de schema
+
+Uma migração é uma das explicações mais frequentes para um incidente, e era a única que o Faultmap citava sem observar. A coleta compara duas leituras do catálogo:
+
+```bash
+export FAULTMAP_PG_DSN="postgres://usuario:senha@host:5432/payments?sslmode=disable"
+faultmap ingest schema --database payments
+```
+
+A primeira execução estabelece a linha de base e não acusa nada. A partir da segunda, cada coleta registra o que mudou desde a anterior: tabela, coluna, índice ou restrição adicionada, removida ou alterada.
+
+Coletas e mudanças recebem identificadores de 26 caracteres com o instante à frente, então ordenar por ID é ordenar cronologicamente. Eles são derivados do conteúdo, e não sorteados: recoletar o mesmo catálogo produz os mesmos identificadores, que é o que mantém a coleta idempotente.
+
+Objetos são identificados com o schema à frente (`public.pedidos.valor`), porque um banco PostgreSQL quase nunca tem um schema só. Uma coleta que volte sem coluna nenhuma é **recusada** em vez de comparada: é a assinatura de um usuário que perdeu `SELECT` no catálogo, e não de uma migração.
+
+A DSN vem do ambiente e **não** é gravada no `faultmap.yaml`, que o `init` promete criar sem tokens nem credenciais. A coleta é somente leitura: nenhum slot de replicação, nenhuma extensão, nenhum privilégio além de `SELECT` no catálogo.
+
+O detector `schema_change_proximity` acusa um serviço quando uma mudança recente atingiu uma **tabela ou base que ele de fato consulta** — o vínculo vem dos spans de banco da janela do incidente, e não de configuração declarada. A tabela vem primeiro porque a instrumentação real quase sempre emite `db.collection.name` e quase nunca `db.namespace`, e porque ela é uma ligação mais estreita que a base. A janela de busca é de 24 horas, mais larga que a do deployment porque uma migração raramente quebra no instante em que roda.
+
+A mudança de schema é **evidência de apoio**: ela só aparece quando o serviço já tem algum sintoma observado na janela. Uma migração sem efeito observável não é evidência de nada, e um ranking que sempre acha um culpado é indistinguível de um que adivinha.
+
+Duas limitações vão declaradas em todo finding produzido:
+
+- o instante da mudança é um **intervalo entre duas coletas**, não um instante;
+- proximidade temporal não prova causalidade, como em todo o resto do produto.
+
+### De quanto em quanto tempo coletar
+
+O produto não recomenda uma frequência: ele a cobra. A pontuação sai da ponta
+**pessimista** do intervalo — o instante mais antigo em que a mudança poderia ter
+ocorrido —, então coletar de raro em raro custa evidência por si:
+
+| Frequência da coleta | Score de uma migração 1h antes | Confiança |
+| --- | --- | --- |
+| a cada 5 minutos | 0,95 | alta |
+| de hora em hora | 0,92 | alta |
+| a cada 6 horas | 0,71 | baixa |
+| uma vez por dia | 0,00 | baixa |
+
+Com coleta diária a mudança continua aparecendo no relatório, com a ressalva de
+que o intervalo é maior que a proximidade afirmada — mas não pontua. É honesto:
+sem saber em qual das 24 horas anteriores a migração rodou, não há proximidade a
+afirmar. A evidência diz "entre 1h e 25h antes do incidente" em vez de escolher a
+ponta mais favorável.
+
+Sobre o que é guardado, ver [ADR 0014](docs/adr/0014-schema-guarda-identificadores-nao-expressoes.md): entram nome de tabela, coluna, índice, restrição e tipo de dado; **não** entram as expressões de `DEFAULT` e de `CHECK`, que carregam valor e regra de negócio. Uma mudança de expressão é registrada como "a expressão associada mudou", sem os dois valores.
+
+## Servidor MCP
+
+`faultmap mcp` expõe os diagnósticos já registrados a clientes MCP, por stdin/stdout:
+
+```bash
+faultmap mcp --config ./faultmap-local/faultmap.yaml
+```
+
+São três ferramentas, todas de leitura:
+
+| Ferramenta | O que devolve |
+| --- | --- |
+| `list_incidents` | os diagnósticos registrados, do mais recente ao mais antigo |
+| `get_incident` | o diagnóstico completo: janelas, hipóteses com evidência e proveniência, suspeitos e limitações |
+| `explain_suspect` | cada parcela do score de um suspeito, o que a sustenta e as hipóteses que não pontuaram |
+
+**Não existe ferramenta que dispare investigação, ingira dados ou apague nada.** É uma decisão, não uma etapa pendente: o motor do Faultmap é determinístico, e o papel de um LLM é consumir e explicar o resultado estruturado. Isso também zera a superfície de privacidade — tudo que sai já passou pela política aplicada na ingestão, então o servidor não tem como revelar o que a ingestão barrou.
+
+Como stdout é o transporte do protocolo, a auditoria de chamadas sai por stderr. Ela registra instante, ferramenta e desfecho, sem os argumentos.
+
 ## Decisões arquiteturais
 
 As decisões cujo motivo não é dedutível do código estão registradas em [`docs/adr/`](docs/adr/).
@@ -571,15 +640,15 @@ A especificação é modular e sua leitura completa é obrigatória antes de imp
 
 ## Estado atual
 
-O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf e logs OTLP em JSON (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, gera a cronologia `timeline.json`, aplica a política de retenção, reconstrói o grafo de um trace e o exporta em Mermaid.
+O núcleo funcional do MVP está implementado. A CLI inicializa o workspace, recebe traces OTLP HTTP em JSON/protobuf e logs OTLP em JSON (incluindo gzip), importa traces OTLP de arquivo, coleta commits/deployments do GitHub e o catálogo de bases PostgreSQL, consulta a telemetria, diagnostica e persiste incidentes, recupera o histórico de snapshots, exporta relatórios JSON/Markdown, gera a cronologia `timeline.json`, aplica a política de retenção, reconstrói o grafo de um trace e o exporta em Mermaid, e expõe os diagnósticos registrados por MCP.
 
-São doze detectores: aumento de erros HTTP, aumento de latência, timeout PostgreSQL, erro de banco fora de timeout, aumento de latência de banco, correlação desses impactos pelo mesmo `trace_id`, repetição anormal da mesma operação por trace, proximidade de deployment com correspondência de versão, regressão entre versões que convivem na mesma janela, falha de dependência downstream, quebra de propagação de trace que surgiu no incidente, e logs de erro correlacionados a requisições que falharam. Todos comparam duas janelas: nenhum reporta estado absoluto, porque um serviço que sempre erra descreve o próprio sistema e não o incidente. O ranking agrega essas evidências com pesos configuráveis, contribuições auditáveis e teto por classe de peso.
+São treze detectores: aumento de erros HTTP, aumento de latência, timeout PostgreSQL, erro de banco fora de timeout, aumento de latência de banco, correlação desses impactos pelo mesmo `trace_id`, repetição anormal da mesma operação por trace, proximidade de deployment com correspondência de versão, regressão entre versões que convivem na mesma janela, falha de dependência downstream, quebra de propagação de trace que surgiu no incidente, logs de erro correlacionados a requisições que falharam, e mudança de schema recente numa base que o serviço consulta. Os doze primeiros comparam duas janelas: nenhum reporta estado absoluto, porque um serviço que sempre erra descreve o próprio sistema e não o incidente. O ranking agrega essas evidências com pesos configuráveis, contribuições auditáveis e teto por classe de peso.
 
 Cada evidência declara também o que aquele padrão de sinais **costuma** significar — lock, saturação de pool, consulta sem índice — sempre com mais de uma possibilidade, porque o produto não afirma causalidade ([ADR 0013](docs/adr/0013-evidencia-diz-o-que-o-padrao-costuma-significar.md)).
 
 A `demo-shop` instrumentada reproduz seis falhas controladas, e a matriz E2E automatizada cobre os seis cenários com bancos isolados, telemetria OTLP real e expectativas determinísticas; o cenário de timeout também importa commit/deployment de um mock GitHub local e comprova a correspondência com `service.version`.
 
-O [piloto cego](examples/pilot/) levou o produto a uma aplicação que não é nossa: top-1 em três de três cenários de ranking, incluindo o caso em que culpado e vítima ficaram lentos quase igual e o desempate veio da evidência de banco. Dois dos doze detectores dispararam em telemetria real; os outros dez seguem exercitados apenas por cenários que nós desenhamos. O [resultado](examples/pilot/resultado.md) registra isso em vez de contar o silêncio deles como cobertura.
+O [piloto cego](examples/pilot/) levou o produto a uma aplicação que não é nossa: top-1 em três de três cenários de ranking, incluindo o caso em que culpado e vítima ficaram lentos quase igual e o desempate veio da evidência de banco. Dois dos treze detectores dispararam em telemetria real; os outros onze seguem exercitados apenas por cenários que nós desenhamos — o de mudança de schema entre eles, verificado contra um PostgreSQL real mas ainda não contra um incidente que ninguém planejou. O [resultado](examples/pilot/resultado.md) registra isso em vez de contar o silêncio deles como cobertura.
 
 O que ainda **não** foi validado: nenhum incidente **inesperado**, que ninguém tenha planejado, passou pelo produto. E não sabemos ainda se a frase de causas comuns muda a hipótese que uma pessoa formula — é o que o próximo piloto mede.
 

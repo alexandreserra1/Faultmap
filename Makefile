@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check verify test test-race vet demo-up demo-down demo-logs demo-test-e2e demo-test-hard
+.PHONY: fmt fmt-check verify test test-race vet test-integration demo-up demo-down demo-logs demo-test-e2e demo-test-hard
 
 # fmt aplica a formatação padrão do Go em todos os pacotes do módulo.
 fmt:
@@ -29,6 +29,28 @@ test:
 # test-race executa a suíte de testes com detecção de condições de corrida.
 test-race:
 	go test -race ./...
+
+# test-integration sobe um PostgreSQL descartável e roda a suíte contra ele.
+#
+# Sem FAULTMAP_TEST_PG_DSN os testes de integração se marcam como ignorados e o
+# `make verify` segue verde, o que mantém a suíte rodável sem Docker. O que só
+# aparece aqui é o que um mock não pode provar: que as consultas são PostgreSQL
+# válido e que o catálogo real contém o que supomos. Os dois defeitos de
+# catálogo já corrigidos — as restrições internas nomeadas com OID e a colisão
+# entre schemas homônimos — apareceram exclusivamente por esta porta.
+test-integration:
+	@container=faultmap-pg-test; \
+	docker rm -f $$container >/dev/null 2>&1 || true; \
+	docker run -d --rm --name $$container \
+		-e POSTGRES_PASSWORD=faultmap -e POSTGRES_DB=faultmap \
+		-p 55432:5432 postgres:16-alpine >/dev/null; \
+	trap 'docker rm -f '"$$container"' >/dev/null 2>&1 || true' EXIT INT TERM; \
+	for attempt in $$(seq 1 60); do \
+		docker exec $$container pg_isready -U postgres >/dev/null 2>&1 && break; \
+		sleep 1; \
+	done; \
+	FAULTMAP_TEST_PG_DSN="postgres://postgres:faultmap@localhost:55432/faultmap?sslmode=disable" \
+		go test ./... -run Integracao -count=1
 
 # vet executa as verificações estáticas padrão do Go.
 vet:

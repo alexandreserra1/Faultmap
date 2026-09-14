@@ -38,6 +38,9 @@ const (
 	RuleDatabaseError = "database_error"
 	// RuleVersionRegression compara duas versões do mesmo serviço ativas na janela de incidente.
 	RuleVersionRegression = "version_regression"
+	// RuleSchemaChangeProximity identifica mudança de catálogo observada pouco
+	// antes do incidente em uma base que o serviço consulta.
+	RuleSchemaChangeProximity = "schema_change_proximity"
 
 	minimumSampleSize = 5
 

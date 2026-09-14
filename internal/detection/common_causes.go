@@ -19,9 +19,21 @@ var commonCauses = map[string]string{
 	RuleErrorRateDelta: "Costuma vir de mudança recém-implantada, dependência indisponível, " +
 		"esgotamento de recurso como conexões ou memória, ou entrada inesperada que " +
 		"o código não trata.",
-	RuleLatencyDelta: "Costuma vir de dependência lenta, contenção por recurso compartilhado, " +
-		"aumento de carga sem capacidade correspondente, ou trabalho novo introduzido " +
-		"na requisição.",
+	// Esta é a frase mais exigida do produto, porque latência aumenta em quase
+	// todo incidente. O confronto com o catálogo do OpenTelemetry Demo mostrou
+	// que a versão anterior orientava sobre três das sete classes de falha que
+	// produzem latência ali: faltavam pausa de runtime, cache que parou de
+	// servir e acúmulo em fila.
+	//
+	// Os itens são agrupados em vez de enumerados um a um. Uma lista de dez
+	// causas não é mais útil que uma de cinco — a literatura de explicabilidade
+	// mostra que textos longos são percebidos como mais plausíveis
+	// independentemente da qualidade, o que é justamente o efeito a evitar.
+	RuleLatencyDelta: "Costuma vir de dependência lenta, contenção por recurso compartilhado " +
+		"como CPU, memória ou cache que parou de servir, perda de capacidade por " +
+		"instância fora de rotação ou por aumento de carga sem capacidade " +
+		"correspondente, acúmulo em fila com consumidor atrasado, pausa de runtime como " +
+		"coleta de lixo, ou trabalho novo introduzido na requisição.",
 	RuleDatabaseTimeout: "Costuma vir de lock retido por transação longa, saturação do pool de " +
 		"conexões, consulta que passou a varrer a tabela inteira, ou limite de tempo " +
 		"reduzido no cliente.",
@@ -49,6 +61,10 @@ var commonCauses = map[string]string{
 	RuleDatabaseError: "Costuma vir de violação de restrição por dado inesperado, migração de " +
 		"schema incompatível com o código em execução, permissão alterada, ou " +
 		"transação abortada por conflito.",
+	RuleSchemaChangeProximity: "Costuma vir de coluna adicionada ou removida que o código em " +
+		"execução ainda espera de outra forma, índice removido ou ainda não " +
+		"construído, tipo alterado que muda o plano de consulta, ou lock retido pela " +
+		"própria migração enquanto ela rodava.",
 	RuleVersionRegression: "Costuma vir da diferença de código entre as versões, mas também de " +
 		"configuração distinta entre as instâncias, ou de rollout parcial em que a " +
 		"versão nova ainda não aqueceu caches e conexões.",

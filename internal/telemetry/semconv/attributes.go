@@ -27,6 +27,7 @@ var (
 	httpStatusCodeKeys    = []string{"http.response.status_code", "http.status_code"}
 	databaseSystemKeys    = []string{"db.system.name", "db.system"}
 	databaseOperationKeys = []string{"db.operation.name", "db.operation"}
+	databaseNameKeys      = []string{"db.namespace", "db.name"}
 	failureTypeKeys       = []string{"error.type", "exception.type"}
 	// O status descreve o span inteiro; a exceção descreve um evento dentro
 	// dele. Por isso o status vem primeiro.
@@ -55,6 +56,16 @@ func DatabaseSystem(attributes map[string]string) string {
 // DatabaseOperation devolve a operação de banco, quando a instrumentação a emite.
 func DatabaseOperation(attributes map[string]string) string {
 	return firstNonEmpty(attributes, databaseOperationKeys)
+}
+
+// DatabaseName devolve o nome da base acessada pelo span.
+//
+// É o que liga uma mudança de catálogo ao serviço que fala com aquela base. Sem
+// esse vínculo, a proximidade entre uma migração e um incidente seria só
+// coincidência temporal: qualquer migração em qualquer base acusaria qualquer
+// serviço.
+func DatabaseName(attributes map[string]string) string {
+	return firstNonEmpty(attributes, databaseNameKeys)
 }
 
 // FailureType devolve o tipo da falha registrada no span.

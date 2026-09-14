@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	changedomain "github.com/faultmap/faultmap/internal/changes/domain"
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	githubintegration "github.com/faultmap/faultmap/internal/integrations/github"
+	postgresintegration "github.com/faultmap/faultmap/internal/integrations/postgres"
+	mcpserver "github.com/faultmap/faultmap/internal/mcp"
 	"github.com/faultmap/faultmap/internal/platform/config"
 	"github.com/faultmap/faultmap/internal/ranking"
 	"github.com/faultmap/faultmap/internal/reporting/artifacts"
@@ -24,6 +27,10 @@ import (
 	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
 	"github.com/faultmap/faultmap/internal/telemetry/privacy"
 	"github.com/spf13/cobra"
+
+	// O driver é registrado por efeito colateral; o coletor de catálogo recebe
+	// apenas um *sql.DB e não conhece qual driver o abriu.
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 // newRootCommand monta a CLI principal do Faultmap e seus subcomandos.
@@ -42,6 +49,7 @@ func newRootCommand() *cobra.Command {
 	root.AddCommand(newExplainCommand())
 	root.AddCommand(newExportCommand())
 	root.AddCommand(newRetentionCommand())
+	root.AddCommand(newMCPCommand())
 	return root
 }
 
@@ -637,6 +645,51 @@ func newInitCommand() *cobra.Command {
 	return command
 }
 
+// newMCPCommand expõe os diagnósticos já registrados a clientes MCP.
+//
+// A sessão fala JSON-RPC por stdin e stdout, então nada além do protocolo pode
+// ser escrito na saída padrão: a auditoria vai para stderr, e as mensagens de
+// erro do Cobra também. Um "Faultmap iniciado." aqui corromperia o aperto de
+// mão de todo cliente.
+func newMCPCommand() *cobra.Command {
+	var configPath string
+
+	command := &cobra.Command{
+		Use:   "mcp",
+		Short: "Expõe diagnósticos registrados por MCP (somente leitura)",
+		// O servidor não investiga nem ingere: ele lê o que o Faultmap já
+		// analisou. A decisão está documentada no pacote internal/mcp.
+		SilenceUsage: true,
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			return mcpserver.Serve(command.Context(), mcpserver.Options{
+				Input:   command.InOrStdin(),
+				Output:  command.OutOrStdout(),
+				Audit:   command.ErrOrStderr(),
+				History: storage.NewDiagnosisRepository(database),
+			})
+		},
+	}
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
+	return command
+}
+
 // newIngestCommand agrupa as entradas que transformam telemetria externa em sinais internos.
 func newIngestCommand() *cobra.Command {
 	command := &cobra.Command{
@@ -645,6 +698,81 @@ func newIngestCommand() *cobra.Command {
 	}
 	command.AddCommand(newIngestFileCommand())
 	command.AddCommand(newIngestGitHubCommand())
+	command.AddCommand(newIngestSchemaCommand())
+	return command
+}
+
+// newIngestSchemaCommand coleta o catálogo de uma base PostgreSQL e registra o
+// que mudou desde a coleta anterior.
+//
+// A DSN vem por variável de ambiente, e não da configuração: o `init` promete
+// criar um faultmap.yaml sem tokens nem credenciais, e uma senha de banco no
+// arquivo do projeto contradiz isso. O nome da base é gravado; a forma de
+// conectar nela, não.
+func newIngestSchemaCommand() *cobra.Command {
+	var configPath string
+	var databaseName string
+
+	command := &cobra.Command{
+		Use:   "schema",
+		Short: "Coleta o catálogo de uma base PostgreSQL",
+		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			databaseName = strings.TrimSpace(databaseName)
+			if databaseName == "" {
+				return fmt.Errorf("ingerir catálogo: --database é obrigatório")
+			}
+			dsn := strings.TrimSpace(os.Getenv("FAULTMAP_PG_DSN"))
+			if dsn == "" {
+				return fmt.Errorf("ingerir catálogo: FAULTMAP_PG_DSN é obrigatório")
+			}
+
+			loadedConfig, err := config.Load(command.Context(), configPath)
+			if err != nil {
+				return fmt.Errorf("carregar configuração: %w", err)
+			}
+			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			if err != nil {
+				return err
+			}
+			defer func() {
+				if closeErr := database.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+				}
+			}()
+			if err := storage.Migrate(command.Context(), database); err != nil {
+				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+			}
+
+			source, err := sql.Open("pgx", dsn)
+			if err != nil {
+				return fmt.Errorf("ingerir catálogo: abrir conexão PostgreSQL: %w", err)
+			}
+			defer func() {
+				if closeErr := source.Close(); closeErr != nil && runErr == nil {
+					runErr = fmt.Errorf("fechar conexão PostgreSQL: %w", closeErr)
+				}
+			}()
+
+			client, err := postgresintegration.NewClient(source, databaseName, nil)
+			if err != nil {
+				return err
+			}
+			result, err := application.IngestSchema(
+				command.Context(), client, storage.NewSchemaRepository(database),
+			)
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(
+				command.OutOrStdout(),
+				"Coletados %d objetos do catálogo de %s; %d mudanças desde a coleta anterior.\n",
+				result.ObjectsCollected, databaseName, result.ChangesPersisted,
+			)
+			return err
+		},
+	}
+	command.Flags().StringVar(&databaseName, "database", "", "nome da base observada")
+	command.Flags().StringVar(&configPath, "config", "faultmap.yaml", "caminho da configuração YAML")
 	return command
 }
 
@@ -1019,6 +1147,11 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 				storage.NewScopeRepository(database),
 				storage.NewSignalRepository(database),
 				deploymentReader,
+				// O leitor de catálogo é sempre ligado: quem nunca rodou
+				// `ingest schema` simplesmente não tem mudanças para correlacionar,
+				// e a consulta em lote não é feita quando a janela não traz spans
+				// de banco nomeando uma base.
+				storage.NewSchemaRepository(database),
 			)
 			if err != nil {
 				return err

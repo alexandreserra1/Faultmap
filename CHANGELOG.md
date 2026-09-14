@@ -1,5 +1,217 @@
 # Changelog
 
+## Não publicado
+
+### Adicionado
+
+- **Mudança de schema como sinal de incidente.** O produto já dizia, em duas
+  regras, que migração de schema é uma explicação frequente — o texto de causas
+  comuns de `deployment_proximity` cita "migração de schema que acompanhou o
+  deploy", e o de `database_error` cita "migração de schema incompatível com o
+  código em execução" — e não observava nenhuma. Quem investigava recebia a
+  hipótese e tinha que sair do Faultmap para verificá-la.
+
+  `faultmap ingest schema --database <base>` lê o catálogo PostgreSQL, compara
+  com a leitura anterior e registra o que mudou. A nova regra
+  `schema_change_proximity` acusa o serviço quando uma mudança recente atingiu
+  uma base que ele de fato consulta — o vínculo vem dos spans de banco da janela,
+  não de configuração declarada. Sem esse vínculo seria coincidência temporal:
+  qualquer migração em qualquer base acusaria qualquer serviço com problema no
+  mesmo horário.
+
+  A janela de busca é de 24 horas, contra uma hora do deployment. Um deploy que
+  quebra costuma quebrar de imediato; uma migração quebra quando o código que a
+  pressupõe encontra o schema, ou quando o volume cresce o bastante para que a
+  falta do índice apareça.
+
+  A regra divide a classe de peso com `deployment_proximity` em vez de ter peso
+  próprio, porque na prática costumam ser o mesmo evento. Com pesos separados, um
+  único deploy com migração somaria duas vezes e passaria à frente de um serviço
+  que está de fato falhando; o teto por classe da ADR 0010 impede isso.
+
+  Custo aceito: o instante da mudança é um **intervalo entre duas coletas**, não
+  um instante, e isso vai declarado como limitação em todo finding. Uma mudança
+  feita e revertida entre duas coletas é invisível — o produto prefere não ver a
+  inventar um instante que não mediu. A replicação lógica daria precisão maior e
+  não serve: ela não decodifica DDL, e capturá-lo por ali exigiria instalar event
+  triggers na base de quem usa o produto. Ver ADR 0014.
+
+- **Servidor MCP somente leitura.** `faultmap mcp` expõe os diagnósticos já
+  registrados a clientes MCP por três ferramentas — `list_incidents`,
+  `get_incident` e `explain_suspect`. Não há ferramenta que dispare investigação,
+  ingira dados ou apague nada, e isso é posição do produto: o motor é
+  determinístico, e o papel de um LLM é consumir e explicar o resultado
+  estruturado, não participar da análise.
+
+  Ser somente leitura também zera a superfície de privacidade: tudo que sai já
+  passou pela política aplicada na ingestão, então o servidor não tem como
+  revelar o que a ingestão barrou. As evidências viajam acompanhadas da frase de
+  causas comuns da ADR 0013, pelo mesmo motivo que a apresentação ao humano:
+  uma medida sozinha não evoca a lista que alguém experiente teria de imediato.
+
+  O protocolo é escrito à mão, sem SDK: MCP sobre stdio é pequeno, o `go.mod`
+  segue com as mesmas 12 dependências diretas e a sessão inteira é exercitada em
+  memória, sem subir processo. O custo é acompanhar a evolução da especificação
+  manualmente.
+
+### Corrigido
+
+- **A frequência de coleta passou a se cobrar sozinha.** O score usava a ponta
+  otimista do intervalo — o instante da coleta que revelou a mudança —, então
+  coletar uma vez por dia rendia a mesma pontuação que coletar a cada minuto. Uma
+  migração que rodou 22 horas antes do incidente era apresentada como "até 1 hora
+  antes", com confiança alta, porque foi só na coleta seguinte que ela foi vista.
+
+  A pontuação passa a sair da ponta pessimista e a inclusão continua na otimista:
+  inclui com generosidade, pontua com cautela. Uma migração 1h antes vale 0,95
+  com coleta de 5 em 5 minutos e 0,00 com coleta diária.
+
+  A confiança também trocou de limiar. Ela caía quando o intervalo passava de 24
+  horas, o que nunca acontecia na prática; agora cai quando o intervalo é maior
+  que a proximidade afirmada — que é o que de fato torna a afirmação imprecisa.
+
+  O resumo declara as duas pontas: "entre 1h e 7h antes do incidente", em vez de
+  escolher a mais favorável.
+
+- **Identificadores de catálogo curtos e ordenáveis por tempo.** Os IDs de
+  coleta e de mudança eram concatenações de até 90 caracteres começando pelo
+  nome do objeto, então ordenar por ID ordenava por tabela e nunca por tempo.
+
+  O novo formato tem 26 caracteres: 48 bits de instante em milissegundos, base32
+  de Crockford, seguidos de 80 bits de resumo do conteúdo. A ordenação
+  lexicográfica passa a ser a cronológica, e o mesmo índice do SQLite serve às
+  duas.
+
+  Os 80 bits finais são resumo, e não entropia aleatória como no ULID e no
+  UUIDv7, porque a persistência é idempotente por `ON CONFLICT(id) DO NOTHING` e
+  o produto promete que a mesma entrada produz a mesma saída. Com entropia,
+  recoletar o mesmo catálogo gravaria tudo de novo como se fossem mudanças
+  inéditas. O que se perde é a imprevisibilidade — quem conhece o conteúdo
+  recalcula o ID —, e isso não pesa aqui porque nenhum identificador do Faultmap
+  é segredo nem serve de credencial.
+
+  O alfabeto exclui I, L, O e U, então não há confusão entre 1 e I ou 0 e O para
+  quem lê um ID em um relatório.
+
+  Coletas feitas antes desta mudança mantêm os identificadores antigos e
+  continuam sendo lidas normalmente — o ID é opaco e nunca é interpretado. Só a
+  ordenação por ID mistura os dois formatos, com os antigos no fim. Como a
+  funcionalidade nunca foi publicada, nenhuma instalação é afetada; um workspace
+  local de desenvolvimento pode ser recriado se a ordenação incomodar.
+
+- **Evidência de apoio pesava mais que a evidência que ela apoia.** Medindo na
+  demo-shop, uma latência que regrediu de 4 ms para 12 ms valia 0.07 e a
+  proximidade de migração valia 0.20 sozinha: o apoio superava em três vezes
+  tudo o que deveria apenas sustentar.
+
+  A causa está na janela. `1 - idade/24h` dá score máximo a qualquer mudança
+  recente, e "houve migração há pouco" carrega muito menos informação em 24
+  horas do que na janela de uma hora do deployment.
+
+  A contribuição da classe de mudança passa a ser limitada à soma das evidências
+  medidas do mesmo suspeito. O teto se ajusta sozinho — sintoma forte, o apoio
+  pesa; sintoma marginal, o apoio fica marginal junto — e não inventa constante
+  nova para ninguém defender depois.
+
+  Sem sintoma algum o apoio vira zero e o serviço deixa de ser suspeito, o que
+  fecha estruturalmente a exposição que `deployment_proximity` sempre teve:
+  disparar sozinho em sistema saudável quando houve deploy na última hora.
+
+  O commit fica de fora do teto. Ele só tem evidência de mudança por construção,
+  então aplicá-lo ali zeraria todo commit e apagaria a acusação que é a
+  informação mais acionável de um incidente causado por deploy.
+
+  Custo assumido: uma migração que foi a causa única, com sintoma pequeno mas
+  real, fica presa ao tamanho do sintoma. É a mesma troca conservadora de
+  `exceedsSamplingNoise`.
+
+- **O modo difícil não exercitava regra de proximidade de mudança nenhuma.** Os
+  cinco cenários nunca coletam schema nem ingerem deployments, então tanto
+  `schema_change_proximity` quanto `deployment_proximity` passavam por eles sem
+  serem executados uma única vez. Uma regra que o modo difícil não consegue
+  exercitar não está protegida por ele — foi por essa fresta que o falso positivo
+  abaixo entrou.
+
+  O cenário `migracao-inofensiva` fecha isso: aplica uma migração real antes da
+  janela, mantém o sistema saudável e exige silêncio. Ele recusa passar por
+  vacuidade — se a coleta não registrar mudança alguma, falha, porque aí o
+  silêncio não provaria nada. `schema_change_proximity` também entrou na lista de
+  regras proibidas do `sem-culpado`.
+
+  O cenário inclui uma rodada de aquecimento descartada antes da baseline. Sem
+  ela a primeira janela mede processo frio e a segunda mede processo quente, e a
+  diferença aparece como regressão de latência real — o cenário passaria a medir
+  o quanto a máquina está ocupada em vez do que se propõe a medir.
+
+- **Uma migração inofensiva acusava um sistema saudável.** A regra de schema
+  disparava sozinha: bastava existir uma mudança recente numa tabela que o
+  serviço consulta. Contra a `demo-shop`, com 200 requisições e zero falhas, o
+  produto apontava o `payment-service` com **confiança alta** porque alguém havia
+  adicionado uma coluna que ninguém usa.
+
+  É o falso positivo que o cenário `sem-culpado` do modo difícil existe para
+  proibir — ele exige "Nenhuma anomalia determinística" em sistema saudável — e a
+  regra passava por ele apenas porque nenhum cenário do modo difícil coleta
+  schema.
+
+  A mudança de schema passa a ser **evidência de apoio**, apresentada só quando o
+  serviço já tem algum sintoma observado. Nenhum caso real se perde: uma migração
+  que quebrou alguma coisa acende também erro, latência ou falha de banco. O que
+  deixa de aparecer é exatamente a migração que não fez nada.
+
+- **O detector de schema nunca dispararia contra instrumentação real.** Ele
+  exigia o nome da base (`db.namespace` ou `db.name`) para ligar uma migração ao
+  serviço. Medindo 199 spans de banco de uma aplicação instrumentada, todos
+  traziam `db.collection.name` e **nenhum** trazia o nome da base: a regra ficaria
+  permanentemente calada ali, sem erro e sem aviso, exatamente o defeito que as
+  ADRs 0006 e 0011 registram.
+
+  O vínculo passa a aceitar a tabela, que é uma ligação mais estreita que a base:
+  uma migração em `payments` e um serviço que consulta `payments` diz mais do que
+  "os dois usam o mesmo PostgreSQL". Sem nenhum dos dois observados o detector
+  continua calado — só "ambos falam PostgreSQL" nunca liga nada a nada.
+
+  Encontrado rodando contra a `demo-shop`; todos os testes passavam porque a
+  telemetria deles fui eu quem escreveu, com `db.namespace` dentro.
+
+- **"observado até 0s antes do incidente".** O arredondamento para minuto
+  transformava uma migração de vinte e poucos segundos em "0s", que não informa
+  nada. Apareceu na saída real da demo-shop.
+
+- **Uma requisição grande demais encerrava a sessão MCP inteira.** O
+  enquadramento por linha usava `bufio.Scanner`, que trata linha acima do teto
+  como falha de leitura — e não como uma mensagem ruim. Um cliente defeituoso
+  derrubava a investigação de quem estava do outro lado, exatamente a propriedade
+  que o servidor prometia ter. Agora responde erro, descarta o excedente até a
+  quebra de linha e segue atendendo.
+
+- **Perder privilégio no banco viraria "o schema inteiro foi removido".**
+  `information_schema` filtra por privilégio: um usuário sem `SELECT` nas tabelas
+  recebe zero linhas **com sucesso**, sem erro nenhum. A comparação leria isso
+  como remoção em massa, e no incidente seguinte todo serviço que fala com a base
+  apareceria acusado por uma mudança produzida por uma permissão revogada.
+
+  Medindo contra um PostgreSQL real, a coleta cega não chega vazia:
+  `information_schema.columns` devolve nada enquanto `pg_indexes` continua
+  devolvendo os índices. Uma guarda que olhasse só o total deixaria passar
+  justamente esse caso. O critério passou a ser a ausência total de colunas, que
+  é onde ele não tem falso positivo — tabela não existe sem coluna.
+
+- **Objetos de schemas diferentes colidiam.** O nome era `tabela.coluna`, sem o
+  schema, então `public.pedidos.valor` e `tenant_a.pedidos.valor` viravam a mesma
+  chave: uma mudança mascarava a outra. Encontrado pela suíte de integração,
+  quando dois testes criaram tabelas homônimas em schemas diferentes na mesma
+  base — a situação normal de qualquer instalação multi-inquilino.
+
+- **Restrições implícitas de NOT NULL apareceriam como migração fantasma.** O
+  PostgreSQL as nomeia com OIDs — `2200_16385_1_not_null` —, e o OID muda quando
+  a tabela é recriada: recriar uma tabela sem alterar nada acusaria uma restrição
+  removida e outra adicionada durante um incidente. Descoberto rodando a coleta
+  contra um PostgreSQL real, e não contra o mock.
+
+- **Índice das ADRs estava sem a 0012 e a 0013.** Os arquivos existiam e não
+  apareciam na tabela de `docs/adr/README.md`.
+
 ## v0.5.0 — 2026-08-20
 
 A primeira release moldada por um **piloto cego**: o produto foi levado a uma

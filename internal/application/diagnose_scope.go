@@ -12,6 +12,7 @@ import (
 	incidentdomain "github.com/faultmap/faultmap/internal/incidents/domain"
 	"github.com/faultmap/faultmap/internal/ranking"
 	"github.com/faultmap/faultmap/internal/telemetry/domain"
+	"github.com/faultmap/faultmap/internal/telemetry/semconv"
 )
 
 const (
@@ -99,6 +100,15 @@ type ScopedDeploymentReader interface {
 	ListCommitMessagesBySHA(ctx context.Context, shas []string, limit int) (map[string]string, error)
 }
 
+// ScopedSchemaChangeReader carrega as mudanças de catálogo de todas as bases do
+// escopo em uma consulta.
+type ScopedSchemaChangeReader interface {
+	ListSchemaChangesForScope(
+		ctx context.Context, databases []string, tables []string,
+		start time.Time, end time.Time, limit int,
+	) ([]changedomain.SchemaChange, error)
+}
+
 // DiagnoseIncidentInScope compara vários serviços na mesma investigação.
 //
 // Antes desta função o diagnóstico analisava um serviço por vez, então o
@@ -116,6 +126,7 @@ func DiagnoseIncidentInScope(
 	scopeReader ScopeReader,
 	signalReader ScopedSignalReader,
 	deploymentReader ScopedDeploymentReader,
+	schemaReader ScopedSchemaChangeReader,
 ) (Diagnosis, error) {
 	if err := request.validate(); err != nil {
 		return Diagnosis{}, err
@@ -153,6 +164,11 @@ func DiagnoseIncidentInScope(
 		return Diagnosis{}, err
 	}
 
+	schemaChanges, err := loadScopeSchemaChanges(ctx, request, incident, schemaReader)
+	if err != nil {
+		return Diagnosis{}, err
+	}
+
 	baselineByService := signalsByService(baseline)
 	incidentByService := signalsByService(incident)
 	findings := make([]detection.Finding, 0, len(scope.Services)*3)
@@ -178,6 +194,10 @@ func DiagnoseIncidentInScope(
 	findings = append(findings, detection.DetectDependencyFailure(baseline, incident)...)
 	findings = append(findings, detection.DetectTraceBreak(baseline, incident)...)
 
+	findings = append(findings, corroboratedSchemaFindings(
+		scope, incidentByService, baselineByService, schemaChanges, findings, request.Windows.Incident.Start,
+	)...)
+
 	suspects, err := ranking.Rank(findings, request.Ranking)
 	if err != nil {
 		return Diagnosis{}, fmt.Errorf("diagnosticar incidente: ranquear suspeitos: %w", err)
@@ -199,6 +219,59 @@ func DiagnoseIncidentInScope(
 		Suspects:            suspects,
 		Scope:               scope,
 	}, nil
+}
+
+// corroboratedSchemaFindings só apresenta a mudança de schema de um serviço que
+// já tem algum sintoma observado.
+//
+// Uma migração sem efeito observável não é evidência de nada. Sem esta
+// corroboração o produto acusava, com confiança alta, um serviço em que 200
+// requisições passaram sem uma única falha — porque alguém havia adicionado uma
+// coluna que ninguém usa. É o falso positivo que o cenário `sem-culpado`
+// existe para proibir: um ranking que sempre acha um culpado é indistinguível
+// de um que adivinha.
+//
+// Nenhum caso real se perde. Uma migração que quebrou alguma coisa acende
+// também erro, latência ou falha de banco — o índice removido aparece como
+// database_latency_delta, a coluna incompatível como error_rate_delta. O que
+// deixa de aparecer é exatamente a migração que não fez nada.
+//
+// A corroboração roda depois dos detectores entre serviços, e não dentro do
+// laço por serviço, porque dependency_failure e trace_break também são sintoma:
+// um serviço cujo único sinal é falhar sob outro merece a mudança de schema na
+// explicação tanto quanto um que registrou erro próprio.
+func corroboratedSchemaFindings(
+	scope DiagnosisScope,
+	incidentByService, baselineByService map[string][]domain.Signal,
+	schemaChanges []changedomain.SchemaChange,
+	observed []detection.Finding,
+	incidentStart time.Time,
+) []detection.Finding {
+	if len(schemaChanges) == 0 {
+		return nil
+	}
+	withSymptom := make(map[string]struct{}, len(scope.Services))
+	for _, finding := range observed {
+		if service := strings.TrimSpace(finding.ServiceName); service != "" {
+			withSymptom[service] = struct{}{}
+		}
+	}
+
+	corroborated := make([]detection.Finding, 0, len(scope.Services))
+	for _, service := range scope.Services {
+		if _, symptomatic := withSymptom[service]; !symptomatic {
+			continue
+		}
+		finding, found := detection.DetectSchemaChangeProximity(detection.Input{
+			ServiceName: service,
+			Baseline:    baselineByService[service],
+			Incident:    incidentByService[service],
+		}, schemaChanges, incidentStart)
+		if found {
+			corroborated = append(corroborated, finding)
+		}
+	}
+	return corroborated
 }
 
 func (request ScopedDiagnosisRequest) validate() error {
@@ -418,6 +491,73 @@ func loadCommitMessages(
 		return nil, fmt.Errorf("diagnosticar incidente: carregar mensagens de commit: %w", err)
 	}
 	return messages, nil
+}
+
+// loadScopeSchemaChanges busca em lote as mudanças das bases que o escopo de
+// fato consultou na janela.
+//
+// As bases saem da telemetria, e não de configuração: quem responde de quem é a
+// dependência é o span que foi observado. Isso também mantém a consulta
+// pequena, porque uma instalação com dezenas de bases só pergunta pelas poucas
+// que apareceram no incidente.
+func loadScopeSchemaChanges(
+	ctx context.Context,
+	request ScopedDiagnosisRequest,
+	incident []domain.Signal,
+	schemaReader ScopedSchemaChangeReader,
+) ([]changedomain.SchemaChange, error) {
+	if schemaReader == nil {
+		return nil, nil
+	}
+	databases, tables := databaseTargetsInWindow(incident)
+	if len(databases) == 0 && len(tables) == 0 {
+		return nil, nil
+	}
+	changes, err := schemaReader.ListSchemaChangesForScope(
+		ctx,
+		databases,
+		tables,
+		request.Windows.Incident.Start.Add(-detection.SchemaChangeLookback),
+		request.Windows.Incident.Start,
+		request.Limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("diagnosticar incidente: carregar mudanças de schema: %w", err)
+	}
+	return changes, nil
+}
+
+// databaseTargetsInWindow lista, em ordem estável, as bases e as tabelas
+// nomeadas pelos spans de banco da janela.
+//
+// As duas listas existem porque a instrumentação real raramente traz ambas:
+// medindo uma aplicação instrumentada, todos os spans de banco declaravam a
+// tabela e nenhum declarava a base. Pedir só por base deixaria a consulta vazia
+// e o detector permanentemente calado.
+func databaseTargetsInWindow(signals []domain.Signal) (databases, tables []string) {
+	seenDatabases := make(map[string]struct{})
+	seenTables := make(map[string]struct{})
+	for _, signal := range signals {
+		if semconv.DatabaseSystem(signal.Attributes) == "" {
+			continue
+		}
+		if name := strings.TrimSpace(semconv.DatabaseName(signal.Attributes)); name != "" {
+			seenDatabases[name] = struct{}{}
+		}
+		if table := strings.TrimSpace(semconv.DatabaseCollection(signal.Attributes)); table != "" {
+			seenTables[table] = struct{}{}
+		}
+	}
+	return sortedKeys(seenDatabases), sortedKeys(seenTables)
+}
+
+func sortedKeys(values map[string]struct{}) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func deploymentsForService(deployments []changedomain.Deployment, service string) []changedomain.Deployment {

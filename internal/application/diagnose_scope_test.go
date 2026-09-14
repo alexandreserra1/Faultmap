@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -127,7 +128,7 @@ func TestDiagnoseScopeRanqueiaVáriosServiços(t *testing.T) {
 		Limit:        500,
 		MaxServices:  10,
 		Ranking:      testRankingConfig(),
-	}, scope, signals, nil)
+	}, scope, signals, nil, nil)
 	if err != nil {
 		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
 	}
@@ -180,7 +181,7 @@ func TestDiagnoseScopeConsultaDeploymentsEmLote(t *testing.T) {
 		Limit:        500,
 		MaxServices:  10,
 		Ranking:      testRankingConfig(),
-	}, scope, signals, deployments); err != nil {
+	}, scope, signals, deployments, nil); err != nil {
 		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
 	}
 
@@ -212,7 +213,7 @@ func TestDiagnoseScopeSemExpansãoMantémUmServiço(t *testing.T) {
 		MaxServices:  10,
 		NoExpand:     true,
 		Ranking:      testRankingConfig(),
-	}, scope, signals, nil)
+	}, scope, signals, nil, nil)
 	if err != nil {
 		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
 	}
@@ -241,14 +242,14 @@ func TestDiagnoseScopeIDNãoDependeDoEscopoDescoberto(t *testing.T) {
 	primeiro, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
 		EntryService: "checkout-service", Windows: windows, Limit: 500, MaxServices: 10,
 		Ranking: testRankingConfig(),
-	}, &scopeReaderFake{vizinhos: []string{"checkout-service"}}, &scopedSignalReaderFake{}, nil)
+	}, &scopeReaderFake{vizinhos: []string{"checkout-service"}}, &scopedSignalReaderFake{}, nil, nil)
 	if err != nil {
 		t.Fatalf("primeira execução erro = %v", err)
 	}
 	segundo, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
 		EntryService: "checkout-service", Windows: windows, Limit: 500, MaxServices: 10,
 		Ranking: testRankingConfig(),
-	}, &scopeReaderFake{vizinhos: []string{"checkout-service", "payment-service"}}, &scopedSignalReaderFake{}, nil)
+	}, &scopeReaderFake{vizinhos: []string{"checkout-service", "payment-service"}}, &scopedSignalReaderFake{}, nil, nil)
 	if err != nil {
 		t.Fatalf("segunda execução erro = %v", err)
 	}
@@ -305,6 +306,7 @@ func TestDiagnoseScopeDesempataPeloServiçoMaisProfundo(t *testing.T) {
 	},
 		&scopeReaderFake{vizinhos: []string{"checkout-service", "payment-service"}, traceCount: 20},
 		&scopedSignalReaderFake{baseline: baseline, incident: incident},
+		nil,
 		nil,
 	)
 	if err != nil {
@@ -398,7 +400,7 @@ func TestDiagnoseScopeAlcançaSegundoSalto(t *testing.T) {
 	umSalto, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
 		EntryService: "checkout-service", Windows: windows, Limit: 500,
 		MaxServices: 10, Depth: 1, Ranking: testRankingConfig(),
-	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil)
+	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil, nil)
 	if err != nil {
 		t.Fatalf("um salto erro = %v", err)
 	}
@@ -411,7 +413,7 @@ func TestDiagnoseScopeAlcançaSegundoSalto(t *testing.T) {
 	doisSaltos, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
 		EntryService: "checkout-service", Windows: windows, Limit: 500,
 		MaxServices: 10, Depth: 2, Ranking: testRankingConfig(),
-	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil)
+	}, &scopeReaderNiveis{porOrigem: topologia}, &scopedSignalReaderFake{}, nil, nil)
 	if err != nil {
 		t.Fatalf("dois saltos erro = %v", err)
 	}
@@ -460,7 +462,7 @@ func TestDiagnoseScopeParaQuandoNãoHáNovosServiços(t *testing.T) {
 	if _, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
 		EntryService: "a-service", Windows: windows, Limit: 500,
 		MaxServices: 10, Depth: 5, Ranking: testRankingConfig(),
-	}, fake, &scopedSignalReaderFake{}, nil); err != nil {
+	}, fake, &scopedSignalReaderFake{}, nil, nil); err != nil {
 		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
 	}
 
@@ -508,6 +510,7 @@ func TestDiagnoseScopeAcusaOCommitImplantado(t *testing.T) {
 		&scopeReaderFake{vizinhos: []string{"checkout-service"}, traceCount: 20},
 		&scopedSignalReaderFake{baseline: baseline, incident: incidente},
 		deployments,
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
@@ -584,6 +587,7 @@ func TestDiagnoseScopeRejeitaEntradaInválidaAntesDasConsultas(t *testing.T) {
 			if _, err := DiagnoseIncidentInScope(
 				context.Background(), testCase.request,
 				&scopeReaderFake{}, signals, nil,
+				nil,
 			); err == nil {
 				t.Fatal("erro = nil para entrada inválida")
 			}
@@ -606,5 +610,345 @@ func sinalComVersao(prefixo string, indice int, instante time.Time, status int, 
 			"service.version":           versao,
 		},
 		Measurements: map[string]float64{"duration_ms": 12},
+	}
+}
+
+type scopedSchemaReaderFake struct {
+	changes      []changedomain.SchemaChange
+	consultas    int
+	basesPedidas [][]string
+}
+
+func (fake *scopedSchemaReaderFake) ListSchemaChangesForScope(
+	_ context.Context, databases []string, _ []string, _ time.Time, _ time.Time, _ int,
+) ([]changedomain.SchemaChange, error) {
+	fake.consultas++
+	fake.basesPedidas = append(fake.basesPedidas, append([]string(nil), databases...))
+	return fake.changes, nil
+}
+
+func escopoSpanDeBanco(servico, base string, indice int, instante time.Time) domain.Signal {
+	return domain.Signal{
+		ID:          servico + "-db-" + strconv.Itoa(indice),
+		ServiceName: servico,
+		Timestamp:   instante,
+		Attributes: map[string]string{
+			"db.system.name":    "postgresql",
+			"db.namespace":      base,
+			"db.operation.name": "SELECT",
+		},
+		Measurements: map[string]float64{"duration_ms": 12},
+	}
+}
+
+// TestDiagnoseScopeCorrelacionaMudancaDeSchema liga as pontas: a coleta do
+// catálogo vira suspeita no diagnóstico do serviço que fala com aquela base.
+//
+// O incidente traz consultas lentas de propósito. A mudança de schema é
+// evidência de apoio, não acusação isolada: sem nenhum sintoma observado ela
+// não é apresentada, o que TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel
+// cobre do outro lado.
+func TestDiagnoseScopeCorrelacionaMudancaDeSchema(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 3, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	baseline := make([]domain.Signal, 0, 20)
+	incident := make([]domain.Signal, 0, 20)
+	for indice := 0; indice < 10; indice++ {
+		rapido := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart.Add(-time.Minute))
+		rapido.Measurements = map[string]float64{"duration_ms": 10}
+		baseline = append(baseline, rapido)
+
+		// O índice removido deixou as consultas lentas: é o sintoma que a
+		// mudança de schema passa a corroborar em vez de acusar sozinha.
+		lento := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart)
+		lento.ID = "incident-" + strconv.Itoa(indice)
+		lento.Measurements = map[string]float64{"duration_ms": 800}
+		incident = append(incident, lento)
+	}
+
+	schema := &scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
+		ID:           "schema:payments:index:idx_payments_created_at:removed",
+		DatabaseName: "payments", TableName: "payments",
+		ObjectKind: changedomain.SchemaObjectIndex,
+		ObjectName: "idx_payments_created_at", ChangeKind: changedomain.SchemaChangeRemoved,
+		ObservedAfter:  incidentStart.Add(-3 * time.Hour),
+		ObservedBefore: incidentStart.Add(-2 * time.Hour),
+	}}}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service",
+		Windows:      windows,
+		Limit:        500,
+		MaxServices:  10,
+		Ranking:      testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{baseline: baseline, incident: incident},
+		nil,
+		schema,
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	var encontrado bool
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleSchemaChangeProximity {
+			encontrado = true
+			if finding.ServiceName != "payment-service" {
+				t.Fatalf("finding acusou %q, esperado payment-service", finding.ServiceName)
+			}
+		}
+	}
+	if !encontrado {
+		t.Fatalf("nenhum finding de %s em %#v", detection.RuleSchemaChangeProximity, diagnosis.Findings)
+	}
+
+	// Uma consulta para todo o escopo, e não uma por serviço: o N+1 cresceria
+	// justamente quando o incidente é mais amplo.
+	if schema.consultas != 1 {
+		t.Fatalf("consultas de schema = %d, esperado 1 em lote", schema.consultas)
+	}
+	if len(schema.basesPedidas) != 1 || len(schema.basesPedidas[0]) != 1 || schema.basesPedidas[0][0] != "payments" {
+		t.Fatalf("bases pedidas = %#v, esperado apenas as observadas na telemetria", schema.basesPedidas)
+	}
+}
+
+// TestDiagnoseScopeSemLeitorDeSchemaSegueFuncionando garante que a correlação
+// de catálogo seja opcional: quem não coleta schema continua diagnosticando.
+func TestDiagnoseScopeSemLeitorDeSchemaSegueFuncionando(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 3, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	if _, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service",
+		Windows:      windows,
+		Limit:        500,
+		MaxServices:  10,
+		Ranking:      testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{},
+		nil,
+		nil,
+	); err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() sem leitor de schema erro = %v", err)
+	}
+}
+
+type leitorDeSchemaQueFalha struct{ erro error }
+
+func (fake leitorDeSchemaQueFalha) ListSchemaChangesForScope(
+	_ context.Context, _ []string, _ []string, _ time.Time, _ time.Time, _ int,
+) ([]changedomain.SchemaChange, error) {
+	return nil, fake.erro
+}
+
+// TestDiagnoseScopeFalhaQuandoOLeitorDeSchemaFalha impede um diagnóstico
+// silenciosamente incompleto: se a leitura das mudanças falhou, o relatório não
+// pode sair como se não houvesse mudança alguma. Quem investiga leria a ausência
+// do sinal como evidência de que não houve migração.
+func TestDiagnoseScopeFalhaQuandoOLeitorDeSchemaFalha(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 3, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	incident := make([]domain.Signal, 0, 10)
+	for indice := 0; indice < 10; indice++ {
+		incident = append(incident, escopoSpanDeBanco("payment-service", "payments", indice, incidentStart))
+	}
+
+	falha := errors.New("banco indisponível")
+	_, err = DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{incident: incident},
+		nil,
+		leitorDeSchemaQueFalha{erro: falha},
+	)
+	if err == nil {
+		t.Fatal("DiagnoseIncidentInScope() escondeu a falha do leitor de schema")
+	}
+	if !errors.Is(err, falha) {
+		t.Fatalf("erro = %v, esperado envolver a causa", err)
+	}
+}
+
+// TestDiagnoseScopeNaoConsultaSchemaSemSpanDeBanco garante que uma investigação
+// sem banco envolvido não gaste consulta nenhuma.
+func TestDiagnoseScopeNaoConsultaSchemaSemSpanDeBanco(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 3, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	schema := &scopedSchemaReaderFake{}
+	if _, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "frontend", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"frontend"}},
+		&scopedSignalReaderFake{incident: []domain.Signal{{
+			ID: "http-1", ServiceName: "frontend", Timestamp: incidentStart,
+			Attributes: map[string]string{"http.response.status_code": "500"},
+		}}},
+		nil,
+		schema,
+	); err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+	if schema.consultas != 0 {
+		t.Fatalf("consultas de schema = %d, esperado 0 sem span de banco na janela", schema.consultas)
+	}
+}
+
+// TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel é o modo difícil aplicado à
+// regra de schema, e vem de vê-la falhar contra a demo-shop.
+//
+// Com 200 requisições bem-sucedidas, zero falhas e nenhuma anomalia de qualquer
+// tipo, o produto acusava o serviço com confiança alta porque alguém havia
+// adicionado uma coluna que ninguém usa. Uma migração sem efeito observável não
+// é evidência de nada, e o cenário `sem-culpado` exige silêncio exatamente aí:
+// um ranking que sempre acha um culpado é indistinguível de um que adivinha.
+func TestDiagnoseScopeNaoAcusaSchemaEmSistemaSaudavel(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	// Baseline e incidente idênticos: nada mudou no comportamento do serviço.
+	saudavel := func(prefixo string, instante time.Time) []domain.Signal {
+		signals := make([]domain.Signal, 0, 20)
+		for indice := 0; indice < 20; indice++ {
+			signals = append(signals, escopoSpanDeBanco("payment-service", "payments", indice, instante))
+			signals[len(signals)-1].ID = prefixo + "-" + strconv.Itoa(indice)
+		}
+		return signals
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{
+			baseline: saudavel("baseline", incidentStart.Add(-time.Minute)),
+			incident: saudavel("incident", incidentStart),
+		},
+		nil,
+		&scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
+			ID:           "schema:payments:column:public.payments.nota:added",
+			DatabaseName: "payments", TableName: "payments",
+			ObjectKind: changedomain.SchemaObjectColumn, ObjectName: "public.payments.nota",
+			ChangeKind:     changedomain.SchemaChangeAdded,
+			ObservedAfter:  incidentStart.Add(-2 * time.Hour),
+			ObservedBefore: incidentStart.Add(-time.Hour),
+		}}},
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleSchemaChangeProximity {
+			t.Fatalf("acusou mudança de schema sem nenhum sintoma observado: %#v", finding)
+		}
+	}
+	if len(diagnosis.Suspects) != 0 {
+		t.Fatalf("sistema saudável produziu %d suspeito(s): %#v", len(diagnosis.Suspects), diagnosis.Suspects)
+	}
+}
+
+// TestDiagnoseScopeAcusaSchemaQuandoHaSintoma é o outro lado: a migração vira
+// evidência assim que existe algo observado para ela sustentar. Nenhum caso
+// real se perde com a corroboração — uma migração que quebrou alguma coisa
+// sempre acende também erro, latência ou falha de banco.
+func TestDiagnoseScopeAcusaSchemaQuandoHaSintoma(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 8, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	baseline := make([]domain.Signal, 0, 20)
+	incident := make([]domain.Signal, 0, 20)
+	for indice := 0; indice < 20; indice++ {
+		rapido := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart.Add(-time.Minute))
+		rapido.ID = "baseline-" + strconv.Itoa(indice)
+		rapido.Measurements = map[string]float64{"duration_ms": 10}
+		baseline = append(baseline, rapido)
+
+		// O índice removido pela migração deixou as consultas lentas.
+		lento := escopoSpanDeBanco("payment-service", "payments", indice, incidentStart)
+		lento.ID = "incident-" + strconv.Itoa(indice)
+		lento.Measurements = map[string]float64{"duration_ms": 800}
+		incident = append(incident, lento)
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "payment-service", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"payment-service"}},
+		&scopedSignalReaderFake{baseline: baseline, incident: incident},
+		nil,
+		&scopedSchemaReaderFake{changes: []changedomain.SchemaChange{{
+			ID:           "schema:payments:index:public.idx_payments_created_at:removed",
+			DatabaseName: "payments", TableName: "payments",
+			ObjectKind: changedomain.SchemaObjectIndex, ObjectName: "public.idx_payments_created_at",
+			ChangeKind:     changedomain.SchemaChangeRemoved,
+			ObservedAfter:  incidentStart.Add(-2 * time.Hour),
+			ObservedBefore: incidentStart.Add(-time.Hour),
+		}}},
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	var encontrado bool
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleSchemaChangeProximity {
+			encontrado = true
+		}
+	}
+	if !encontrado {
+		t.Fatalf("a migração não foi apresentada apesar do sintoma observado: %#v", diagnosis.Findings)
 	}
 }
