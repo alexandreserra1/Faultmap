@@ -56,6 +56,20 @@
 
 ### Corrigido
 
+- **Sessão efêmera com `faultmap init --ephemeral`.** Cria o workspace no
+  diretório temporário do sistema, para experimentar o produto sem deixar
+  `faultmap.yaml`, `faultmap.db` e `faultmap-out/` no diretório de trabalho. O
+  comando imprime o caminho e o `--config` a usar em seguida.
+
+  O banco continua sendo um arquivo. Um banco em memória parecia a solução óbvia
+  e não funciona aqui: cada comando é um processo separado e eles compartilham
+  estado através do arquivo, então `ingest` gravaria numa base que o `diagnose`
+  seguinte abriria vazia — respondendo "nenhuma anomalia encontrada" sem erro
+  algum, que é a pior falha possível em um produto de diagnóstico.
+
+  A limpeza é declarada como manual, e não prometida: o `init` termina antes de o
+  workspace ser usado, então não existe momento em que ele pudesse apagar.
+
 - **Retenção para os catálogos de schema.** Cada coleta grava o catálogo inteiro
   como JSON, e a pontuação pessimista da proximidade passou a cobrar coleta
   frequente — o incentivo que o produto criou encheria o disco de quem o segue.

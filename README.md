@@ -96,6 +96,27 @@ O comando imprime `Faultmap inicializado.` e cria os seguintes artefatos dentro 
 - `faultmap.db`: banco SQLite com o schema inicial migrado;
 - `faultmap-out/`: diretório reservado para relatórios e outras saídas futuras.
 
+### Sessão efêmera
+
+Para experimentar sem deixar arquivos no seu projeto:
+
+```bash
+faultmap init --ephemeral
+```
+
+O workspace é criado no diretório temporário do sistema e o comando imprime o
+caminho e o `--config` a usar nos comandos seguintes.
+
+O banco continua sendo um arquivo, e isso é proposital: cada comando do Faultmap
+é um processo separado — `serve` ingere em um, `diagnose` lê em outro — e eles
+compartilham estado através dele. Um banco em memória faria o segundo processo
+abrir uma base vazia e responder "nenhuma anomalia encontrada" sem erro algum.
+
+**Efêmero significa "fora do seu projeto", não "apagado ao sair".** O `init`
+termina antes de o workspace ser usado, então não há momento em que ele pudesse
+limpar; o sistema operacional recicla o diretório temporário, e quem quiser
+remoção imediata apaga o caminho impresso.
+
 O `init` não sobrescreve artefatos existentes. Para criar novamente o mesmo workspace, remova explicitamente apenas o diretório que você escolheu para ele:
 
 ```bash

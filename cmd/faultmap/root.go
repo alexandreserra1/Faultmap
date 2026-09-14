@@ -616,11 +616,25 @@ func newBlameTraceCommand() *cobra.Command {
 // newInitCommand cria um workspace local do Faultmap e aplica seu schema inicial.
 func newInitCommand() *cobra.Command {
 	var projectDir string
+	var ephemeral bool
 
 	command := &cobra.Command{
 		Use:   "init",
 		Short: "Cria a configuração e a base local do Faultmap",
 		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			// As duas flags respondem à mesma pergunta — onde fica o workspace —
+			// e atender uma calando a outra faria a pessoa procurar arquivos no
+			// lugar errado.
+			if ephemeral && command.Flags().Changed("directory") {
+				return fmt.Errorf("inicializar: use --ephemeral ou --directory, não os dois")
+			}
+			if ephemeral {
+				temporary, err := application.EphemeralProjectDir()
+				if err != nil {
+					return err
+				}
+				projectDir = temporary
+			}
 			if err := application.InitializeProject(command.Context(), projectDir); err != nil {
 				return err
 			}
@@ -642,11 +656,29 @@ func newInitCommand() *cobra.Command {
 				return fmt.Errorf("aplicar migrations SQLite: %w", err)
 			}
 
+			if ephemeral {
+				// O caminho vem antes de qualquer outra coisa: sem ele a sessão
+				// é inalcançável. E a limpeza é declarada como manual porque o
+				// `init` termina antes de o workspace ser usado — não existe
+				// momento em que ele pudesse apagar, e prometer isso seria
+				// mentira.
+				_, err = fmt.Fprintf(
+					command.OutOrStdout(),
+					"Faultmap inicializado em modo efêmero.\n\n"+
+						"  Workspace: %s\n\n"+
+						"Use --config %s nos comandos seguintes.\n"+
+						"Nada é apagado automaticamente: remova o diretório quando terminar.\n",
+					projectDir, filepath.Join(projectDir, "faultmap.yaml"),
+				)
+				return err
+			}
 			_, err = fmt.Fprintln(command.OutOrStdout(), "Faultmap inicializado.")
 			return err
 		},
 	}
 	command.Flags().StringVarP(&projectDir, "directory", "d", ".", "diretório do workspace do Faultmap")
+	command.Flags().BoolVar(&ephemeral, "ephemeral", false,
+		"cria o workspace no diretório temporário do sistema, sem sujar o projeto")
 	return command
 }
 
