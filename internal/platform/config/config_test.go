@@ -466,3 +466,48 @@ func TestLoadNãoDuplicaBloqueioJáPadrão(t *testing.T) {
 		t.Fatalf("db.statement apareceu %d vezes: %v", ocorrências, loaded.Privacy.BlockedAttributes)
 	}
 }
+
+// TestLoadAceitaDriverPostgres cobre a escolha do backend alternativo pelo
+// YAML. A DSN não aparece aqui de propósito: ela vem do ambiente, porque o
+// `init` promete um arquivo de configuração sem credenciais.
+func TestLoadAceitaDriverPostgres(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `storage:
+  driver: "postgres"
+  path: "./faultmap.db"
+  retention: "7d"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	loaded, err := Load(context.Background(), configPath)
+	if err != nil {
+		t.Fatalf("Load() erro = %v", err)
+	}
+	if loaded.Storage.Driver != "postgres" {
+		t.Fatalf("driver = %q, esperado postgres", loaded.Storage.Driver)
+	}
+}
+
+// TestLoadRejeitaDriverDesconhecido evita que um erro de digitação no nome do
+// backend passe como se fosse uma escolha deliberada.
+func TestLoadRejeitaDriverDesconhecido(t *testing.T) {
+	t.Parallel()
+
+	configPath := filepath.Join(t.TempDir(), "faultmap.yaml")
+	content := `storage:
+  driver: "mysql"
+  path: "./faultmap.db"
+  retention: "7d"
+`
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("escrever configuração: %v", err)
+	}
+
+	if _, err := Load(context.Background(), configPath); err == nil {
+		t.Fatal("Load() erro = nil, esperado recusa de driver desconhecido")
+	}
+}

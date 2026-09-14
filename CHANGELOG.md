@@ -56,6 +56,27 @@
 
 ### Corrigido
 
+- **PostgreSQL como backend alternativo de armazenamento.** `storage.driver:
+  postgres` no YAML, com a DSN vindo de `FAULTMAP_STORAGE_DSN` e nunca gravada em
+  arquivo. **SQLite continua o padrão** — o produto se vende como binário único e
+  local-first, e exigir um banco antes de rodar mataria isso.
+
+  A peça central não é o adaptador, é a **bateria de conformidade**
+  (`internal/storage/storagetest`): 45 casos que rodam idênticos contra os dois
+  backends, cobrindo idempotência por `ON CONFLICT DO NOTHING`, janelas
+  semiabertas, desempate estável de ID, leituras em lote, normalização para UTC e
+  o alcance da retenção. Dois armazenamentos que divergem em silêncio seriam
+  piores que um só.
+
+  Duas armadilhas de dialeto que mock nenhum pegaria, ambas encontradas contra
+  PostgreSQL real: `COUNT(*)` sobre subconsulta exige alias, e **`REAL` tem 8
+  bytes no SQLite e 4 no PostgreSQL** — traduzir o nome ao pé da letra truncaria
+  todo score de finding e reordenaria os suspeitos. As colunas de score usam
+  `DOUBLE PRECISION`.
+
+  `cmd/faultmap/root.go` ainda não foi religado: são 52 pontos de chamada em 15
+  comandos. O `serve` foi religado e prova o desenho ponta a ponta. Ver ADR 0016.
+
 - **Sessão efêmera com `faultmap init --ephemeral`.** Cria o workspace no
   diretório temporário do sistema, para experimentar o produto sem deixar
   `faultmap.yaml`, `faultmap.db` e `faultmap-out/` no diretório de trabalho. O
