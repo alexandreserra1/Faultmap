@@ -40,7 +40,7 @@ func TestApplyRetentionCalculaCorteEEncerraQuandoNãoHáMaisSinais(t *testing.T)
 		Retention: 7 * 24 * time.Hour,
 		Now:       now,
 		BatchSize: 500,
-	}, remover)
+	}, remover, nil)
 	if err != nil {
 		t.Fatalf("ApplyRetention() erro = %v", err)
 	}
@@ -74,7 +74,7 @@ func TestApplyRetentionRespeitaTetoDeLotes(t *testing.T) {
 		Retention: time.Hour,
 		Now:       time.Date(2026, time.August, 6, 12, 0, 0, 0, time.UTC),
 		BatchSize: 1,
-	}, remover)
+	}, remover, nil)
 	if err != nil {
 		t.Fatalf("ApplyRetention() erro = %v", err)
 	}
@@ -97,7 +97,7 @@ func TestApplyRetentionPropagaFalhaSemMascararProgresso(t *testing.T) {
 		Retention: time.Hour,
 		Now:       time.Date(2026, time.August, 6, 12, 0, 0, 0, time.UTC),
 		BatchSize: 10,
-	}, remover)
+	}, remover, nil)
 	if err == nil {
 		t.Fatal("ApplyRetention() erro = nil, esperado propagação da falha")
 	}
@@ -124,9 +124,86 @@ func TestApplyRetentionValidaEntrada(t *testing.T) {
 
 			request := testCase.request
 			request.Now = time.Date(2026, time.August, 6, 12, 0, 0, 0, time.UTC)
-			if _, err := ApplyRetention(context.Background(), request, &retentionRemoverStub{}); err == nil {
+			if _, err := ApplyRetention(context.Background(), request, &retentionRemoverStub{}, nil); err == nil {
 				t.Fatalf("ApplyRetention() erro = nil para %s", testCase.name)
 			}
 		})
+	}
+}
+
+type podadorDeCatalogoFake struct {
+	restantes int
+	lotes     []int
+	erro      error
+}
+
+func (fake *podadorDeCatalogoFake) PruneSchemaCatalogsBefore(
+	_ context.Context, _ time.Time, limit int,
+) (int, error) {
+	if fake.erro != nil {
+		return 0, fake.erro
+	}
+	fake.lotes = append(fake.lotes, limit)
+	liberadas := min(fake.restantes, limit)
+	fake.restantes -= liberadas
+	return liberadas, nil
+}
+
+// TestApplyRetentionTambemLiberaCatalogosDeSchema liga a política nova ao
+// comando. Sem isto a limpeza existiria no repositório e nunca rodaria — o
+// catálogo continuaria crescendo e o relatório continuaria dizendo só quantos
+// sinais saíram.
+func TestApplyRetentionTambemLiberaCatalogosDeSchema(t *testing.T) {
+	t.Parallel()
+
+	podador := &podadorDeCatalogoFake{restantes: 5}
+	resultado, err := ApplyRetention(context.Background(), RetentionRequest{
+		Retention: time.Hour, Now: time.Now().UTC(), BatchSize: 2,
+	}, &retentionRemoverStub{}, podador)
+	if err != nil {
+		t.Fatalf("ApplyRetention() erro = %v", err)
+	}
+	if resultado.SchemaCatalogsPruned != 5 {
+		t.Fatalf("catálogos liberados = %d, esperado 5", resultado.SchemaCatalogsPruned)
+	}
+	for _, lote := range podador.lotes {
+		if lote != 2 {
+			t.Fatalf("lote de %d, esperado respeitar o BatchSize de 2", lote)
+		}
+	}
+}
+
+// TestApplyRetentionSegueSemPodadorDeCatalogo mantém a política opcional: quem
+// nunca coletou schema não precisa dela, e um leitor nulo não pode derrubar a
+// limpeza de telemetria.
+func TestApplyRetentionSegueSemPodadorDeCatalogo(t *testing.T) {
+	t.Parallel()
+
+	resultado, err := ApplyRetention(context.Background(), RetentionRequest{
+		Retention: time.Hour, Now: time.Now().UTC(), BatchSize: 10,
+	}, &retentionRemoverStub{}, nil)
+	if err != nil {
+		t.Fatalf("ApplyRetention() sem podador erro = %v", err)
+	}
+	if resultado.SchemaCatalogsPruned != 0 {
+		t.Fatalf("catálogos liberados = %d sem podador", resultado.SchemaCatalogsPruned)
+	}
+}
+
+// TestApplyRetentionRelataFalhaDaPodaSemMascararATelemetriaJaRemovida garante
+// que o comando não diga sucesso quando metade do trabalho falhou, nem esconda
+// os lotes de telemetria que já foram confirmados.
+func TestApplyRetentionRelataFalhaDaPodaSemMascararATelemetriaJaRemovida(t *testing.T) {
+	t.Parallel()
+
+	falha := errors.New("banco somente leitura")
+	_, err := ApplyRetention(context.Background(), RetentionRequest{
+		Retention: time.Hour, Now: time.Now().UTC(), BatchSize: 10,
+	}, &retentionRemoverStub{}, &podadorDeCatalogoFake{erro: falha})
+	if err == nil {
+		t.Fatal("ApplyRetention() escondeu a falha da poda de catálogos")
+	}
+	if !errors.Is(err, falha) {
+		t.Fatalf("erro = %v, esperado envolver a causa", err)
 	}
 }

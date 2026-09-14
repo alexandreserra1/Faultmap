@@ -104,14 +104,19 @@ func newRetentionApplyCommand() *cobra.Command {
 					BatchSize: batchSize,
 				},
 				storage.NewRetentionRepository(database),
+				// O mesmo repositório cuida das duas frentes. Sempre ligado:
+				// quem nunca coletou catálogo simplesmente não tem o que
+				// liberar, e o comando relata zero.
+				storage.NewRetentionRepository(database),
 			)
 			if err != nil {
 				return err
 			}
 			if _, err := fmt.Fprintf(
 				command.OutOrStdout(),
-				"Retenção aplicada: %d sinais removidos anteriores a %s.\n",
+				"Retenção aplicada: %d sinais removidos e %d catálogos de schema liberados, anteriores a %s.\n",
 				result.SignalsRemoved,
+				result.SchemaCatalogsPruned,
 				result.Cutoff.Format(time.RFC3339),
 			); err != nil {
 				return err

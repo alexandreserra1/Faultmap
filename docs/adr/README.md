@@ -19,3 +19,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0012](0012-bloqueios-de-privacidade-somam-em-vez-de-substituir.md) | A lista de bloqueios do YAML soma aos padrões |
 | [0013](0013-evidencia-diz-o-que-o-padrao-costuma-significar.md) | Cada evidência diz o que aquele padrão costuma significar |
 | [0014](0014-schema-guarda-identificadores-nao-expressoes.md) | A coleta de schema guarda identificadores, não expressões |
+| [0015](0015-retencao-libera-catalogo-e-preserva-mudancas.md) | A retenção libera o catálogo e preserva as mudanças |

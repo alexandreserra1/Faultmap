@@ -218,6 +218,19 @@ func readPreviousSnapshot(
 	if err != nil {
 		return changedomain.SchemaSnapshot{}, fmt.Errorf("ler coleta anterior da base %q: %w", databaseName, err)
 	}
+	// Catálogo esvaziado pela retenção. A política preserva a coleta mais
+	// recente de cada base justamente para isto não acontecer; se acontecer
+	// mesmo assim, falhar é a única saída honesta. Tratar como catálogo vazio
+	// faria a comparação reportar todo objeto da base como recém-criado — uma
+	// migração inventada em cada tabela — e tratar como ausência de linha de
+	// base gravaria uma foto nova sem comparar, escondendo a migração real.
+	if strings.TrimSpace(objectsJSON) == "" {
+		return changedomain.SchemaSnapshot{}, fmt.Errorf(
+			"ler coleta anterior da base %q: a coleta %q teve o catálogo liberado pela retenção "+
+				"e não serve de linha de base; recolete antes de comparar",
+			databaseName, snapshot.ID,
+		)
+	}
 	if err := json.Unmarshal([]byte(objectsJSON), &snapshot.Objects); err != nil {
 		return changedomain.SchemaSnapshot{}, fmt.Errorf("desserializar coleta %q: %w", snapshot.ID, err)
 	}

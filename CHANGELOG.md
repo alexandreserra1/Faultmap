@@ -56,6 +56,23 @@
 
 ### Corrigido
 
+- **Retenção para os catálogos de schema.** Cada coleta grava o catálogo inteiro
+  como JSON, e a pontuação pessimista da proximidade passou a cobrar coleta
+  frequente — o incentivo que o produto criou encheria o disco de quem o segue.
+  Medido: 200 coletas de uma base com 2.000 objetos, cinco dias de coleta
+  horária, ocupavam **52,7 MB**.
+
+  `faultmap retention apply` passa a liberar o conteúdo dos catálogos expirados.
+  A mesma medição cai para **0,5 MB**, uma redução de 99,1%, com as 199 mudanças
+  derivadas intactas.
+
+  A limpeza esvazia `objects_json` em vez de remover a linha: a chave estrangeira
+  de `schema_changes` tem `ON DELETE CASCADE`, e remover a coleta levaria junto a
+  evidência que diagnósticos já gravados citam. E a coleta mais recente de cada
+  base nunca é esvaziada, qualquer que seja a idade — ela é a linha de base da
+  próxima comparação, e esvaziá-la faria o diff seguinte reportar todo objeto da
+  base como recém-criado. Ver ADR 0015.
+
 - **A frequência de coleta passou a se cobrar sozinha.** O score usava a ponta
   otimista do intervalo — o instante da coleta que revelou a mudança —, então
   coletar uma vez por dia rendia a mesma pontuação que coletar a cada minuto. Uma
