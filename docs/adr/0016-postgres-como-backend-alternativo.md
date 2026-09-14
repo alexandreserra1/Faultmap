@@ -80,3 +80,21 @@ divergência.
 - A escolha do backend vive em `internal/storage/bootstrap`, e não espalhada
   pelos comandos. Sem ele, cada um dos quinze comandos da CLI teria a mesma
   ramificação em volta da abertura do pool e de cada repositório.
+
+## Adendo — a divergência de concorrência passou a ser coberta
+
+Esta decisão registrava que o pool é de uma conexão no SQLite e de oito no
+PostgreSQL, e que a bateria não cobria concorrência. Não coberta é onde defeito
+mora: o produto ingere telemetria por HTTP concorrente no `serve`, e dois lotes
+chegando juntos são o caso normal, não o excepcional.
+
+A bateria passou a exigir que o **resultado observável** seja o mesmo nos dois —
+nenhum sinal perdido, nenhum duplicado, e a idempotência do `ON CONFLICT DO
+NOTHING` valendo também quando o mesmo lote chega por conexões simultâneas, que
+é o retry de ingestão. Como cada banco serializa a escrita por baixo continua
+diferente, e continua sendo detalhe de implementação.
+
+A retenção segue sem `FOR UPDATE SKIP LOCKED`: duas execuções simultâneas de
+`retention apply` podem se bloquear no PostgreSQL. Continua deliberado — SKIP
+LOCKED faria os dois backends escolherem lotes diferentes — e continua a ser
+revisitado se a retenção virar automática.

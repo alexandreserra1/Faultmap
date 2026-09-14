@@ -56,6 +56,28 @@
 
 ### Corrigido
 
+- **O modo difícil passou a exercitar as duas regras de proximidade.** Nenhum dos
+  cinco cenários originais coletava schema ou ingeria deployments, então
+  `schema_change_proximity` e `deployment_proximity` atravessavam a suíte inteira
+  sem serem executados uma única vez. O `sem-culpado` se declara "a rede de
+  proteção de todo detector novo" e não protegia nenhuma das duas.
+
+  `migracao-inofensiva` fechou a metade do schema; `deploy-inofensivo` fecha a do
+  deploy. Ele é o `timeout-after-deploy` sem o defeito injetado: mesma
+  proximidade temporal, mesmo commit correspondendo à `service.version`
+  observada, sistema saudável. Os dois recusam passar por vacuidade — se a coleta
+  ou a ingestão não registrar nada, o cenário falha, porque aí o silêncio não
+  provaria coisa alguma.
+
+  As duas regras também entraram na lista de proibidas do `sem-culpado`.
+
+- **Concorrência entre os backends passou a ser coberta.** A ADR 0016 registrava
+  que o pool é de uma conexão no SQLite e de oito no PostgreSQL, e que a bateria
+  não cobria isso. O produto ingere telemetria por HTTP concorrente no `serve`, e
+  dois lotes chegando juntos são o caso normal. A bateria passou a exigir o mesmo
+  resultado observável nos dois — nenhum sinal perdido, nenhum duplicado, e a
+  idempotência valendo quando o mesmo lote chega por conexões simultâneas.
+
 - **PostgreSQL como backend alternativo de armazenamento.** `storage.driver:
   postgres` no YAML, com a DSN vindo de `FAULTMAP_STORAGE_DSN` e nunca gravada em
   arquivo. **SQLite continua o padrão** — o produto se vende como binário único e

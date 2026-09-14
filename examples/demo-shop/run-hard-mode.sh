@@ -23,7 +23,7 @@ REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIRECTORY}/../.." && pwd)"
 BASE_COMPOSE="${SCRIPT_DIRECTORY}/compose.yaml"
 PROJECT_NAME="${FAULTMAP_HARD_PROJECT_NAME:-faultmap-demo-shop-hard}"
 CHECKOUT_URL="${FAULTMAP_HARD_CHECKOUT_URL:-http://127.0.0.1:18080/checkout}"
-ALL_SCENARIOS="ruido-cronico sem-culpado janela-imprecisa fan-out-legitimo causas-concorrentes migracao-inofensiva"
+ALL_SCENARIOS="ruido-cronico sem-culpado janela-imprecisa fan-out-legitimo causas-concorrentes migracao-inofensiva deploy-inofensivo"
 # O SDK do Go agrupa spans por 5 segundos antes de exportar, e o coletor
 # acrescenta o próprio lote. Esperar 6 deixava menos de um segundo de margem, e a
 # janela do incidente chegava vazia de forma intermitente — o diagnóstico
@@ -42,8 +42,44 @@ else
   scenarios=("$@")
 fi
 
+# HARD_OVERRIDE permite a um cenário acrescentar um arquivo de override ao
+# compose base. Só deploy-inofensivo precisa hoje: ele troca a imagem do
+# faultmap pela que embute o mock do GitHub, sem o qual não há deployment a
+# ingerir.
 compose() {
-  docker compose --project-name "${PROJECT_NAME}" -f "${BASE_COMPOSE}" "$@"
+  local arquivos=(-f "${BASE_COMPOSE}")
+  if [[ -n "${HARD_OVERRIDE:-}" ]]; then
+    arquivos+=(-f "${HARD_OVERRIDE}")
+  fi
+  docker compose --project-name "${PROJECT_NAME}" "${arquivos[@]}" "$@"
+}
+
+# ingerir_deployment sobe o mock do GitHub no loopback do container do faultmap e
+# importa o commit e o deployment que ele publica.
+#
+# O token é fixo e sem privilégio: autentica apenas o mock dentro do container e
+# nunca vai à rede nem ao repositório de quem usa o produto.
+ingerir_deployment() {
+  compose exec -d faultmap github-mock
+  local tentativa
+  for tentativa in $(seq 1 20); do
+    if compose exec -T faultmap \
+      wget --quiet --output-document=- http://127.0.0.1:9090/health >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.25
+  done
+  if ! compose exec -T faultmap \
+    wget --quiet --output-document=- http://127.0.0.1:9090/health >/dev/null 2>&1; then
+    printf 'github-mock não ficou saudável.\n' >&2
+    return 1
+  fi
+  compose exec -T -e GITHUB_TOKEN=e2e-token faultmap \
+    faultmap ingest github \
+    --config /etc/faultmap/faultmap.yaml \
+    --repo acme/checkout --commits --deployments \
+    --service checkout-service --environment demo \
+    --since 10m --limit 20
 }
 
 cleanup() {
@@ -155,12 +191,15 @@ start_stack() {
 
 run_scenario() {
   local scenario="$1"
+  # Cada cenário começa sem override; só quem precisa o define.
+  unset HARD_OVERRIDE
   validate_scenario "${scenario}"
   printf '\n=== MODO DIFÍCIL: %s ===\n' "${scenario}"
 
   local baseline_start incident_start until_epoch until_rfc
   local incident_seconds baseline_seconds output service
   local schema_collected=""
+  local deploy_ingerido=""
   local acompanhada=0
 
   case "${scenario}" in
@@ -175,6 +214,29 @@ run_scenario() {
       sleep "${OTEL_FLUSH_WAIT_SECONDS}"
       incident_start="$(date +%s)"
       generate_traffic incidente 16 ruido
+      ;;
+    deploy-inofensivo)
+      # Deploy real, recente, com o commit correspondendo à service.version dos
+      # spans — e nada quebrado. É o timeout-after-deploy sem o defeito.
+      #
+      # O que se verifica é a corroboração, não o silêncio absoluto: numa máquina
+      # ocupada o aquecimento aparece como regressão de latência legítima, e com
+      # sintoma presente apresentar o deploy é o comportamento certo. O que não
+      # pode acontecer é o deploy ser a única coisa apresentada sobre o serviço.
+      printf 'Deploy recente e correspondente à versão observada; nada quebrado.\n'
+      service="checkout-service"
+      HARD_OVERRIDE="${SCRIPT_DIRECTORY}/scenarios/deploy-inofensivo/compose.yaml"
+      export HARD_OVERRIDE
+      start_stack
+      deploy_ingerido="$(ingerir_deployment)" || return 1
+      printf 'Ingestão do deploy: %s\n' "${deploy_ingerido}"
+      generate_traffic aquecimento 16 deploy
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      baseline_start="$(date +%s)"
+      generate_traffic baseline 16 deploy
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      incident_start="$(date +%s)"
+      generate_traffic incidente 16 deploy
       ;;
     migracao-inofensiva)
       # Uma migração real aconteceu antes da janela e nada mais mudou.
@@ -285,6 +347,59 @@ run_scenario() {
       assert_no_finding "${output}" "database_timeout" || return 1
       printf 'Não acusou regressão de erro com ruído idêntico nas duas janelas: PASS\n'
       ;;
+    deploy-inofensivo)
+      # Deploy real, recente, com o commit correspondendo à service.version dos
+      # spans — e nada quebrado. É o timeout-after-deploy sem o defeito.
+      #
+      # O que se verifica é a corroboração, não o silêncio absoluto: numa máquina
+      # ocupada o aquecimento aparece como regressão de latência legítima, e com
+      # sintoma presente apresentar o deploy é o comportamento certo. O que não
+      # pode acontecer é o deploy ser a única coisa apresentada sobre o serviço.
+      printf 'Deploy recente e correspondente à versão observada; nada quebrado.\n'
+      service="checkout-service"
+      HARD_OVERRIDE="${SCRIPT_DIRECTORY}/scenarios/deploy-inofensivo/compose.yaml"
+      export HARD_OVERRIDE
+      start_stack
+      deploy_ingerido="$(ingerir_deployment)" || return 1
+      printf 'Ingestão do deploy: %s\n' "${deploy_ingerido}"
+      generate_traffic aquecimento 16 deploy
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      baseline_start="$(date +%s)"
+      generate_traffic baseline 16 deploy
+      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
+      incident_start="$(date +%s)"
+      generate_traffic incidente 16 deploy
+      ;;
+    deploy-inofensivo)
+      # O deploy precisa ter sido ingerido, senão o cenário passaria por
+      # vacuidade: sem deployment no banco, deployment_proximity não teria o que
+      # disparar e o silêncio não provaria coisa alguma.
+      if [[ "${deploy_ingerido}" != *"deployments coletados"* ]] \
+        || [[ "${deploy_ingerido}" == *"0 deployments coletados"* ]]; then
+        printf 'O deploy não foi ingerido; o cenário não teria o que exercitar: %s\n' \
+          "${deploy_ingerido}" >&2
+        return 1
+      fi
+      # Se o deploy aparecer, alguma evidência medida precisa aparecer junto.
+      if [[ "${output}" == *"ID da regra: deployment_proximity"* ]]; then
+        acompanhada=0
+        for medida in error_rate_delta latency_delta database_latency_delta \
+          database_error database_timeout retry_storm dependency_failure \
+          trace_break log_correlation version_regression; do
+          if [[ "${output}" == *"ID da regra: ${medida}"* ]]; then
+            acompanhada=1
+            break
+          fi
+        done
+        if (( acompanhada == 0 )); then
+          printf 'FALSO POSITIVO: o deploy foi apresentado sozinho, sem sintoma medido.\n' >&2
+          return 1
+        fi
+        printf 'Deploy apresentado apenas como apoio a evidência medida: PASS\n'
+      else
+        printf 'Deploy sem efeito observável não foi apresentado: PASS\n'
+      fi
+      ;;
     migracao-inofensiva)
       # A migração precisa ter sido registrada, senão o cenário passaria por
       # vacuidade: sem mudança no banco, nenhuma regra de schema teria o que
@@ -320,7 +435,7 @@ run_scenario() {
       # positivo por definição.
       for regra in error_rate_delta latency_delta retry_storm \
         database_error dependency_failure trace_break version_regression \
-        schema_change_proximity; do
+        schema_change_proximity deployment_proximity; do
         assert_no_finding "${output}" "${regra}" || return 1
       done
       assert_contains "${output}" "Nenhuma anomalia determinística" || return 1

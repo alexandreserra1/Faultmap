@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -110,6 +111,7 @@ func RodarConformidade(t *testing.T, novo Fabrica) {
 	t.Run("Catalogo", func(t *testing.T) { rodarCatalogo(t, novo) })
 	t.Run("Diagnostico", func(t *testing.T) { rodarDiagnostico(t, novo) })
 	t.Run("Retencao", func(t *testing.T) { rodarRetencao(t, novo) })
+	t.Run("Concorrencia", func(t *testing.T) { rodarConcorrencia(t, novo) })
 }
 
 // ---------------------------------------------------------------- sinais ---
@@ -1191,4 +1193,100 @@ func exigirInstanteUTC(t *testing.T, campo string, obtido, esperado time.Time) {
 	if nome, _ := obtido.Zone(); nome != "UTC" {
 		t.Errorf("%s voltou no fuso %q, esperado UTC", campo, nome)
 	}
+}
+
+// rodarConcorrencia cobre a única diferença estrutural declarada entre os
+// backends: o SQLite tem um escritor só, o PostgreSQL tem oito conexões no pool.
+//
+// A ADR 0016 registrava essa divergência como não coberta. Não coberta é onde
+// defeito mora: o produto ingere telemetria por HTTP concorrente no `serve`, e
+// dois lotes chegando juntos são o caso normal, não o excepcional. O que estes
+// casos exigem é que o resultado observável seja o mesmo nos dois — ninguém
+// perdido, nada duplicado — qualquer que seja a forma como cada banco serializa
+// a escrita por baixo.
+func rodarConcorrencia(t *testing.T, novo Fabrica) {
+	t.Run("EscritasSimultaneasNaoPerdemNemDuplicamSinais", func(t *testing.T) {
+		backend := novo(t)
+		ctx := context.Background()
+
+		const escritores = 8
+		const porEscritor = 25
+		var grupo sync.WaitGroup
+		erros := make(chan error, escritores)
+		for escritor := range escritores {
+			grupo.Add(1)
+			go func(escritor int) {
+				defer grupo.Done()
+				lote := make([]telemetrydomain.Signal, 0, porEscritor)
+				for indice := range porEscritor {
+					lote = append(lote, sinal(
+						fmt.Sprintf("w%d-s%d", escritor, indice),
+						"checkout", t0.Add(time.Duration(indice)*time.Second), "trace-a",
+					))
+				}
+				if _, err := backend.Sinais.Save(ctx, lote); err != nil {
+					erros <- err
+				}
+			}(escritor)
+		}
+		grupo.Wait()
+		close(erros)
+		for err := range erros {
+			t.Fatalf("Save() concorrente erro = %v", err)
+		}
+
+		lidos, err := backend.Sinais.ListByServiceAndWindow(ctx, "checkout", t0, t4, 10_000)
+		if err != nil {
+			t.Fatalf("ListByServiceAndWindow() erro = %v", err)
+		}
+		if len(lidos) != escritores*porEscritor {
+			t.Fatalf("sinais = %d, esperado %d: escrita concorrente perdeu ou duplicou",
+				len(lidos), escritores*porEscritor)
+		}
+		vistos := make(map[string]struct{}, len(lidos))
+		for _, s := range lidos {
+			if _, repetido := vistos[s.ID]; repetido {
+				t.Fatalf("sinal %q gravado duas vezes", s.ID)
+			}
+			vistos[s.ID] = struct{}{}
+		}
+	})
+
+	t.Run("IdempotenciaSobrevivAEscritaSimultaneaDoMesmoLote", func(t *testing.T) {
+		// O mesmo lote chegando por duas conexões ao mesmo tempo é o retry de
+		// ingestão OTLP, e a garantia do ON CONFLICT DO NOTHING precisa valer
+		// sob concorrência e não só em sequência.
+		backend := novo(t)
+		ctx := context.Background()
+		lote := []telemetrydomain.Signal{
+			sinal("dup-1", "checkout", t0, "trace-a"),
+			sinal("dup-2", "checkout", t1, "trace-a"),
+		}
+
+		var grupo sync.WaitGroup
+		erros := make(chan error, 4)
+		for range 4 {
+			grupo.Add(1)
+			go func() {
+				defer grupo.Done()
+				if _, err := backend.Sinais.Save(ctx, lote); err != nil {
+					erros <- err
+				}
+			}()
+		}
+		grupo.Wait()
+		close(erros)
+		for err := range erros {
+			t.Fatalf("Save() concorrente do mesmo lote erro = %v", err)
+		}
+
+		lidos, err := backend.Sinais.ListByServiceAndWindow(ctx, "checkout", t0, t4, 100)
+		if err != nil {
+			t.Fatalf("ListByServiceAndWindow() erro = %v", err)
+		}
+		if len(lidos) != len(lote) {
+			t.Fatalf("sinais = %d, esperado %d: a idempotência não valeu sob concorrência",
+				len(lidos), len(lote))
+		}
+	})
 }

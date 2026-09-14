@@ -1,0 +1,28 @@
+# Deploy real, recente e correspondente à versão observada nos spans — e nenhuma
+# falha injetada. É o timeout-after-deploy sem o defeito: mesma proximidade
+# temporal, mesma correspondência de commit, sistema saudável.
+#
+# Existe porque nenhum cenário do modo difícil ingeria deployments, então
+# deployment_proximity nunca era exercitado ali. Uma regra que o modo difícil não
+# consegue exercitar não está protegida por ele.
+services:
+  faultmap:
+    build:
+      context: ../..
+      dockerfile: examples/demo-shop/Dockerfile.e2e
+    volumes:
+      - faultmap-data:/var/lib/faultmap
+      - ./faultmap-github-e2e.yaml:/etc/faultmap/faultmap.yaml:ro
+    environment:
+      PORT: "9090"
+      GITHUB_MOCK_REPOSITORY: acme/checkout
+      GITHUB_MOCK_SHA: "${DEPLOY_INOFENSIVO_VERSION:-0123456789abcdef0123456789abcdef01234567}"
+      GITHUB_MOCK_ENVIRONMENT: demo
+      GITHUB_MOCK_TOKEN: e2e-token
+      GITHUB_MOCK_DEPLOYMENT_AGE: 1m
+  checkout-service:
+    environment:
+      SERVICE_VERSION: "${DEPLOY_INOFENSIVO_VERSION:-0123456789abcdef0123456789abcdef01234567}"
+  payment-service:
+    environment:
+      SERVICE_VERSION: "${DEPLOY_INOFENSIVO_VERSION:-0123456789abcdef0123456789abcdef01234567}"
