@@ -38,3 +38,11 @@ telemetria nova expira durante a própria limpeza.
   retenção separada para snapshots deve ser discutida em um novo ADR.
 - O comando não faz retry automático: falhar no meio deixa os lotes já
   confirmados removidos e basta executá-lo de novo para continuar.
+
+## Adendo
+
+A condição prevista acima se realizou, mas por outra tabela: a coleta de
+catálogo da ADR 0014, que esta decisão não considerava. A política própria está
+na [ADR 0015](0015-retencao-libera-catalogo-e-preserva-mudancas.md). Os
+snapshots de diagnóstico — `incidents`, `findings`, `ranking_results` — seguem
+preservados indefinidamente, como decidido aqui.

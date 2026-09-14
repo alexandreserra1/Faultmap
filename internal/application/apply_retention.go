@@ -33,11 +33,24 @@ type RetentionResult struct {
 	SignalsRemoved int
 	Batches        int
 	Truncated      bool
+	// SchemaCatalogsPruned conta as coletas de catálogo que tiveram o conteúdo
+	// liberado. Elas não são removidas: a linha permanece e as mudanças
+	// derivadas dela também, porque sustentam evidência de diagnósticos já
+	// gravados.
+	SchemaCatalogsPruned int
 }
 
 // SignalRetentionRemover abstrai a remoção em lote de telemetria expirada.
 type SignalRetentionRemover interface {
 	DeleteSignalsBefore(ctx context.Context, cutoff time.Time, limit int) (int, error)
+}
+
+// SchemaCatalogPruner abstrai a liberação em lote dos catálogos expirados.
+//
+// É opcional: quem nunca coletou schema não tem catálogo a liberar, e um
+// podador nulo não pode derrubar a limpeza de telemetria.
+type SchemaCatalogPruner interface {
+	PruneSchemaCatalogsBefore(ctx context.Context, cutoff time.Time, limit int) (int, error)
 }
 
 // ApplyRetention remove telemetria anterior a Now-Retention em lotes limitados.
@@ -51,6 +64,7 @@ func ApplyRetention(
 	ctx context.Context,
 	request RetentionRequest,
 	remover SignalRetentionRemover,
+	pruner SchemaCatalogPruner,
 ) (RetentionResult, error) {
 	if request.Retention <= 0 {
 		return RetentionResult{}, fmt.Errorf("aplicar retenção: a retenção deve ser maior que zero")
@@ -72,9 +86,50 @@ func ApplyRetention(
 		// Um lote incompleto prova que a telemetria expirada acabou; continuar
 		// apenas repetiria uma consulta que já devolveu tudo o que existia.
 		if removed < request.BatchSize {
-			return result, nil
+			break
+		}
+		if result.Batches >= maxRetentionBatches {
+			result.Truncated = true
 		}
 	}
-	result.Truncated = true
+
+	pruned, err := pruneSchemaCatalogs(ctx, request, result.Cutoff, pruner)
+	if err != nil {
+		// A telemetria já removida permanece removida, e o erro não a esconde:
+		// repetir o comando continua de onde parou, como na limpeza de sinais.
+		return RetentionResult{}, err
+	}
+	result.SchemaCatalogsPruned = pruned
 	return result, nil
+}
+
+// pruneSchemaCatalogs libera os catálogos expirados nos mesmos lotes da
+// telemetria, para que uma execução tenha duração previsível em qualquer das
+// duas frentes.
+//
+// O que cresce é o JSON do catálogo: numa base com milhares de objetos ele passa
+// de meio megabyte por coleta, e a pontuação pessimista da proximidade cobra
+// coleta frequente. Sem esta limpeza, o incentivo que o produto criou encheria o
+// disco de quem o segue.
+func pruneSchemaCatalogs(
+	ctx context.Context,
+	request RetentionRequest,
+	cutoff time.Time,
+	pruner SchemaCatalogPruner,
+) (int, error) {
+	if pruner == nil {
+		return 0, nil
+	}
+	total := 0
+	for batch := 0; batch < maxRetentionBatches; batch++ {
+		pruned, err := pruner.PruneSchemaCatalogsBefore(ctx, cutoff, request.BatchSize)
+		if err != nil {
+			return 0, fmt.Errorf("aplicar retenção: liberar catálogos de schema: %w", err)
+		}
+		total += pruned
+		if pruned < request.BatchSize {
+			break
+		}
+	}
+	return total, nil
 }

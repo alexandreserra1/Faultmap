@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -92,5 +93,73 @@ func assertDirectoryExists(t *testing.T, path string) {
 	}
 	if !info.IsDir() {
 		t.Fatalf("%q is not a directory", path)
+	}
+}
+
+// TestEphemeralProjectDirCriaForaDoProjeto é o que a sessão efêmera promete:
+// experimentar o Faultmap sem sujar o diretório de trabalho de quem testa.
+func TestEphemeralProjectDirCriaForaDoProjeto(t *testing.T) {
+	t.Parallel()
+
+	dir, err := EphemeralProjectDir()
+	if err != nil {
+		t.Fatalf("EphemeralProjectDir() erro = %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+	trabalho, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() erro = %v", err)
+	}
+	if strings.HasPrefix(dir, trabalho) {
+		t.Fatalf("workspace efêmero %q ficou dentro do diretório de trabalho %q", dir, trabalho)
+	}
+	if !strings.HasPrefix(dir, os.TempDir()) {
+		t.Fatalf("workspace efêmero %q não ficou no diretório temporário do sistema %q", dir, os.TempDir())
+	}
+	info, err := os.Stat(dir)
+	if err != nil || !info.IsDir() {
+		t.Fatalf("workspace efêmero não é um diretório utilizável: %v", err)
+	}
+}
+
+// TestEphemeralProjectDirNaoColide impede que duas sessões simultâneas —
+// dois terminais, dois cenários de teste — gravem uma por cima da outra.
+func TestEphemeralProjectDirNaoColide(t *testing.T) {
+	t.Parallel()
+
+	vistos := make(map[string]struct{}, 20)
+	for range 20 {
+		dir, err := EphemeralProjectDir()
+		if err != nil {
+			t.Fatalf("EphemeralProjectDir() erro = %v", err)
+		}
+		t.Cleanup(func() { _ = os.RemoveAll(dir) })
+		if _, repetido := vistos[dir]; repetido {
+			t.Fatalf("dois workspaces efêmeros no mesmo caminho: %q", dir)
+		}
+		vistos[dir] = struct{}{}
+	}
+}
+
+// TestEphemeralProjectDirServeAoInitCompleto fecha o ciclo: o diretório
+// devolvido precisa aceitar a inicialização normal, senão a flag entregaria um
+// caminho que não funciona.
+func TestEphemeralProjectDirServeAoInitCompleto(t *testing.T) {
+	t.Parallel()
+
+	dir, err := EphemeralProjectDir()
+	if err != nil {
+		t.Fatalf("EphemeralProjectDir() erro = %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+	if err := InitializeProject(context.Background(), dir); err != nil {
+		t.Fatalf("InitializeProject() no workspace efêmero erro = %v", err)
+	}
+	for _, artefato := range []string{"faultmap.yaml", "faultmap-out"} {
+		if _, err := os.Stat(filepath.Join(dir, artefato)); err != nil {
+			t.Fatalf("artefato %q ausente no workspace efêmero: %v", artefato, err)
+		}
 	}
 }

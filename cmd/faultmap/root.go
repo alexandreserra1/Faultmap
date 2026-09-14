@@ -24,7 +24,7 @@ import (
 	"github.com/faultmap/faultmap/internal/reporting/mermaid"
 	terminal "github.com/faultmap/faultmap/internal/reporting/terminal"
 	"github.com/faultmap/faultmap/internal/reporting/timeline"
-	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
+	storage "github.com/faultmap/faultmap/internal/storage/bootstrap"
 	"github.com/faultmap/faultmap/internal/telemetry/privacy"
 	"github.com/spf13/cobra"
 
@@ -83,17 +83,21 @@ func newRetentionApplyCommand() *cobra.Command {
 				return fmt.Errorf("aplicar retenção: %w", err)
 			}
 
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			result, err := application.ApplyRetention(
@@ -104,14 +108,19 @@ func newRetentionApplyCommand() *cobra.Command {
 					BatchSize: batchSize,
 				},
 				storage.NewRetentionRepository(database),
+				// O mesmo repositório cuida das duas frentes. Sempre ligado:
+				// quem nunca coletou catálogo simplesmente não tem o que
+				// liberar, e o comando relata zero.
+				storage.NewRetentionRepository(database),
 			)
 			if err != nil {
 				return err
 			}
 			if _, err := fmt.Fprintf(
 				command.OutOrStdout(),
-				"Retenção aplicada: %d sinais removidos anteriores a %s.\n",
+				"Retenção aplicada: %d sinais removidos e %d catálogos de schema liberados, anteriores a %s.\n",
 				result.SignalsRemoved,
+				result.SchemaCatalogsPruned,
 				result.Cutoff.Format(time.RFC3339),
 			); err != nil {
 				return err
@@ -159,17 +168,21 @@ func newIncidentListCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			incidents, err := application.ListIncidents(
@@ -206,17 +219,21 @@ func newIncidentShowCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosis, err := application.GetIncident(
@@ -269,17 +286,21 @@ func newExplainSuspectCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosis, err := application.GetIncident(
@@ -334,17 +355,21 @@ func newExportArtifactsCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosis, err := application.GetIncident(
@@ -399,17 +424,21 @@ func newExportTimelineCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosis, err := application.GetIncident(
@@ -451,17 +480,21 @@ func newExportReportCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosis, err := application.GetIncident(
@@ -509,17 +542,21 @@ func newExportGraphCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			investigation, err := application.BlameTrace(
@@ -572,17 +609,21 @@ func newBlameTraceCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			investigation, err := application.BlameTrace(
@@ -611,37 +652,72 @@ func newBlameTraceCommand() *cobra.Command {
 // newInitCommand cria um workspace local do Faultmap e aplica seu schema inicial.
 func newInitCommand() *cobra.Command {
 	var projectDir string
+	var ephemeral bool
 
 	command := &cobra.Command{
 		Use:   "init",
 		Short: "Cria a configuração e a base local do Faultmap",
 		RunE: func(command *cobra.Command, _ []string) (runErr error) {
+			// As duas flags respondem à mesma pergunta — onde fica o workspace —
+			// e atender uma calando a outra faria a pessoa procurar arquivos no
+			// lugar errado.
+			if ephemeral && command.Flags().Changed("directory") {
+				return fmt.Errorf("inicializar: use --ephemeral ou --directory, não os dois")
+			}
+			if ephemeral {
+				temporary, err := application.EphemeralProjectDir()
+				if err != nil {
+					return err
+				}
+				projectDir = temporary
+			}
 			if err := application.InitializeProject(command.Context(), projectDir); err != nil {
 				return err
 			}
 
 			databasePath := filepath.Join(projectDir, "faultmap.db")
-			database, err := storage.Open(command.Context(), databasePath)
+			// O init acabou de gravar a configuração padrão; o driver sai dela.
+			// Ler o padrão em vez de fixar "sqlite" aqui mantém os dois em
+			// sincronia se o padrão mudar um dia.
+			database, err := storage.Open(command.Context(), config.Default().Storage.Driver, databasePath)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil {
 					if runErr == nil {
-						runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+						runErr = fmt.Errorf("fechar banco: %w", closeErr)
 					}
 				}
 			}()
 
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
+			if ephemeral {
+				// O caminho vem antes de qualquer outra coisa: sem ele a sessão
+				// é inalcançável. E a limpeza é declarada como manual porque o
+				// `init` termina antes de o workspace ser usado — não existe
+				// momento em que ele pudesse apagar, e prometer isso seria
+				// mentira.
+				_, err = fmt.Fprintf(
+					command.OutOrStdout(),
+					"Faultmap inicializado em modo efêmero.\n\n"+
+						"  Workspace: %s\n\n"+
+						"Use --config %s nos comandos seguintes.\n"+
+						"Nada é apagado automaticamente: remova o diretório quando terminar.\n",
+					projectDir, filepath.Join(projectDir, "faultmap.yaml"),
+				)
+				return err
+			}
 			_, err = fmt.Fprintln(command.OutOrStdout(), "Faultmap inicializado.")
 			return err
 		},
 	}
 	command.Flags().StringVarP(&projectDir, "directory", "d", ".", "diretório do workspace do Faultmap")
+	command.Flags().BoolVar(&ephemeral, "ephemeral", false,
+		"cria o workspace no diretório temporário do sistema, sem sujar o projeto")
 	return command
 }
 
@@ -665,17 +741,21 @@ func newMCPCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			return mcpserver.Serve(command.Context(), mcpserver.Options{
@@ -730,17 +810,21 @@ func newIngestSchemaCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			source, err := sql.Open("pgx", dsn)
@@ -840,17 +924,21 @@ func newIngestGitHubCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			result, err := application.IngestChanges(
@@ -916,18 +1004,18 @@ func newIngestFileCommand() *cobra.Command {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
 			databasePath := resolveStoragePath(configPath, loadedConfig.Storage.Path)
-			database, err := storage.Open(command.Context(), databasePath)
+			database, err := storage.Open(command.Context(), loadedConfig.Storage.Driver, databasePath)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			result, err := application.IngestTelemetryFile(
@@ -1002,17 +1090,21 @@ func newTelemetryListCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			end := time.Now().UTC()
@@ -1106,17 +1198,21 @@ func newDiagnoseIncidentCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			diagnosisEnvironment := strings.TrimSpace(environment)

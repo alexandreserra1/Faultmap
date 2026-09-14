@@ -218,8 +218,14 @@ func (config Config) Validate() error {
 	if err := validateServer(config.Server); err != nil {
 		return err
 	}
-	if config.Storage.Driver != "sqlite" {
-		return fmt.Errorf("configuração inválida: storage.driver deve ser sqlite")
+	// O SQLite continua sendo o padrão; o PostgreSQL é alternativa para quando o
+	// Faultmap deixa de rodar na máquina de quem investiga. A DSN do PostgreSQL
+	// não tem campo aqui de propósito: ela vem da variável de ambiente
+	// FAULTMAP_STORAGE_DSN, porque o `init` promete um arquivo de configuração
+	// sem credenciais e um arquivo com senha tende a ir para o controle de
+	// versão sem que ninguém perceba.
+	if config.Storage.Driver != "sqlite" && config.Storage.Driver != "postgres" {
+		return fmt.Errorf("configuração inválida: storage.driver deve ser sqlite ou postgres")
 	}
 	if strings.TrimSpace(config.Storage.Path) == "" {
 		return fmt.Errorf("configuração inválida: storage.path é obrigatório")

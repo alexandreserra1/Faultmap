@@ -13,7 +13,7 @@ import (
 	"github.com/faultmap/faultmap/internal/application"
 	"github.com/faultmap/faultmap/internal/integrations/otlphttp"
 	"github.com/faultmap/faultmap/internal/platform/config"
-	storage "github.com/faultmap/faultmap/internal/storage/sqlite"
+	storage "github.com/faultmap/faultmap/internal/storage/bootstrap"
 	"github.com/faultmap/faultmap/internal/telemetry/normalizer"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +27,10 @@ type serverTimeouts struct {
 }
 
 // newServeCommand inicia os listeners OTLP e de health usando um único pool
-// SQLite durante todo o ciclo de vida do processo.
+// durante todo o ciclo de vida do processo.
+//
+// O backend vem de storage.driver: SQLite por padrão, PostgreSQL quando a
+// configuração pedir e a DSN estiver no ambiente.
 func newServeCommand() *cobra.Command {
 	var configPath string
 	command := &cobra.Command{
@@ -39,17 +42,21 @@ func newServeCommand() *cobra.Command {
 				return fmt.Errorf("carregar configuração: %w", err)
 			}
 
-			database, err := storage.Open(command.Context(), resolveStoragePath(configPath, loadedConfig.Storage.Path))
+			database, err := storage.Open(
+				command.Context(),
+				loadedConfig.Storage.Driver,
+				resolveStoragePath(configPath, loadedConfig.Storage.Path),
+			)
 			if err != nil {
 				return err
 			}
 			defer func() {
 				if closeErr := database.Close(); closeErr != nil && runErr == nil {
-					runErr = fmt.Errorf("fechar banco SQLite: %w", closeErr)
+					runErr = fmt.Errorf("fechar banco: %w", closeErr)
 				}
 			}()
 			if err := storage.Migrate(command.Context(), database); err != nil {
-				return fmt.Errorf("aplicar migrations SQLite: %w", err)
+				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
 			repository := storage.NewSignalRepository(database)

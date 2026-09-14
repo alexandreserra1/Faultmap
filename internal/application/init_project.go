@@ -11,6 +11,28 @@ import (
 	"github.com/faultmap/faultmap/internal/platform/config"
 )
 
+// EphemeralProjectDir cria um workspace no diretório temporário do sistema.
+//
+// Existe para quem quer experimentar o produto sem deixar `faultmap.yaml`,
+// `faultmap.db` e `faultmap-out/` no diretório de trabalho. O banco continua
+// sendo um arquivo de verdade, e isso é essencial: cada comando do Faultmap é um
+// processo separado — `serve` ingere em um, `diagnose` lê em outro — e eles
+// compartilham estado através do arquivo. Um banco em memória faria o segundo
+// processo abrir uma base vazia e responder "nenhuma anomalia encontrada" sem
+// erro algum, que é a pior falha possível em um produto de diagnóstico.
+//
+// Efêmero aqui significa "fora do seu projeto, no lugar que o sistema
+// operacional recicla", e não "apagado ao sair": o `init` termina antes de o
+// workspace ser usado, então não há momento em que ele pudesse limpar. Quem
+// quiser remoção imediata apaga o diretório, cujo caminho o comando imprime.
+func EphemeralProjectDir() (string, error) {
+	dir, err := os.MkdirTemp("", "faultmap-efemero-*")
+	if err != nil {
+		return "", fmt.Errorf("criar workspace efêmero: %w", err)
+	}
+	return dir, nil
+}
+
 // InitializeProject cria os artefatos locais exigidos pelo comando faultmap init.
 // A função verifica o contexto antes de cada efeito colateral e não sobrescreve artefatos existentes.
 func InitializeProject(ctx context.Context, projectDir string) error {

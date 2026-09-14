@@ -56,6 +56,86 @@
 
 ### Corrigido
 
+- **O modo difícil passou a exercitar as duas regras de proximidade.** Nenhum dos
+  cinco cenários originais coletava schema ou ingeria deployments, então
+  `schema_change_proximity` e `deployment_proximity` atravessavam a suíte inteira
+  sem serem executados uma única vez. O `sem-culpado` se declara "a rede de
+  proteção de todo detector novo" e não protegia nenhuma das duas.
+
+  `migracao-inofensiva` fechou a metade do schema; `deploy-inofensivo` fecha a do
+  deploy. Ele é o `timeout-after-deploy` sem o defeito injetado: mesma
+  proximidade temporal, mesmo commit correspondendo à `service.version`
+  observada, sistema saudável. Os dois recusam passar por vacuidade — se a coleta
+  ou a ingestão não registrar nada, o cenário falha, porque aí o silêncio não
+  provaria coisa alguma.
+
+  As duas regras também entraram na lista de proibidas do `sem-culpado`.
+
+- **Concorrência entre os backends passou a ser coberta.** A ADR 0016 registrava
+  que o pool é de uma conexão no SQLite e de oito no PostgreSQL, e que a bateria
+  não cobria isso. O produto ingere telemetria por HTTP concorrente no `serve`, e
+  dois lotes chegando juntos são o caso normal. A bateria passou a exigir o mesmo
+  resultado observável nos dois — nenhum sinal perdido, nenhum duplicado, e a
+  idempotência valendo quando o mesmo lote chega por conexões simultâneas.
+
+- **PostgreSQL como backend alternativo de armazenamento.** `storage.driver:
+  postgres` no YAML, com a DSN vindo de `FAULTMAP_STORAGE_DSN` e nunca gravada em
+  arquivo. **SQLite continua o padrão** — o produto se vende como binário único e
+  local-first, e exigir um banco antes de rodar mataria isso.
+
+  A peça central não é o adaptador, é a **bateria de conformidade**
+  (`internal/storage/storagetest`): 45 casos que rodam idênticos contra os dois
+  backends, cobrindo idempotência por `ON CONFLICT DO NOTHING`, janelas
+  semiabertas, desempate estável de ID, leituras em lote, normalização para UTC e
+  o alcance da retenção. Dois armazenamentos que divergem em silêncio seriam
+  piores que um só.
+
+  Duas armadilhas de dialeto que mock nenhum pegaria, ambas encontradas contra
+  PostgreSQL real: `COUNT(*)` sobre subconsulta exige alias, e **`REAL` tem 8
+  bytes no SQLite e 4 no PostgreSQL** — traduzir o nome ao pé da letra truncaria
+  todo score de finding e reordenaria os suspeitos. As colunas de score usam
+  `DOUBLE PRECISION`.
+
+  Os 15 comandos da CLI escolhem o backend pela configuração. A religação foi
+  mecânica de propósito: o alias do import passou a apontar para o seletor, e o
+  driver entrou como segundo argumento de cada abertura — `Migrate` e cada
+  `NewXRepository` mantiveram a forma exata que já tinham, que é o motivo de o
+  seletor existir. Ver ADR 0016.
+
+  As mensagens de erro deixaram de citar SQLite por nome: "fechar banco SQLite"
+  mentiria para quem está rodando com PostgreSQL.
+
+- **Sessão efêmera com `faultmap init --ephemeral`.** Cria o workspace no
+  diretório temporário do sistema, para experimentar o produto sem deixar
+  `faultmap.yaml`, `faultmap.db` e `faultmap-out/` no diretório de trabalho. O
+  comando imprime o caminho e o `--config` a usar em seguida.
+
+  O banco continua sendo um arquivo. Um banco em memória parecia a solução óbvia
+  e não funciona aqui: cada comando é um processo separado e eles compartilham
+  estado através do arquivo, então `ingest` gravaria numa base que o `diagnose`
+  seguinte abriria vazia — respondendo "nenhuma anomalia encontrada" sem erro
+  algum, que é a pior falha possível em um produto de diagnóstico.
+
+  A limpeza é declarada como manual, e não prometida: o `init` termina antes de o
+  workspace ser usado, então não existe momento em que ele pudesse apagar.
+
+- **Retenção para os catálogos de schema.** Cada coleta grava o catálogo inteiro
+  como JSON, e a pontuação pessimista da proximidade passou a cobrar coleta
+  frequente — o incentivo que o produto criou encheria o disco de quem o segue.
+  Medido: 200 coletas de uma base com 2.000 objetos, cinco dias de coleta
+  horária, ocupavam **52,7 MB**.
+
+  `faultmap retention apply` passa a liberar o conteúdo dos catálogos expirados.
+  A mesma medição cai para **0,5 MB**, uma redução de 99,1%, com as 199 mudanças
+  derivadas intactas.
+
+  A limpeza esvazia `objects_json` em vez de remover a linha: a chave estrangeira
+  de `schema_changes` tem `ON DELETE CASCADE`, e remover a coleta levaria junto a
+  evidência que diagnósticos já gravados citam. E a coleta mais recente de cada
+  base nunca é esvaziada, qualquer que seja a idade — ela é a linha de base da
+  próxima comparação, e esvaziá-la faria o diff seguinte reportar todo objeto da
+  base como recém-criado. Ver ADR 0015.
+
 - **A frequência de coleta passou a se cobrar sozinha.** O score usava a ponta
   otimista do intervalo — o instante da coleta que revelou a mudança —, então
   coletar uma vez por dia rendia a mesma pontuação que coletar a cada minuto. Uma

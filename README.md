@@ -96,6 +96,50 @@ O comando imprime `Faultmap inicializado.` e cria os seguintes artefatos dentro 
 - `faultmap.db`: banco SQLite com o schema inicial migrado;
 - `faultmap-out/`: diretório reservado para relatórios e outras saídas futuras.
 
+### Escolher o backend
+
+O padrão é SQLite local, e continua sendo: o produto se distribui como binário
+único e não exige banco nenhum para rodar. Para usar PostgreSQL:
+
+```yaml
+storage:
+  driver: postgres
+```
+
+```bash
+export FAULTMAP_STORAGE_DSN="postgres://usuario:senha@host:5432/faultmap?sslmode=disable"
+```
+
+A DSN vem do ambiente e **nunca** é gravada no `faultmap.yaml`, pela mesma razão
+da coleta de catálogo: o `init` promete configuração sem credenciais.
+
+Os dois backends são provados pela mesma bateria de 45 casos
+([ADR 0016](docs/adr/0016-postgres-como-backend-alternativo.md)). Com PostgreSQL
+o dado vive no servidor, e o diretório do projeto não recebe banco algum — é a
+forma mais completa de não deixar rastro local, mais forte que a sessão efêmera
+abaixo.
+
+### Sessão efêmera
+
+Para experimentar sem deixar arquivos no seu projeto:
+
+```bash
+faultmap init --ephemeral
+```
+
+O workspace é criado no diretório temporário do sistema e o comando imprime o
+caminho e o `--config` a usar nos comandos seguintes.
+
+O banco continua sendo um arquivo, e isso é proposital: cada comando do Faultmap
+é um processo separado — `serve` ingere em um, `diagnose` lê em outro — e eles
+compartilham estado através dele. Um banco em memória faria o segundo processo
+abrir uma base vazia e responder "nenhuma anomalia encontrada" sem erro algum.
+
+**Efêmero significa "fora do seu projeto", não "apagado ao sair".** O `init`
+termina antes de o workspace ser usado, então não há momento em que ele pudesse
+limpar; o sistema operacional recicla o diretório temporário, e quem quiser
+remoção imediata apaga o caminho impresso.
+
 O `init` não sobrescreve artefatos existentes. Para criar novamente o mesmo workspace, remova explicitamente apenas o diretório que você escolheu para ele:
 
 ```bash
@@ -581,6 +625,8 @@ Objetos são identificados com o schema à frente (`public.pedidos.valor`), porq
 A DSN vem do ambiente e **não** é gravada no `faultmap.yaml`, que o `init` promete criar sem tokens nem credenciais. A coleta é somente leitura: nenhum slot de replicação, nenhuma extensão, nenhum privilégio além de `SELECT` no catálogo.
 
 O detector `schema_change_proximity` acusa um serviço quando uma mudança recente atingiu uma **tabela ou base que ele de fato consulta** — o vínculo vem dos spans de banco da janela do incidente, e não de configuração declarada. A tabela vem primeiro porque a instrumentação real quase sempre emite `db.collection.name` e quase nunca `db.namespace`, e porque ela é uma ligação mais estreita que a base. A janela de busca é de 24 horas, mais larga que a do deployment porque uma migração raramente quebra no instante em que roda.
+
+A retenção (`faultmap retention apply`) libera o conteúdo dos catálogos expirados, preservando as mudanças derivadas deles e a coleta mais recente de cada base. Sem isso, coletar de 5 em 5 minutos custaria dezenas de gigabytes por ano ([ADR 0015](docs/adr/0015-retencao-libera-catalogo-e-preserva-mudancas.md)).
 
 A mudança de schema é **evidência de apoio**: ela só aparece quando o serviço já tem algum sintoma observado na janela. Uma migração sem efeito observável não é evidência de nada, e um ranking que sempre acha um culpado é indistinguível de um que adivinha.
 
