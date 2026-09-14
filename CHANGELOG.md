@@ -74,8 +74,14 @@
   todo score de finding e reordenaria os suspeitos. As colunas de score usam
   `DOUBLE PRECISION`.
 
-  `cmd/faultmap/root.go` ainda não foi religado: são 52 pontos de chamada em 15
-  comandos. O `serve` foi religado e prova o desenho ponta a ponta. Ver ADR 0016.
+  Os 15 comandos da CLI escolhem o backend pela configuração. A religação foi
+  mecânica de propósito: o alias do import passou a apontar para o seletor, e o
+  driver entrou como segundo argumento de cada abertura — `Migrate` e cada
+  `NewXRepository` mantiveram a forma exata que já tinham, que é o motivo de o
+  seletor existir. Ver ADR 0016.
+
+  As mensagens de erro deixaram de citar SQLite por nome: "fechar banco SQLite"
+  mentiria para quem está rodando com PostgreSQL.
 
 - **Sessão efêmera com `faultmap init --ephemeral`.** Cria o workspace no
   diretório temporário do sistema, para experimentar o produto sem deixar

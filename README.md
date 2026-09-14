@@ -96,6 +96,29 @@ O comando imprime `Faultmap inicializado.` e cria os seguintes artefatos dentro 
 - `faultmap.db`: banco SQLite com o schema inicial migrado;
 - `faultmap-out/`: diretório reservado para relatórios e outras saídas futuras.
 
+### Escolher o backend
+
+O padrão é SQLite local, e continua sendo: o produto se distribui como binário
+único e não exige banco nenhum para rodar. Para usar PostgreSQL:
+
+```yaml
+storage:
+  driver: postgres
+```
+
+```bash
+export FAULTMAP_STORAGE_DSN="postgres://usuario:senha@host:5432/faultmap?sslmode=disable"
+```
+
+A DSN vem do ambiente e **nunca** é gravada no `faultmap.yaml`, pela mesma razão
+da coleta de catálogo: o `init` promete configuração sem credenciais.
+
+Os dois backends são provados pela mesma bateria de 45 casos
+([ADR 0016](docs/adr/0016-postgres-como-backend-alternativo.md)). Com PostgreSQL
+o dado vive no servidor, e o diretório do projeto não recebe banco algum — é a
+forma mais completa de não deixar rastro local, mais forte que a sessão efêmera
+abaixo.
+
 ### Sessão efêmera
 
 Para experimentar sem deixar arquivos no seu projeto:
