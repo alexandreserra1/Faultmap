@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -69,8 +69,8 @@ func (repository *SchemaRepository) SaveSnapshot(
 
 	if _, err := transaction.ExecContext(ctx, `
 		INSERT INTO schema_snapshots (id, database_name, captured_at, objects_json)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(id) DO NOTHING
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (id) DO NOTHING
 	`, snapshot.ID, snapshot.DatabaseName, snapshot.CapturedAt.UTC(), string(objectsJSON)); err != nil {
 		return application.SchemaImportResult{}, rollbackSchemaTransaction(
 			transaction, fmt.Errorf("inserir coleta %q: %w", snapshot.ID, err))
@@ -86,8 +86,8 @@ func (repository *SchemaRepository) SaveSnapshot(
 				id, database_name, table_name, object_kind, object_name, change_kind,
 				detail, observed_after, observed_before, snapshot_id
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(id) DO NOTHING
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			ON CONFLICT (id) DO NOTHING
 		`, change.ID, change.DatabaseName, change.TableName, string(change.ObjectKind), change.ObjectName,
 			string(change.ChangeKind), change.Detail,
 			change.ObservedAfter.UTC(), change.ObservedBefore.UTC(), snapshot.ID)
@@ -109,8 +109,8 @@ func (repository *SchemaRepository) SaveSnapshot(
 	return result, nil
 }
 
-// ListSchemaChangesForDatabases lê, em uma consulta, as mudanças de todas as
-// bases do escopo investigado.
+// ListSchemaChangesForScope lê, em uma consulta, as mudanças de todas as bases
+// do escopo investigado.
 //
 // A consulta é em lote pelo mesmo motivo que a de deployments: perguntar base
 // por base seria um N+1 que cresce justamente quando o incidente é mais amplo.
@@ -136,30 +136,35 @@ func (repository *SchemaRepository) ListSchemaChangesForScope(
 	// banco para responder à mesma pergunta.
 	conditions := make([]string, 0, 2)
 	arguments := make([]any, 0, len(databaseNames)+len(tableNames)+3)
+	proximo := 1
 	if len(databaseNames) > 0 {
-		conditions = append(conditions, "database_name IN ("+placeholdersFor(len(databaseNames))+")")
+		conditions = append(conditions, "database_name IN ("+placeholders(len(databaseNames), proximo)+")")
 		for _, name := range databaseNames {
 			arguments = append(arguments, name)
 		}
+		proximo += len(databaseNames)
 	}
 	if len(tableNames) > 0 {
-		conditions = append(conditions, "table_name IN ("+placeholdersFor(len(tableNames))+")")
+		conditions = append(conditions, "table_name IN ("+placeholders(len(tableNames), proximo)+")")
 		for _, name := range tableNames {
 			arguments = append(arguments, name)
 		}
+		proximo += len(tableNames)
 	}
 	arguments = append(arguments, start.UTC(), end.UTC(), limit)
 
-	rows, err := repository.database.QueryContext(ctx, `
+	query := fmt.Sprintf(`
 		SELECT id, database_name, table_name, object_kind, object_name, change_kind,
 		       detail, observed_after, observed_before
 		FROM schema_changes
-		WHERE (`+strings.Join(conditions, " OR ")+`)
-		  AND observed_before >= ?
-		  AND observed_before <= ?
+		WHERE (%s)
+		  AND observed_before >= $%d
+		  AND observed_before <= $%d
 		ORDER BY observed_before DESC, id ASC
-		LIMIT ?
-	`, arguments...)
+		LIMIT $%d
+	`, strings.Join(conditions, " OR "), proximo, proximo+1, proximo+2)
+
+	rows, err := repository.database.QueryContext(ctx, query, arguments...)
 	if err != nil {
 		return nil, fmt.Errorf("consultar mudanças de schema: %w", err)
 	}
@@ -186,7 +191,7 @@ func (repository *SchemaRepository) ListSchemaChangesForScope(
 	}
 
 	// A ordem apresentada é do produto: o mesmo critério do Diff, para que a
-	// evidência não dependa de qual índice o SQLite escolheu.
+	// evidência não dependa de qual índice o banco escolheu.
 	changedomain.SortSchemaChanges(changes)
 	return changes, nil
 }
@@ -206,7 +211,7 @@ func readPreviousSnapshot(
 	err := transaction.QueryRowContext(ctx, `
 		SELECT id, database_name, captured_at, objects_json
 		FROM schema_snapshots
-		WHERE database_name = ? AND captured_at < ?
+		WHERE database_name = $1 AND captured_at < $2
 		ORDER BY captured_at DESC, id ASC
 		LIMIT 1
 	`, databaseName, before.UTC()).Scan(
@@ -218,12 +223,15 @@ func readPreviousSnapshot(
 	if err != nil {
 		return changedomain.SchemaSnapshot{}, fmt.Errorf("ler coleta anterior da base %q: %w", databaseName, err)
 	}
-	// Catálogo esvaziado pela retenção. A política preserva a coleta mais
-	// recente de cada base justamente para isto não acontecer; se acontecer
+	// Catálogo liberado pela retenção (ADR 0015). A política preserva a coleta
+	// mais recente de cada base justamente para isto não acontecer; se acontecer
 	// mesmo assim, falhar é a única saída honesta. Tratar como catálogo vazio
 	// faria a comparação reportar todo objeto da base como recém-criado — uma
-	// migração inventada em cada tabela — e tratar como ausência de linha de
-	// base gravaria uma foto nova sem comparar, escondendo a migração real.
+	// migração inventada em cada tabela.
+	//
+	// O backend SQLite tem a mesma guarda. Ela nasceu lá e não foi espelhada
+	// aqui de imediato; a bateria de conformidade não pegou porque nenhum caso
+	// recoletava depois de podar. O caso existe agora.
 	if strings.TrimSpace(objectsJSON) == "" {
 		return changedomain.SchemaSnapshot{}, fmt.Errorf(
 			"ler coleta anterior da base %q: a coleta %q teve o catálogo liberado pela retenção "+
@@ -256,10 +264,6 @@ func validateSnapshot(snapshot changedomain.SchemaSnapshot) error {
 		)
 	}
 	return nil
-}
-
-func placeholdersFor(count int) string {
-	return strings.TrimSuffix(strings.Repeat("?,", count), ",")
 }
 
 func normalizeDatabaseNames(databases []string) []string {

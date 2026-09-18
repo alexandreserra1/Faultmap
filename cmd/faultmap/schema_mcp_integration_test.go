@@ -303,3 +303,85 @@ func TestIngestSchemaCommandNaoGravaCredencialNoWorkspace(t *testing.T) {
 		}
 	}
 }
+
+// TestInitEphemeralCriaWorkspaceUsavelForaDoProjeto cobre a sessão efêmera de
+// ponta a ponta: o comando precisa entregar um caminho que os comandos
+// seguintes consigam usar, senão a flag dá uma promessa que não cumpre.
+func TestInitEphemeralCriaWorkspaceUsavelForaDoProjeto(t *testing.T) {
+	t.Parallel()
+
+	saida, err := executar(t, "init", "--ephemeral")
+	if err != nil {
+		t.Fatalf("init --ephemeral erro = %v", err)
+	}
+
+	// O caminho precisa estar na saída: sem ele a sessão é inalcançável.
+	var workspace string
+	for _, campo := range strings.Fields(saida) {
+		if strings.Contains(campo, "faultmap-efemero-") && !strings.HasSuffix(campo, ".yaml") {
+			workspace = strings.Trim(campo, ".,")
+			break
+		}
+	}
+	if workspace == "" {
+		t.Fatalf("a saída não informou o caminho do workspace:\n%s", saida)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(workspace) })
+
+	if _, err := os.Stat(filepath.Join(workspace, "faultmap.db")); err != nil {
+		t.Fatalf("banco ausente no workspace efêmero: %v", err)
+	}
+
+	// A promessa é não sujar o projeto.
+	trabalho, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() erro = %v", err)
+	}
+	if strings.HasPrefix(workspace, trabalho) {
+		t.Fatalf("workspace efêmero %q ficou dentro do projeto", workspace)
+	}
+
+	// E o workspace precisa servir a um comando real, com migrations aplicadas.
+	configPath := filepath.Join(workspace, "faultmap.yaml")
+	if _, err := executar(t, "incident", "list", "--config", configPath); err != nil {
+		t.Fatalf("o workspace efêmero não serviu a um comando real: %v", err)
+	}
+}
+
+// TestInitEphemeralRecusaCombinacaoAmbigua impede que a pessoa peça workspace
+// temporário e diretório fixo ao mesmo tempo e receba um dos dois em silêncio.
+func TestInitEphemeralRecusaCombinacaoAmbigua(t *testing.T) {
+	t.Parallel()
+
+	_, err := executar(t, "init", "--ephemeral", "--directory", t.TempDir())
+	if err == nil {
+		t.Fatal("init aceitou --ephemeral junto com --directory")
+	}
+	if !strings.Contains(err.Error(), "--ephemeral") || !strings.Contains(err.Error(), "--directory") {
+		t.Fatalf("erro = %v, esperado nomear as duas flags em conflito", err)
+	}
+}
+
+// TestInitEphemeralAvisaQueNadaEhApagadoSozinho é honestidade de interface: o
+// `init` termina antes de o workspace ser usado, então não existe momento em que
+// ele pudesse limpar. Prometer remoção automática seria mentira.
+func TestInitEphemeralAvisaQueNadaEhApagadoSozinho(t *testing.T) {
+	t.Parallel()
+
+	saida, err := executar(t, "init", "--ephemeral")
+	if err != nil {
+		t.Fatalf("init --ephemeral erro = %v", err)
+	}
+	for _, campo := range strings.Fields(saida) {
+		if strings.Contains(campo, "faultmap-efemero-") {
+			t.Cleanup(func() { _ = os.RemoveAll(strings.Trim(campo, ".,")) })
+			break
+		}
+	}
+	if !strings.Contains(saida, "--config") {
+		t.Fatalf("a saída não ensina a usar o workspace:\n%s", saida)
+	}
+	if !strings.Contains(strings.ToLower(saida), "apag") {
+		t.Fatalf("a saída não diz que a limpeza é manual:\n%s", saida)
+	}
+}

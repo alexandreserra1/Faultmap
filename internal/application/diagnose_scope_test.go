@@ -952,3 +952,129 @@ func TestDiagnoseScopeAcusaSchemaQuandoHaSintoma(t *testing.T) {
 		t.Fatalf("a migração não foi apresentada apesar do sintoma observado: %#v", diagnosis.Findings)
 	}
 }
+
+// TestDiagnoseScopeNaoApresentaDeployEmSistemaSaudavel unifica as duas regras de
+// proximidade sob a mesma corroboração.
+//
+// Só a de schema exigia sintoma; a de deploy continuava emitindo o finding, e o
+// relatório saía com "Deployment próximo ao incidente, confiança alta" e nenhum
+// suspeito — quem lê conclui que algo aconteceu. Proximidade de mudança não mede
+// nada do serviço: ela constata que algo mudou por perto, e sem nada observado
+// ao redor não sustenta acusação nem evidência.
+func TestDiagnoseScopeNaoApresentaDeployEmSistemaSaudavel(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 18, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	// Baseline e incidente idênticos: nada mudou no comportamento do serviço.
+	saudavel := func(prefixo string, instante time.Time) []domain.Signal {
+		signals := make([]domain.Signal, 0, 20)
+		for indice := 0; indice < 20; indice++ {
+			s := escopoHTTPSignal("checkout", "checkout-service", indice, instante, 201, 10)
+			s.ID = prefixo + "-" + strconv.Itoa(indice)
+			s.Attributes["service.version"] = "abc123"
+			signals = append(signals, s)
+		}
+		return signals
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "checkout-service", Environment: "demo", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"checkout-service"}},
+		&scopedSignalReaderFake{
+			baseline: saudavel("baseline", incidentStart.Add(-time.Minute)),
+			incident: saudavel("incident", incidentStart),
+		},
+		&scopedDeploymentReaderFake{deployments: []changedomain.Deployment{{
+			ID: "deployment-42", Repository: "acme/checkout", Environment: "demo",
+			ServiceName: "checkout-service", CommitSHA: "abc123",
+			DeployedAt: incidentStart.Add(-time.Minute),
+		}}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule == detection.RuleDeploymentProximity {
+			t.Fatalf("deploy apresentado sem nenhum sintoma observado: %#v", finding)
+		}
+	}
+	if len(diagnosis.Suspects) != 0 {
+		t.Fatalf("sistema saudável produziu %d suspeito(s): %#v", len(diagnosis.Suspects), diagnosis.Suspects)
+	}
+}
+
+// TestDiagnoseScopeApresentaDeployQuandoHaSintoma é o outro lado: com sintoma, a
+// proximidade volta — e o commit implantado junto com ela, que é a informação
+// mais acionável de um incidente causado por deploy.
+func TestDiagnoseScopeApresentaDeployQuandoHaSintoma(t *testing.T) {
+	t.Parallel()
+
+	incidentStart := time.Date(2026, time.September, 18, 12, 0, 0, 0, time.UTC)
+	windows, err := incidentdomain.NewInvestigationWindowFromIncident(
+		incidentStart, incidentStart.Add(time.Minute), time.Minute,
+	)
+	if err != nil {
+		t.Fatalf("criar janelas: %v", err)
+	}
+
+	baseline := make([]domain.Signal, 0, 20)
+	incident := make([]domain.Signal, 0, 20)
+	for indice := 0; indice < 20; indice++ {
+		ok := escopoHTTPSignal("baseline", "checkout-service", indice, incidentStart.Add(-time.Minute), 201, 10)
+		ok.Attributes["service.version"] = "abc123"
+		baseline = append(baseline, ok)
+
+		status := 500
+		if indice%2 == 0 {
+			status = 201
+		}
+		ruim := escopoHTTPSignal("incident", "checkout-service", indice, incidentStart, status, 10)
+		ruim.Attributes["service.version"] = "abc123"
+		incident = append(incident, ruim)
+	}
+
+	diagnosis, err := DiagnoseIncidentInScope(context.Background(), ScopedDiagnosisRequest{
+		EntryService: "checkout-service", Environment: "demo", Windows: windows,
+		Limit: 500, MaxServices: 10, Ranking: testRankingConfig(),
+	},
+		&scopeReaderFake{vizinhos: []string{"checkout-service"}},
+		&scopedSignalReaderFake{baseline: baseline, incident: incident},
+		&scopedDeploymentReaderFake{deployments: []changedomain.Deployment{{
+			ID: "deployment-42", Repository: "acme/checkout", Environment: "demo",
+			ServiceName: "checkout-service", CommitSHA: "abc123",
+			DeployedAt: incidentStart.Add(-time.Minute),
+		}}},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("DiagnoseIncidentInScope() erro = %v", err)
+	}
+
+	var deploy, commit bool
+	for _, finding := range diagnosis.Findings {
+		if finding.Rule != detection.RuleDeploymentProximity {
+			continue
+		}
+		deploy = true
+		if kind, _, _ := finding.Subject(); kind == detection.SubjectCommit {
+			commit = true
+		}
+	}
+	if !deploy {
+		t.Fatalf("o deploy não foi apresentado apesar do sintoma: %#v", diagnosis.Findings)
+	}
+	if !commit {
+		t.Fatalf("o commit implantado não foi acusado junto: %#v", diagnosis.Findings)
+	}
+}

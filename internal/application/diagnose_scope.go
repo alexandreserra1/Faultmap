@@ -179,13 +179,6 @@ func DiagnoseIncidentInScope(
 			Incident:    incidentByService[service],
 		}
 		findings = append(findings, detection.Run(input)...)
-		if deploymentReader == nil {
-			continue
-		}
-		findings = append(findings, detection.DetectDeploymentProximityFindings(
-			input, deploymentsForService(deployments, service),
-			commitMessages, request.Windows.Incident.Start,
-		)...)
 	}
 
 	// Estes dois detectores comparam serviços entre si dentro dos mesmos traces,
@@ -194,8 +187,10 @@ func DiagnoseIncidentInScope(
 	findings = append(findings, detection.DetectDependencyFailure(baseline, incident)...)
 	findings = append(findings, detection.DetectTraceBreak(baseline, incident)...)
 
-	findings = append(findings, corroboratedSchemaFindings(
-		scope, incidentByService, baselineByService, schemaChanges, findings, request.Windows.Incident.Start,
+	findings = append(findings, corroboratedProximityFindings(
+		scope, incidentByService, baselineByService, findings,
+		schemaChanges, deployments, commitMessages, deploymentReader != nil,
+		request.Windows.Incident.Start,
 	)...)
 
 	suspects, err := ranking.Rank(findings, request.Ranking)
@@ -221,35 +216,38 @@ func DiagnoseIncidentInScope(
 	}, nil
 }
 
-// corroboratedSchemaFindings só apresenta a mudança de schema de um serviço que
-// já tem algum sintoma observado.
+// corroboratedProximityFindings só apresenta proximidade de mudança — deploy ou
+// migração — para serviço que já tem algum sintoma observado.
 //
-// Uma migração sem efeito observável não é evidência de nada. Sem esta
-// corroboração o produto acusava, com confiança alta, um serviço em que 200
-// requisições passaram sem uma única falha — porque alguém havia adicionado uma
-// coluna que ninguém usa. É o falso positivo que o cenário `sem-culpado`
-// existe para proibir: um ranking que sempre acha um culpado é indistinguível
-// de um que adivinha.
+// Proximidade não mede nada do serviço: ela constata que algo mudou por perto.
+// Sem nada observado ao redor, não sustenta acusação nem evidência. O produto
+// chegou a apontar, com confiança alta, um serviço em que 200 requisições
+// passaram sem uma única falha — porque alguém havia adicionado uma coluna que
+// ninguém usa; e a emitir "Deployment próximo ao incidente, confiança alta" num
+// relatório sem suspeito nenhum, o que leva quem lê a concluir que algo houve.
 //
-// Nenhum caso real se perde. Uma migração que quebrou alguma coisa acende
-// também erro, latência ou falha de banco — o índice removido aparece como
-// database_latency_delta, a coluna incompatível como error_rate_delta. O que
-// deixa de aparecer é exatamente a migração que não fez nada.
+// É o falso positivo que o modo difícil existe para proibir: um ranking que
+// sempre acha um culpado é indistinguível de um que adivinha.
 //
-// A corroboração roda depois dos detectores entre serviços, e não dentro do
-// laço por serviço, porque dependency_failure e trace_break também são sintoma:
-// um serviço cujo único sinal é falhar sob outro merece a mudança de schema na
-// explicação tanto quanto um que registrou erro próprio.
-func corroboratedSchemaFindings(
+// Nenhum caso real se perde. Uma migração ou um deploy que quebraram alguma
+// coisa acendem também erro, latência ou falha de banco — o índice removido
+// aparece como database_latency_delta, a versão incompatível como
+// error_rate_delta. O que deixa de aparecer é a mudança que não fez nada.
+//
+// A corroboração roda depois dos detectores entre serviços, e não dentro do laço
+// por serviço, porque dependency_failure e trace_break também são sintoma: um
+// serviço cujo único sinal é falhar sob outro merece a mudança na explicação
+// tanto quanto um que registrou erro próprio.
+func corroboratedProximityFindings(
 	scope DiagnosisScope,
 	incidentByService, baselineByService map[string][]domain.Signal,
-	schemaChanges []changedomain.SchemaChange,
 	observed []detection.Finding,
+	schemaChanges []changedomain.SchemaChange,
+	deployments []changedomain.Deployment,
+	commitMessages map[string]string,
+	comDeployments bool,
 	incidentStart time.Time,
 ) []detection.Finding {
-	if len(schemaChanges) == 0 {
-		return nil
-	}
 	withSymptom := make(map[string]struct{}, len(scope.Services))
 	for _, finding := range observed {
 		if service := strings.TrimSpace(finding.ServiceName); service != "" {
@@ -257,18 +255,25 @@ func corroboratedSchemaFindings(
 		}
 	}
 
-	corroborated := make([]detection.Finding, 0, len(scope.Services))
+	corroborated := make([]detection.Finding, 0, len(scope.Services)*2)
 	for _, service := range scope.Services {
 		if _, symptomatic := withSymptom[service]; !symptomatic {
 			continue
 		}
-		finding, found := detection.DetectSchemaChangeProximity(detection.Input{
+		input := detection.Input{
 			ServiceName: service,
 			Baseline:    baselineByService[service],
 			Incident:    incidentByService[service],
-		}, schemaChanges, incidentStart)
-		if found {
-			corroborated = append(corroborated, finding)
+		}
+		if len(schemaChanges) > 0 {
+			if finding, found := detection.DetectSchemaChangeProximity(input, schemaChanges, incidentStart); found {
+				corroborated = append(corroborated, finding)
+			}
+		}
+		if comDeployments {
+			corroborated = append(corroborated, detection.DetectDeploymentProximityFindings(
+				input, deploymentsForService(deployments, service), commitMessages, incidentStart,
+			)...)
 		}
 	}
 	return corroborated

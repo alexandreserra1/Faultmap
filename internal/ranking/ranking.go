@@ -72,6 +72,7 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 				kind:          kind,
 				identifier:    identifier,
 				label:         label,
+				serviceName:   strings.TrimSpace(finding.ServiceName),
 				byWeightClass: make(map[string]float64),
 				confidence:    detection.ConfidenceHigh,
 				limitations:   make(map[string]struct{}),
@@ -97,9 +98,20 @@ func Rank(findings []detection.Finding, config Config) ([]Suspect, error) {
 		}
 	}
 
+	// O teto de um commit é o sintoma do serviço onde ele foi implantado, então
+	// os serviços precisam estar todos somados antes de qualquer commit ser
+	// pontuado.
+	measuredByService := make(map[string]float64, len(bySubject))
+	for _, accumulator := range bySubject {
+		if accumulator.kind == detection.SubjectCommit {
+			continue
+		}
+		measuredByService[accumulator.identifier] = accumulator.measured(config.Weights)
+	}
+
 	suspects := make([]Suspect, 0, len(bySubject))
 	for _, accumulator := range bySubject {
-		score := clamp(accumulator.score(config.Weights))
+		score := clamp(accumulator.score(config.Weights, measuredByService))
 		// Um sujeito cujo score inteiro foi limitado a zero não é suspeito de
 		// nada: só havia proximidade, e proximidade sozinha não acusa ninguém.
 		if score == 0 {
@@ -135,6 +147,10 @@ type suspectAccumulator struct {
 	kind       detection.SubjectKind
 	identifier string
 	label      string
+	// serviceName é o serviço a que o sujeito pertence. Para um serviço é ele
+	// mesmo; para um commit é o serviço onde ele foi implantado, que é de quem
+	// o teto do commit vem emprestado.
+	serviceName string
 	// byWeightClass acumula separadamente o que cada classe de peso somou, para
 	// que o total de uma classe possa ser limitado ao peso configurado para ela.
 	byWeightClass map[string]float64
@@ -153,8 +169,19 @@ type suspectAccumulator struct {
 //
 // As contribuições individuais continuam todas visíveis na explicação: o que é
 // limitado é o total da classe, não o que é apresentado.
-func (accumulator *suspectAccumulator) score(weights Weights) float64 {
-	measured, support := 0.0, 0.0
+func (accumulator *suspectAccumulator) score(weights Weights, measuredByService map[string]float64) float64 {
+	measured, support := accumulator.split(weights)
+	return measured + accumulator.limitSupport(support, measured, measuredByService)
+}
+
+// measured devolve só a parcela vinda de evidência medida.
+func (accumulator *suspectAccumulator) measured(weights Weights) float64 {
+	medido, _ := accumulator.split(weights)
+	return medido
+}
+
+// split separa o que foi medido do que é apoio, já limitado por classe.
+func (accumulator *suspectAccumulator) split(weights Weights) (measured, support float64) {
 	for class, accumulated := range accumulator.byWeightClass {
 		capped := math.Min(accumulated, weightForClass(class, weights))
 		if class == classDeploymentProximity {
@@ -163,7 +190,7 @@ func (accumulator *suspectAccumulator) score(weights Weights) float64 {
 		}
 		measured += capped
 	}
-	return measured + accumulator.limitSupport(support, measured)
+	return measured, support
 }
 
 // limitSupport impede que a evidência de apoio pese mais que a evidência que
@@ -186,19 +213,32 @@ func (accumulator *suspectAccumulator) score(weights Weights) float64 {
 // disparar sozinho em sistema saudável quando houve deploy na última hora —, que
 // nunca apareceu porque nenhum cenário do modo difícil ingere deployments.
 //
-// O commit fica de fora do teto. Ele só tem evidência de mudança por construção,
-// já que nasce do mesmo finding que acusa o serviço; aplicá-lo ali zeraria todo
-// commit e apagaria a acusação que é a informação mais acionável de um incidente
-// causado por deploy. O teto compara sintoma com apoio, e o commit não é um
+// O commit não é isento: o teto dele é o do serviço onde foi implantado.
+//
+// Isentá-lo foi a primeira tentativa, pelo raciocínio de que um commit só tem
+// evidência de mudança por construção — nasce do mesmo finding que acusa o
+// serviço — e capá-lo contra a própria evidência o zeraria sempre. O mecanismo
+// estava certo e a conclusão errada: o teto do commit não é o dele, é o do
+// serviço. A acusação do commit deriva da do serviço.
+//
+// O cenário deploy-inofensivo pegou o estrago: num sistema saudável com um
+// deploy recente, o commit aparecia em PRIMEIRO lugar, acima de um serviço com
+// regressão de latência medida. Com o teto emprestado do serviço, um commit
+// implantado em serviço saudável deixa de ser suspeito, e um implantado em
+// serviço que está falhando continua sendo apontado — que é a informação mais
+// acionável de um incidente causado por deploy. O teto compara sintoma com apoio, e o commit não é um
 // serviço com sintomas: ele é a mudança.
 //
 // O custo é assumido: uma migração que foi a causa única, com sintoma pequeno
 // mas real, fica presa ao tamanho do sintoma. É a mesma troca conservadora de
 // exceedsSamplingNoise — preferir calar sinal fraco a apresentar ruído como
 // evidência.
-func (accumulator *suspectAccumulator) limitSupport(support, measured float64) float64 {
+func (accumulator *suspectAccumulator) limitSupport(
+	support, measured float64,
+	measuredByService map[string]float64,
+) float64 {
 	if accumulator.kind == detection.SubjectCommit {
-		return support
+		return math.Min(support, measuredByService[accumulator.serviceName])
 	}
 	return math.Min(support, measured)
 }
