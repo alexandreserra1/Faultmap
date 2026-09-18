@@ -1,16 +1,16 @@
 # Graph Report - Faultmap  (2026-09-18)
 
 ## Corpus Check
-- 253 files · ~321,963 words
+- 254 files · ~324,761 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1986 nodes · 5731 edges · 104 communities (91 shown, 13 thin omitted)
-- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 764 edges (avg confidence: 0.82)
+- 1994 nodes · 5759 edges · 117 communities (103 shown, 14 thin omitted)
+- Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 767 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `98128608`
+- Built from commit: `2f72728b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,48 +18,48 @@
 - SchemaSnapshot
 - Load
 - Rank
-- Render
+- TestRenderApresentaSnapshotAuditavelComoMarkdown
 - graph.go
 - IngestFunc
 - historicoComUmIncidente
 - attributes.go
 - payment/handler_test.go
 - NewSignalRepository
-- NewHandler
+- New
 - DetectSchemaChangeProximity
 - detectors.go
-- CommonCauses
+- io.Writer
 - newRootCommand
-- Signal
+- DetectTraceBreak
 - Integração GitHub
 - detectors_test.go
 - Faultmap MVP — Arquitetura
 - context.Context
 - openDiagnosisRepository
 - diagnose_scope.go
-- IncidentHistoryReader
+- encoding/json.RawMessage
 - conformidade.go
 - otlp_json.go
 - DiagnoseIncidentInScope
-- PersistedDiagnosis
-- Suspect
+- database/sql.Tx
+- Input
 - run-e2e.sh
 - DetectDatabaseError
 - time.Duration
 - DetectRetryStorm
 - openSchemaRepository
-- diagnosticar
+- A coleta de schema guarda identificadores, não expressões
 - Faultmap
 - DetectVersionRegression
 - otlp_protobuf.go
-- New
+- testing.T
 - CLI faultmap
 - run
 - run-hard-mode.sh
-- Write
+- json/report.go
 - InvestigationWindow
 - database/sql.DB
-- ParseOTLPTraces
+- ParseOTLPJSON
 - run
 - faultmap_app.py
 - timeline.go
@@ -78,15 +78,15 @@
 - run
 - Setup
 - InitializeProject
-- carregarFixtureReal
+- filterDatabaseSignals
 - NewEnvironment
 - Deployment
-- otlp_logs_json.go
-- io.Writer
-- exigirSinaisCoerentes
+- ParseOTLPLogsJSON
+- RenderPersistedDiagnosis
+- ParseOTLPTraces
 - Ingestão OTLP
 - Grafo de evidências
-- RenderSuspectExplanation
+- Write
 - rodar-ranking.sh
 - small-pool/generate-traffic.sh
 - rodar-incidente.sh
@@ -101,34 +101,47 @@
 - Fora do escopo do primeiro MVP
 - Diretrizes para implementação
 - github.com/faultmap/faultmap
-- ParseOTLPLogsJSON
-- testing.T
-- RenderDiagnosis
+- IngestChanges
+- PersistedDiagnosis
+- NewHandler
 - Piloto cego
 - postgres/signal_repository.go
 - repositorioComRetencao
 - deploy-inofensivo
-- Fixtures OpenTelemetry
+- Janelas de investigação (baseline e incidente)
 - coletar
 - ADR 0015 — A retenção libera o catálogo e preserva as mudanças
 - TestConformidadeIntegracaoPostgres
 - postgres-demo
 - Finding
-- scanSignal
+- Handler
+- RenderRanking
+- Retenção apaga telemetria e preserva snapshots
+- Cenário: tempestade de retries
+- RenderIncidentSummary
+- Signal
 - testSignal
+- Migrate
+- RetentionRepository
+- sqlite/change_repository.go
+- Snapshot
+- testhelpers_test.go
 - ADR 0016 — PostgreSQL é backend alternativo, provado por uma bateria compartilhada
+- NewPolicy
 - Open
+- Pesos configuráveis do ranking
+- Render
 
 ## God Nodes (most connected - your core abstractions)
 1. `Signal` - 140 edges
 2. `Finding` - 57 edges
-3. `newRootCommand()` - 42 edges
-4. `Rank()` - 42 edges
+3. `Rank()` - 44 edges
+4. `newRootCommand()` - 42 edges
 5. `DiagnoseIncidentInScope()` - 41 edges
 6. `DetectSchemaChangeProximity()` - 37 edges
 7. `Load()` - 34 edges
 8. `PersistedDiagnosis` - 32 edges
-9. `NewInvestigationWindowFromIncident()` - 29 edges
+9. `NewInvestigationWindowFromIncident()` - 31 edges
 10. `Open()` - 29 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -136,12 +149,12 @@
   examples/demo-shop/scenarios/retry-storm/compose.yaml → internal/ranking/ranking.go
 - `Desempate pela evidência de banco` --rationale_for--> `Rank()`  [INFERRED]
   examples/pilot/resultado.md → internal/ranking/ranking.go
+- `Ranking auditável de suspeitos` --references--> `Rank()`  [INFERRED]
+  README.md → internal/ranking/ranking.go
+- `Mapeamento de regras para classes de peso` --rationale_for--> `weightClassForRule()`  [INFERRED]
+  docs/mvp/03-diagnostico-integracoes-e-saidas.md → internal/ranking/ranking.go
 - `Pool *sql.DB único por banco` --semantically_similar_to--> `Cenário: pool pequeno`  [INFERRED] [semantically similar]
   docs/mvp/05-entrega-e-diretrizes.md → examples/demo-shop/scenarios/small-pool/README.md
-- `A lista de bloqueios do YAML soma aos padrões` --rationale_for--> `privacyPolicyFrom()`  [INFERRED]
-  docs/adr/0012-bloqueios-de-privacidade-somam-em-vez-de-substituir.md → cmd/faultmap/root.go
-- `faultmap diagnose incident` --references--> `newDiagnoseIncidentCommand()`  [INFERRED]
-  README.md → cmd/faultmap/root.go
 
 ## Import Cycles
 - None detected.
@@ -154,127 +167,123 @@
 - **Orçamento de peso por classe no ranking** — docs_adr_0001_ranking_reutiliza_peso_graph_proximity_reuso_do_peso_graph_proximity, docs_adr_0010_teto_por_classe_de_peso_no_ranking_teto_por_classe_de_peso, changelog_teto_relativo_para_evidencia_de_apoio, internal_ranking_ranking_weightclassforrule, internal_ranking_ranking_weightforclass, internal_ranking_ranking_rank [INFERRED 0.85]
 - **Privacidade aplicada antes do disco** — docs_adr_0008_politica_de_privacidade_aplicada_na_ingestao_politica_aplicada_na_ingestao, docs_adr_0011_logs_guardam_apenas_metadados_logs_sem_texto_da_mensagem, docs_adr_0012_bloqueios_de_privacidade_somam_em_vez_de_substituir_uniao_de_bloqueios, docs_adr_0014_schema_guarda_identificadores_nao_expressoes_identificadores_nao_expressoes, internal_telemetry_privacy_policy, readme_privacidade [INFERRED 0.85]
 
-## Communities (104 total, 13 thin omitted)
+## Communities (117 total, 14 thin omitted)
 
 ### Community 0 - "SchemaSnapshot"
 Cohesion: 0.06
-Nodes (77): escritorDeSchemaFake, fonteDeSchemaFake, SchemaSource, scopedSchemaReaderFake, Mudança de schema como sinal de incidente, schemaChangeCandidate, A coleta de schema guarda identificadores, não expressões, SchemaChange (+69 more)
+Nodes (69): escritorDeSchemaFake, fonteDeSchemaFake, SchemaSource, scopedSchemaReaderFake, SchemaChange, SchemaChangeKind, SchemaObject, SchemaObjectKind (+61 more)
 
 ### Community 1 - "Load"
 Cohesion: 0.06
-Nodes (97): Conexao, RepositorioDeCatalogo, RepositorioDeDiagnostico, RepositorioDeMudancas, diagnosisEnd(), githubImportEnd(), newBlameCommand(), newBlameTraceCommand() (+89 more)
+Nodes (99): Conexao, RepositorioDeCatalogo, RepositorioDeDiagnostico, RepositorioDeMudancas, RepositorioDeSinais, diagnosisEnd(), githubImportEnd(), newBlameCommand() (+91 more)
 
 ### Community 2 - "Rank"
-Cohesion: 0.06
-Nodes (59): Consultar o grafo antes de mudar, Grafo de conhecimento em graphify-out, graphify affected — travessia reversa, Limites do grafo, Changelog do Faultmap, Teto relativo para evidência de apoio, Antes de mudar código, consulte o grafo, PrivacyConfig (+51 more)
-
-### Community 3 - "Render"
-Cohesion: 0.36
-Nodes (11): strings.Builder, inlineCode(), markdownText(), markdownTime(), Render(), renderFindings(), renderLimitations(), renderRanking() (+3 more)
+Cohesion: 0.10
+Nodes (36): Módulo ranking, ScoreContribution, Suspect, Ranking de suspeitos, clamp(), contributionReason(), Config, ScoreContribution (+28 more)
 
 ### Community 4 - "graph.go"
-Cohesion: 0.07
-Nodes (54): TraceInvestigation, RepositorioDeSinais, edgeAccumulator, nodeAccumulator, NodeKind, BlameTrace(), TraceSignalReader, hasRelation() (+46 more)
+Cohesion: 0.09
+Nodes (45): TraceInvestigation, edgeAccumulator, nodeAccumulator, NodeKind, BlameTrace(), TraceSignalReader, hasRelation(), TestBlameTraceCarregaUmaVezEConstroiGrafo() (+37 more)
 
 ### Community 5 - "IngestFunc"
 Cohesion: 0.07
 Nodes (52): mapOTLPEncoding(), authenticate(), NewHandler(), TestHandlerEntregaCommitEDeploymentCoerentes(), TestHandlerProtegeRotasEValidaConfiguracao(), validateConfig(), writeJSON(), delayFromFile() (+44 more)
 
 ### Community 6 - "historicoComUmIncidente"
-Cohesion: 0.10
-Nodes (37): bufio.Reader, encoding/json.Encoder, newAuditor(), TestAuditoriaNaoEscreveNaSaidaDoProtocolo(), TestAuditoriaNaoRegistraOsArgumentos(), TestArgumentosComTipoErradoViramErroDeTool(), TestContextoCanceladoEncerraASessao(), TestErroDoRepositorioViraErroDeToolENaoDerrubaOServidor() (+29 more)
+Cohesion: 0.16
+Nodes (25): TestAuditoriaNaoEscreveNaSaidaDoProtocolo(), TestAuditoriaNaoRegistraOsArgumentos(), TestArgumentosComTipoErradoViramErroDeTool(), TestContextoCanceladoEncerraASessao(), TestErroDoRepositorioViraErroDeToolENaoDerrubaOServidor(), TestIncidenteInexistenteExplicaOQueAconteceu(), TestLinhaGiganteNaoDerrubaASessao(), TestLoteJSONRPCRecebeRespostaEmVezDeSilencio() (+17 more)
 
 ### Community 7 - "attributes.go"
 Cohesion: 0.09
-Nodes (39): databaseTargetsInWindow(), sortedKeys(), safeRetryIdentity(), databaseTargetsQueriedBy(), signalsForChange(), databaseDetail(), displayDatabaseSystem(), displaySeverity() (+31 more)
+Nodes (40): databaseTargetsInWindow(), sortedKeys(), databaseSystem(), safeRetryIdentity(), databaseTargetsQueriedBy(), signalsForChange(), isHTTPSignal(), databaseDetail() (+32 more)
 
 ### Community 8 - "payment/handler_test.go"
 Cohesion: 0.17
 Nodes (19): chronicFailure(), NewHandler(), executePayment(), mustHandler(), TestHandlerConverteFalhaDoBancoSemVazarDetalhes(), TestHandlerErroCrônicoÉDeterminísticoPorPedido(), TestHandlerForcaStatusSemPersistir(), TestHandlerPersistePagamento() (+11 more)
 
 ### Community 9 - "NewSignalRepository"
-Cohesion: 0.23
-Nodes (18): Retenção apaga telemetria e preserva snapshots, RetentionRepository, NewRetentionRepository(), openRetentionDatabase(), signalIDs(), TestRetentionRepositoryPreservaSnapshotsDeIncidentes(), TestRetentionRepositoryRejeitaLimiteInválido(), TestRetentionRepositoryRemoveSomenteSinaisAnterioresAoCorte() (+10 more)
+Cohesion: 0.27
+Nodes (17): TestConformidadeSQLite(), NewRetentionRepository(), openRetentionDatabase(), signalIDs(), TestRetentionRepositoryPreservaSnapshotsDeIncidentes(), TestRetentionRepositoryRejeitaLimiteInválido(), TestRetentionRepositoryRemoveSomenteSinaisAnterioresAoCorte(), TestRetentionRepositoryRespeitaLimiteDoLote() (+9 more)
 
-### Community 10 - "NewHandler"
-Cohesion: 0.06
-Nodes (41): Config, Handler, Request, roundTripperFunc, Ingestão do GitHub limitada a uma página, sem N+1, NewHandler(), TestHandlerEncaminhaPagamentoComSucesso(), TestHandlerFanOutFalhaQuandoUmaChamadaFalha() (+33 more)
+### Community 10 - "New"
+Cohesion: 0.10
+Nodes (26): Ingestão do GitHub limitada a uma página, sem N+1, New(), TestGeneratorEnviaQuantidadeLimitada(), TestGeneratorLimitaConcorrencia(), TestGeneratorRejeitaLimitesPerigosos(), TestGeneratorRespeitaCancelamento(), FetchRequest, Client (+18 more)
 
 ### Community 11 - "DetectSchemaChangeProximity"
-Cohesion: 0.07
-Nodes (58): Workflow de CI, Matriz E2E fora do gate automático, Binários reproduzíveis com checksums, Workflow de Release, Cenário migracao-inofensiva, Matriz E2E, Modo difícil, Pontuação pela ponta pessimista do intervalo (+50 more)
+Cohesion: 0.08
+Nodes (48): Consultar o grafo antes de mudar, Grafo de conhecimento em graphify-out, graphify affected — travessia reversa, Limites do grafo, Workflow de CI, Matriz E2E fora do gate automático, Binários reproduzíveis com checksums, Workflow de Release (+40 more)
 
 ### Community 12 - "detectors.go"
-Cohesion: 0.14
-Nodes (36): Input, error_rate_delta ignora variação de amostragem, Detectores aceitam as duas convenções HTTP e ignoram spans internos, Telemetria de instrumentação real como base de teste, Detector database_http_trace_correlation, Detector database_timeout, Detector error_rate_delta, Detector latency_delta (+28 more)
+Cohesion: 0.12
+Nodes (31): Evidence, Atributos OpenTelemetry prioritários, Detector database_http_trace_correlation, Detector database_timeout, Detector latency_delta, Testes obrigatórios, StriderEdge (aplicação FastAPI + DuckDB de terceiros), Convenção antiga de atributos (db.system, http.status_code) (+23 more)
 
-### Community 13 - "CommonCauses"
+### Community 13 - "io.Writer"
 Cohesion: 0.18
-Nodes (13): Piloto cego, Servidor MCP somente leitura, Cada evidência diz o que aquele padrão costuma significar, Frases de causas comuns, Lacuna: detector de atraso de consumidor, Catálogo de falhas do OpenTelemetry Demo, CommonCauses(), TestCausasComunsCobremCatálogoDeTerceiro() (+5 more)
+Nodes (15): Servidor MCP somente leitura, bufio.Reader, encoding/json.Encoder, io.Writer, newAuditor(), dispatch(), handle(), protocolError() (+7 more)
 
 ### Community 14 - "newRootCommand"
 Cohesion: 0.13
 Nodes (29): main(), newRootCommand(), assertTableCount(), preparePersistedIncident(), reserveTCPAddress(), TestBlameTraceCommandExplicaFluxoHTTPPostgreSQL(), TestDiagnoseIncidentCommandDetectaRetryStorm(), TestDiagnoseIncidentCommandExplicaAmostraRepresentativa() (+21 more)
 
-### Community 15 - "Signal"
-Cohesion: 0.11
-Nodes (36): signalStoreFake, traceReaderFake, propagationSummary, serviceLink, Detector dependency_failure, Detector trace_break, SignalType, DetectDependencyFailure() (+28 more)
+### Community 15 - "DetectTraceBreak"
+Cohesion: 0.12
+Nodes (31): propagationSummary, serviceLink, Detector dependency_failure, Detector trace_break, DetectDependencyFailure(), failingAncestorServices(), indexSpansByID(), isFailedSpan() (+23 more)
 
 ### Community 16 - "Integração GitHub"
 Cohesion: 0.25
 Nodes (8): Módulo integrations, Índice composto (trace_id, timestamp, id), Integração GitHub, Integração PostgreSQL, Uma página por execução na coleta GitHub, Pool *sql.DB único por banco, Proibição de consultas N+1, Regras de implementação para código e banco
 
 ### Community 17 - "detectors_test.go"
-Cohesion: 0.18
-Nodes (25): Run(), assertFinding(), contains(), databaseTimeoutSignals(), httpSignals(), internalHTTPSendSignals(), legacyHTTPSignals(), TestDatabaseTimeoutIgnoraErroGenerico() (+17 more)
+Cohesion: 0.17
+Nodes (28): Detector error_rate_delta, DetectErrorRateDelta(), Run(), assertFinding(), contains(), databaseTimeoutSignals(), httpSignals(), internalHTTPSendSignals() (+20 more)
 
 ### Community 18 - "Faultmap MVP — Arquitetura"
 Cohesion: 0.16
-Nodes (28): Agents, Applications (Go / Python / Node), CLI Output, Detection Engine, Diagnostic Score, Faultmap MVP — Arquitetura, Entradas, Evidence Graph (+20 more)
+Nodes (29): Agents, Applications (Go / Python / Node), CLI Output, Detection Engine, Diagnostic Score, Faultmap MVP — Arquitetura, Entradas, Evidence Graph (+21 more)
 
 ### Community 19 - "context.Context"
-Cohesion: 0.08
-Nodes (18): leitorDeSchemaQueFalha, retentionRemoverStub, scopedSignalReaderFake, scopeReaderFake, scopeReaderNiveis, signalReaderFake, context.Context, time.Time (+10 more)
+Cohesion: 0.11
+Nodes (13): leitorDeSchemaQueFalha, retentionRemoverStub, scopedSignalReaderFake, scopeReaderFake, scopeReaderNiveis, signalReaderFake, context.Context, time.Time (+5 more)
 
 ### Community 20 - "openDiagnosisRepository"
 Cohesion: 0.15
 Nodes (27): DiagnosisRepository, assertIntPointerEqual(), assertTimePointerEqual(), testDiagnosisAt(), TestDiagnosisRepositoryGetRespectsCanceledContext(), TestDiagnosisRepositoryGetRestoresCompleteSnapshot(), TestDiagnosisRepositoryGetReturnsTypedNotFound(), TestDiagnosisRepositoryGetSupportsLegacySnapshot() (+19 more)
 
 ### Community 21 - "diagnose_scope.go"
-Cohesion: 0.19
-Nodes (21): ScopedDiagnosisRequest, ScopeDiscovery, A investigação compara serviços descobertos pelos traces, applyDependencyTieBreak(), containsService(), corroboratedSchemaFindings(), expandScopeByTraces(), DiagnosisScope (+13 more)
+Cohesion: 0.17
+Nodes (23): ScopedDiagnosisRequest, ScopeDiscovery, A investigação compara serviços descobertos pelos traces, applyDependencyTieBreak(), containsService(), corroboratedProximityFindings(), deploymentsForService(), expandScopeByTraces() (+15 more)
 
-### Community 22 - "IncidentHistoryReader"
-Cohesion: 0.23
-Nodes (15): IncidentHistoryReader, ListIncidents(), decodeArguments(), describeFindings(), marshalIndented(), toolDefinitions(), toolError(), callTool() (+7 more)
+### Community 22 - "encoding/json.RawMessage"
+Cohesion: 0.27
+Nodes (15): encoding/json.RawMessage, IncidentHistoryReader, decodeArguments(), describeFindings(), marshalIndented(), toolDefinitions(), toolError(), callTool() (+7 more)
 
 ### Community 23 - "conformidade.go"
-Cohesion: 0.08
-Nodes (50): diagnosisStoreFake, DiagnosisID(), Diagnosis, DiagnosisStore, PersistDiagnosis(), TestDiagnosisIDEDeterministicoEmUTC(), TestPersistDiagnosisNaoSalvaIncidenteSemSinais(), TestPersistDiagnosisPreservaCausaDoStore() (+42 more)
+Cohesion: 0.07
+Nodes (56): diagnosisStoreFake, DiagnosisID(), Diagnosis, SignalReader, ListSignals(), TestListSignalsEncaminhaConsulta(), TestListSignalsRespeitaContextoCancelado(), TestListSignalsValidaEntradaAntesDeConsultar() (+48 more)
 
 ### Community 24 - "otlp_json.go"
 Cohesion: 0.23
-Nodes (20): encoding/json.RawMessage, exceptionAttributes(), normalizeAttributes(), normalizeExportRequest(), normalizeSpan(), parseUnixNano(), resourceSignalAttributes(), scalarJSONValue() (+12 more)
+Nodes (19): exceptionAttributes(), normalizeAttributes(), normalizeExportRequest(), normalizeSpan(), parseUnixNano(), resourceSignalAttributes(), scalarJSONValue(), serviceName() (+11 more)
 
 ### Community 25 - "DiagnoseIncidentInScope"
 Cohesion: 0.26
-Nodes (23): DiagnoseIncidentInScope(), cadeiaSignal(), escopoHTTPSignal(), escopoSpanDeBanco(), sinalComVersao(), TestDiagnoseScopeAcusaOCommitImplantado(), TestDiagnoseScopeAcusaSchemaQuandoHaSintoma(), TestDiagnoseScopeAlcançaSegundoSalto() (+15 more)
+Nodes (25): DiagnoseIncidentInScope(), cadeiaSignal(), escopoHTTPSignal(), escopoSpanDeBanco(), sinalComVersao(), TestDiagnoseScopeAcusaOCommitImplantado(), TestDiagnoseScopeAcusaSchemaQuandoHaSintoma(), TestDiagnoseScopeAlcançaSegundoSalto() (+17 more)
 
-### Community 26 - "PersistedDiagnosis"
-Cohesion: 0.10
-Nodes (25): incidentHistoryReaderFake, database/sql.NullInt64, database/sql.NullTime, database/sql.Tx, IncidentSummary, PersistedDiagnosis, Render(), reportDiagnosis() (+17 more)
+### Community 26 - "database/sql.Tx"
+Cohesion: 0.15
+Nodes (17): database/sql.NullInt64, database/sql.NullTime, database/sql.Tx, DiagnosisRepository, nullIntPointer(), nullTimePointer(), readPersistedIncident(), readPersistedRanking() (+9 more)
 
-### Community 27 - "Suspect"
-Cohesion: 0.32
-Nodes (10): SubjectKind, Suspect, findingSortKey(), renderDiagnosisAnalysis(), renderSuspectRanking(), repeatedLimitations(), ruleLabel(), sortedKeys() (+2 more)
+### Community 27 - "Input"
+Cohesion: 0.17
+Nodes (19): deploymentCandidate, Input, Mock GitHub no loopback do container, Matriz E2E automatizada, Override timeout-after-deploy (SHA como SERVICE_VERSION), Cenário: timeout depois de uma mudança, commitLabel(), commitSHAFromEvidence() (+11 more)
 
 ### Community 28 - "run-e2e.sh"
 Cohesion: 0.16
 Nodes (12): activate_scenario(), assert_contains(), assert_json(), cleanup(), compose(), diagnose(), first_trace_id(), run_scenario() (+4 more)
 
 ### Community 29 - "DetectDatabaseError"
-Cohesion: 0.22
-Nodes (16): Detector database_error, attributeValueOrEmpty(), databaseFailureTypeSuffix(), databaseNonTimeoutFailures(), DetectDatabaseError(), isClientCancellation(), bancoComFalhas(), databaseErrorSignals() (+8 more)
+Cohesion: 0.19
+Nodes (18): Detector database_error, attributeValueOrEmpty(), databaseFailureTypeSuffix(), databaseNonTimeoutFailures(), DetectDatabaseError(), isClientCancellation(), bancoComFalhas(), databaseErrorSignals() (+10 more)
 
 ### Community 30 - "time.Duration"
 Cohesion: 0.18
@@ -285,12 +294,12 @@ Cohesion: 0.23
 Nodes (16): retryCandidate, retryOperationStats, DetectRetryStorm(), retryStats(), bancoNodeRepetido(), databaseRetrySignals(), retrySignals(), serverRetrySignals() (+8 more)
 
 ### Community 32 - "openSchemaRepository"
-Cohesion: 0.30
-Nodes (14): TestListSchemaChangesLimitaAConsulta(), TestSaveSnapshotAceitaBaseVaziaDesdeOInicio(), TestSaveSnapshotRecusaColetaGigante(), TestSaveSnapshotRecusaColetaVaziaContraCatalogoPovoado(), TestSaveSnapshotRejeitaColetaSemIdentidade(), TestSaveSnapshotRespeitaContextoCancelado(), catalogo(), SchemaRepository (+6 more)
+Cohesion: 0.25
+Nodes (17): TestListSchemaChangesLimitaAConsulta(), TestSaveSnapshotAceitaBaseVaziaDesdeOInicio(), TestSaveSnapshotFalhaComBancoFechado(), TestSaveSnapshotFalhaComColetaAnteriorCorrompida(), TestSaveSnapshotRecusaColetaGigante(), TestSaveSnapshotRecusaColetaVaziaContraCatalogoPovoado(), TestSaveSnapshotRejeitaColetaSemIdentidade(), TestSaveSnapshotRespeitaContextoCancelado() (+9 more)
 
-### Community 33 - "diagnosticar"
-Cohesion: 0.46
-Nodes (7): math/rand.Rand, consultaDeBanco(), diagnosticar(), embaralhar(), requisição(), telemetriaAleatória(), TestDiagnósticoNãoDependeDaOrdemDeChegadaDosSinais()
+### Community 33 - "A coleta de schema guarda identificadores, não expressões"
+Cohesion: 0.23
+Nodes (18): Changelog do Faultmap, Mudança de schema como sinal de incidente, Teto relativo para evidência de apoio, PrivacyConfig, Detectores estruturais reutilizam o peso graph_proximity, error_rate_delta ignora variação de amostragem, Detectores aceitam as duas convenções HTTP e ignoram spans internos, Telemetria de instrumentação real como base de teste (+10 more)
 
 ### Community 34 - "Faultmap"
 Cohesion: 0.15
@@ -301,12 +310,12 @@ Cohesion: 0.28
 Nodes (14): versionStats, Detector version_regression, comparableVersionStats(), DetectVersionRegression(), TestVersionRegressionComparaDuasVersõesNaMesmaJanela(), TestVersionRegressionDetectaLatênciaPiorEmUmaVersão(), TestVersionRegressionIgnoraDiferençaDentroDoRuído(), TestVersionRegressionSilenciaComUmaÚnicaVersão() (+6 more)
 
 ### Community 36 - "otlp_protobuf.go"
-Cohesion: 0.22
-Nodes (15): go.opentelemetry.io/proto/otlp/collector/trace/v1.ExportTraceServiceRequest, go.opentelemetry.io/proto/otlp/common/v1.ArrayValue, go.opentelemetry.io/proto/otlp/common/v1.KeyValue, go.opentelemetry.io/proto/otlp/common/v1.KeyValueList, go.opentelemetry.io/proto/otlp/trace/v1.Span, go.opentelemetry.io/proto/otlp/trace/v1.Span_Event, marshalProtoValue(), protobufAnyValue() (+7 more)
+Cohesion: 0.21
+Nodes (16): go.opentelemetry.io/proto/otlp/collector/trace/v1.ExportTraceServiceRequest, go.opentelemetry.io/proto/otlp/common/v1.ArrayValue, go.opentelemetry.io/proto/otlp/common/v1.KeyValue, go.opentelemetry.io/proto/otlp/common/v1.KeyValueList, go.opentelemetry.io/proto/otlp/trace/v1.Span, go.opentelemetry.io/proto/otlp/trace/v1.Span_Event, marshalProtoValue(), parseOTLPProtobuf() (+8 more)
 
-### Community 37 - "New"
-Cohesion: 0.24
-Nodes (13): Identificadores de catálogo ordenáveis por tempo, encode(), extract(), New(), TestAlfabetoNaoTemCaracteresAmbiguos(), TestClassificabilidade(), TestClassificabilidadeDistingueMilissegundos(), TestDeterminismoPreservaIdempotencia() (+5 more)
+### Community 37 - "testing.T"
+Cohesion: 0.14
+Nodes (22): Identificadores de catálogo ordenáveis por tempo, TestConfigValidateExigeIdentidadeCompleta(), TestDisabledMantemShutdownSeguro(), TestTraceEndpointAcrescentaCaminhoOTLP(), testing.T, TestCommitValidateRejectsIncompleteChange(), TestDeploymentValidateRequiresCorrelationFields(), encode() (+14 more)
 
 ### Community 38 - "CLI faultmap"
 Cohesion: 0.14
@@ -320,21 +329,21 @@ Nodes (7): loadConfig(), main(), run(), mapLookup(), TestLoadConfigConvertePoolP
 Cohesion: 0.26
 Nodes (15): apply_harmless_migration(), assert_contains(), assert_no_finding(), cleanup(), collect_schema(), compose(), diagnose(), generate_burst_traffic() (+7 more)
 
-### Community 41 - "Write"
-Cohesion: 0.10
-Nodes (41): graph(), snapshot(), TestArtefatosConcordamSobreAOrdemDosSuspeitos(), TestWriteExigeDiretorioInformado(), TestWriteFalhaQuandoCaminhoNaoEDiretorio(), TestWriteFalhaQuandoDiretorioNaoExiste(), TestWriteGravaOsCincoArtefatosNoDiretorio(), TestWriteProduzBytesIdenticosEmDuasExecucoes() (+33 more)
+### Community 41 - "json/report.go"
+Cohesion: 0.29
+Nodes (14): copyIntPointer(), newReport(), orderedSuspects(), reportFinding(), reportSuspect(), reportTime(), sortedStrings(), contribution (+6 more)
 
 ### Community 42 - "InvestigationWindow"
-Cohesion: 0.16
-Nodes (14): diagnosisReaderFake, InvestigationWindow, TimeWindow, diagnosisDatabaseSignal(), hasContribution(), hasFinding(), NewInvestigationWindow(), NewTimeWindow() (+6 more)
+Cohesion: 0.26
+Nodes (10): InvestigationWindow, TimeWindow, NewInvestigationWindow(), NewTimeWindow(), TestNewInvestigationWindowAllowsBaselineToMeetIncidentBoundary(), TestNewInvestigationWindowFromIncidentCalculatesContiguousBaseline(), TestNewInvestigationWindowFromIncidentRejectsInvalidInputs(), TestNewInvestigationWindowRejectsOverlappingOrInvalidWindows() (+2 more)
 
 ### Community 43 - "database/sql.DB"
 Cohesion: 0.25
 Nodes (18): database/sql.DB, applyMigration(), isMigrationApplied(), Migrate(), rollbackMigration(), assertIndexColumns(), assertIndexExists(), assertMigrationVersion() (+10 more)
 
-### Community 44 - "ParseOTLPTraces"
-Cohesion: 0.14
-Nodes (23): go.opentelemetry.io/proto/otlp/common/v1.AnyValue, io.Reader, classifyOTLPError(), OTLPEncoding, contextError(), ParseOTLPJSON(), assertSignalEqual(), intAnyValue() (+15 more)
+### Community 44 - "ParseOTLPJSON"
+Cohesion: 0.22
+Nodes (14): encoding/json.Decoder, go.opentelemetry.io/proto/otlp/common/v1.AnyValue, contextError(), ParseOTLPJSON(), rejectTrailingJSON(), assertSignalEqual(), intAnyValue(), stringAnyValue() (+6 more)
 
 ### Community 45 - "run"
 Cohesion: 0.23
@@ -349,16 +358,16 @@ Cohesion: 0.24
 Nodes (15): timeline.json ancora findings na janela do incidente, collectChangeIDs(), collectSignalIDs(), copyIntPointer(), findingSummary(), newDocument(), Render(), sortedStrings() (+7 more)
 
 ### Community 48 - "IngestTelemetry"
-Cohesion: 0.38
-Nodes (10): IngestionResult, contextError(), SignalStore, IngestLogs(), IngestTelemetry(), IngestTelemetryFile(), TestIngestTelemetryFileNormalizaEPersiste(), TestIngestTelemetryPreservaClassificacaoDePayloadInvalido() (+2 more)
+Cohesion: 0.25
+Nodes (12): IngestionResult, io.Reader, contextError(), SignalStore, IngestLogs(), IngestTelemetry(), IngestTelemetryFile(), TestIngestTelemetryFileNormalizaEPersiste() (+4 more)
 
 ### Community 49 - "acceptance_test.go"
 Cohesion: 0.42
 Nodes (11): readRequiredFile(), requireContains(), TestDemoPublicaPortasSomenteNoLoopback(), TestDemoUsaPortaDeHostDedicada(), TestLoadGeneratorRecebeIdentidadeOTel(), TestReadmesDocumentamExecucaoDaDemo(), TestRunnerE2EDeclaraMatrizLimitesELimpeza(), TestScenariosDocumentamContratoReproduzivel() (+3 more)
 
 ### Community 50 - "DetectLogCorrelation"
-Cohesion: 0.36
-Nodes (10): DetectLogCorrelation(), errorLogs(), filterLogSignals(), logsDeErro(), requisicoes(), TestLogCorrelationExigeCorrelaçãoComTrace(), TestLogCorrelationIgnoraRuídoConstante(), TestLogCorrelationLigaErrosDeLogAoTraceQueFalhou() (+2 more)
+Cohesion: 0.32
+Nodes (11): exceedsSamplingNoise(), DetectLogCorrelation(), errorLogs(), filterLogSignals(), logsDeErro(), requisicoes(), TestLogCorrelationExigeCorrelaçãoComTrace(), TestLogCorrelationIgnoraRuídoConstante() (+3 more)
 
 ### Community 51 - "schema_mcp_integration_test.go"
 Cohesion: 0.23
@@ -377,8 +386,8 @@ Cohesion: 0.20
 Nodes (15): podadorDeCatalogoFake, RetentionRequest, RetentionResult, RetentionRepository, ApplyRetention(), SchemaCatalogPruner, SignalRetentionRemover, pruneSchemaCatalogs() (+7 more)
 
 ### Community 55 - "Demo Shop"
-Cohesion: 0.11
-Nodes (24): Detector retry_storm, Critérios de aceite do MVP, Métricas de sucesso, Sistema de demonstração demo-shop, Primeira demonstração obrigatória, Roadmap de dez marcos, Serviço checkout-service, Serviço load-generator (+16 more)
+Cohesion: 0.18
+Nodes (15): Serviço checkout-service, Serviço load-generator, Serviço payment-service, Serviço postgres da demo, Contratos de runtime dos overrides, Demo Shop, Override database-slow (DB_DELAY 750ms), generate-traffic.sh script (+7 more)
 
 ### Community 56 - "DetectDatabaseLatencyDelta"
 Cohesion: 0.33
@@ -408,29 +417,29 @@ Nodes (3): Setup(), traceEndpoint(), Config
 Cohesion: 0.27
 Nodes (11): ensureContext(), EphemeralProjectDir(), InitializeProject(), assertDirectoryExists(), assertFileExists(), TestEphemeralProjectDirCriaForaDoProjeto(), TestEphemeralProjectDirNaoColide(), TestEphemeralProjectDirServeAoInitCompleto() (+3 more)
 
-### Community 63 - "carregarFixtureReal"
-Cohesion: 0.42
-Nodes (8): carregarFixtureReal(), separarPorFalha(), serviçosDaFixture(), TestDetectorDeBancoDisparaComTelemetriaReal(), TestDetectoresNovosNãoAcusamTelemetriaRealSaudável(), TestFalhaRealDeBancoÉReconhecida(), TestTelemetriaRealDeBancoÉEnxergada(), TestTelemetriaRealHTTPÉEnxergada()
+### Community 63 - "filterDatabaseSignals"
+Cohesion: 0.38
+Nodes (9): filterDatabaseSignals(), carregarFixtureReal(), separarPorFalha(), serviçosDaFixture(), TestDetectorDeBancoDisparaComTelemetriaReal(), TestDetectoresNovosNãoAcusamTelemetriaRealSaudável(), TestFalhaRealDeBancoÉReconhecida(), TestTelemetriaRealDeBancoÉEnxergada() (+1 more)
 
 ### Community 64 - "NewEnvironment"
 Cohesion: 0.33
 Nodes (7): mapLookup(), TestLoadConfigConverteGitHubMock(), TestLoadConfigExigeSHA(), Lookup, NewEnvironment(), TestEnvironmentRejeitaConfiguracaoInsegura(), TestEnvironmentValidaValoresObrigatorios()
 
 ### Community 65 - "Deployment"
-Cohesion: 0.07
-Nodes (34): ChangeSource, changeSourceFake, changeWriterFake, scopedDeploymentReaderFake, Commit, Deployment, ImportRequest, Snapshot (+26 more)
+Cohesion: 0.15
+Nodes (13): scopedDeploymentReaderFake, Deployment, preparedCommit, preparedDeployment, NewChangeRepository(), prepareChanges(), rollbackChangeTransaction(), scanDeployments() (+5 more)
 
-### Community 66 - "otlp_logs_json.go"
-Cohesion: 0.54
-Nodes (7): logRecordID(), logSeverity(), normalizeLogRecord(), exportLogsServiceRequest, logRecord, resourceLog, scopeLog
+### Community 66 - "ParseOTLPLogsJSON"
+Cohesion: 0.27
+Nodes (12): logRecordID(), logSeverity(), normalizeLogRecord(), ParseOTLPLogsJSON(), TestParseOTLPLogsNuncaArmazenaOTextoDaMensagem(), TestParseOTLPLogsPreservaSeveridadeECorrelação(), TestParseOTLPLogsRejeitaEnvelopeInválido(), TestParseOTLPLogsÉIdempotentePorRegistro() (+4 more)
 
-### Community 67 - "io.Writer"
-Cohesion: 0.33
-Nodes (7): io.Writer, RenderScopeSummary(), formatIncidentTime(), RenderIncidentList(), RenderPersistedDiagnosis(), TestRenderIncidentListOrdenaEExibeResumo(), TestRenderPersistedDiagnosisExplicaMetadataLegada()
+### Community 67 - "RenderPersistedDiagnosis"
+Cohesion: 0.43
+Nodes (5): formatIncidentTime(), RenderIncidentList(), RenderPersistedDiagnosis(), TestRenderIncidentListOrdenaEExibeResumo(), TestRenderPersistedDiagnosisExplicaMetadataLegada()
 
-### Community 68 - "exigirSinaisCoerentes"
-Cohesion: 0.67
-Nodes (6): testing.F, exigirErroClassificado(), exigirSinaisCoerentes(), FuzzParseOTLPLogsJSONNãoDevolveOCorpo(), FuzzParseOTLPTracesJSON(), FuzzParseOTLPTracesProtobuf()
+### Community 68 - "ParseOTLPTraces"
+Cohesion: 0.23
+Nodes (14): testing.F, exigirErroClassificado(), exigirSinaisCoerentes(), FuzzParseOTLPLogsJSONNãoDevolveOCorpo(), FuzzParseOTLPTracesJSON(), FuzzParseOTLPTracesProtobuf(), classifyOTLPError(), OTLPEncoding (+6 more)
 
 ### Community 69 - "Ingestão OTLP"
 Cohesion: 0.18
@@ -440,25 +449,25 @@ Nodes (11): Módulo telemetry, Allowlist de atributos de Resource, Ingestão OTL
 Cohesion: 0.40
 Nodes (5): Módulo evidence, EvidenceEdge, EvidenceNode, Fallback de parentesco de spans, Grafo de evidências
 
-### Community 71 - "RenderSuspectExplanation"
-Cohesion: 0.36
-Nodes (7): provenanceSummary(), RenderSuspectExplanation(), renderSuspectFinding(), explicacaoDeExemplo(), TestRenderizarExplicacaoMostraProvenienciaELimitacoes(), TestRenderizarExplicacaoSemContribuicoesEhExplicita(), TestRenderSuspectExplanationResumeProveniênciaLonga()
+### Community 71 - "Write"
+Cohesion: 0.37
+Nodes (11): graph(), snapshot(), TestArtefatosConcordamSobreAOrdemDosSuspeitos(), TestWriteExigeDiretorioInformado(), TestWriteFalhaQuandoCaminhoNaoEDiretorio(), TestWriteFalhaQuandoDiretorioNaoExiste(), TestWriteGravaOsCincoArtefatosNoDiretorio(), TestWriteProduzBytesIdenticosEmDuasExecucoes() (+3 more)
 
 ### Community 72 - "rodar-ranking.sh"
 Cohesion: 0.83
 Nodes (3): limpar(), rodar-ranking.sh script, trafego()
 
-### Community 86 - "ParseOTLPLogsJSON"
-Cohesion: 0.36
-Nodes (7): encoding/json.Decoder, rejectTrailingJSON(), ParseOTLPLogsJSON(), TestParseOTLPLogsNuncaArmazenaOTextoDaMensagem(), TestParseOTLPLogsPreservaSeveridadeECorrelação(), TestParseOTLPLogsRejeitaEnvelopeInválido(), TestParseOTLPLogsÉIdempotentePorRegistro()
+### Community 86 - "IngestChanges"
+Cohesion: 0.33
+Nodes (8): ChangeSource, changeWriterFake, ChangeImportResult, ChangeWriter, IngestChanges(), TestIngestChangesFetchesAndPersistsOneBoundedSnapshot(), TestIngestChangesStopsBeforePersistenceWhenSourceFails(), validChangesRequest()
 
-### Community 87 - "testing.T"
-Cohesion: 0.18
-Nodes (13): TestConfigValidateExigeIdentidadeCompleta(), TestDisabledMantemShutdownSeguro(), TestTraceEndpointAcrescentaCaminhoOTLP(), testing.T, TestGetIncidentValidaIDEPropagaAusencia(), TestListIncidentsPreservaOrdemDoRepositorio(), TestListIncidentsValidaLimiteAntesDoRepositorio(), TestPersistedDiagnosisMetadataComplete() (+5 more)
+### Community 87 - "PersistedDiagnosis"
+Cohesion: 0.21
+Nodes (9): incidentHistoryReaderFake, IncidentSummary, PersistedDiagnosis, ListIncidents(), TestGetIncidentValidaIDEPropagaAusencia(), TestListIncidentsPreservaOrdemDoRepositorio(), TestListIncidentsValidaLimiteAntesDoRepositorio(), TestPersistedDiagnosisMetadataComplete() (+1 more)
 
-### Community 88 - "RenderDiagnosis"
-Cohesion: 0.36
-Nodes (9): RenderDiagnosis(), renderDiagnosisForTest(), TestRenderDiagnosisApresentaRegrasDeFormaHumanaEAuditavel(), TestRenderDiagnosisApresentaRetryStormEmPortugues(), TestRenderDiagnosisConsolidaLimitacoesRepetidas(), TestRenderDiagnosisDistingueCommitDeServiço(), TestRenderDiagnosisDizOQueAquelePadrãoCostumaSignificar(), TestRenderDiagnosisMantemLimitacaoEspecificaNaHipotese() (+1 more)
+### Community 88 - "NewHandler"
+Cohesion: 0.35
+Nodes (10): roundTripperFunc, NewHandler(), TestHandlerEncaminhaPagamentoComSucesso(), TestHandlerFanOutFalhaQuandoUmaChamadaFalha(), TestHandlerFanOutFazChamadasParalelasBemSucedidas(), TestHandlerRepetePagamentoAteLimite(), TestHandlerRespeitaCancelamentoDoContexto(), TestHandlerValidaEntradaEMetodo() (+2 more)
 
 ### Community 89 - "Piloto cego"
 Cohesion: 0.38
@@ -476,9 +485,9 @@ Nodes (9): coletaDe(), SchemaRepository, repositorioComRetencao(), TestColetaCon
 Cohesion: 0.50
 Nodes (3): deploy-inofensivo, O que ele verifica, Por que ele existe
 
-### Community 93 - "Fixtures OpenTelemetry"
-Cohesion: 0.18
-Nodes (11): Atributos OpenTelemetry prioritários, InvestigationWindow, Janelas de investigação (baseline e incidente), Metadados legados anuláveis, Testes obrigatórios, Estratégia expand-and-contract, Baseline mínima de 30 sinais por serviço, StriderEdge (aplicação FastAPI + DuckDB de terceiros) (+3 more)
+### Community 93 - "Janelas de investigação (baseline e incidente)"
+Cohesion: 0.40
+Nodes (5): InvestigationWindow, Janelas de investigação (baseline e incidente), Metadados legados anuláveis, Estratégia expand-and-contract, Baseline mínima de 30 sinais por serviço
 
 ### Community 94 - "coletar"
 Cohesion: 0.31
@@ -489,32 +498,84 @@ Cohesion: 0.40
 Nodes (4): ADR 0015 — A retenção libera o catálogo e preserva as mudanças, Consequências, Contexto, Decisão
 
 ### Community 96 - "TestConformidadeIntegracaoPostgres"
-Cohesion: 0.24
-Nodes (10): abrirEmSchemaIsolado(), comSearchPath(), TestConformidadeIntegracaoPostgres(), closeAfterFailure(), Open(), applyMigration(), isMigrationApplied(), Migrate() (+2 more)
+Cohesion: 0.43
+Nodes (5): abrirEmSchemaIsolado(), comSearchPath(), TestConformidadeIntegracaoPostgres(), closeAfterFailure(), Open()
 
 ### Community 97 - "postgres-demo"
 Cohesion: 0.40
 Nodes (4): DATABASE_URI, uvx, postgres-demo, postgres-mcp
 
 ### Community 99 - "Finding"
-Cohesion: 0.25
-Nodes (17): SuspectContribution, Evidence, ExplainSuspect(), findingsForService(), findSuspect(), SuspectExplanation, groupContributions(), normalizeFinding() (+9 more)
+Cohesion: 0.06
+Nodes (65): SuspectContribution, Piloto cego, Cada evidência diz o que aquele padrão costuma significar, Frases de causas comuns, Lacuna: detector de atraso de consumidor, Catálogo de falhas do OpenTelemetry Demo, strings.Builder, ExplainSuspect() (+57 more)
 
-### Community 105 - "scanSignal"
-Cohesion: 0.33
-Nodes (5): marshalFloatMap(), marshalStringMap(), rollbackSignalTransaction(), scanSignal(), SignalRepository
+### Community 100 - "Handler"
+Cohesion: 0.27
+Nodes (5): Config, Handler, Request, net/http.Request, net/http.Response
+
+### Community 101 - "RenderRanking"
+Cohesion: 0.38
+Nodes (8): RenderRanking(), rankingSnapshot(), TestRankingPreservaAOrdemDoSnapshot(), TestRenderRankingNormalizaInstanteParaUTC(), TestRenderRankingPreservaOrdemDoSnapshotEOrdenaContribuicoesPorRegra(), TestRenderRankingProduzBytesIdenticosEmDuasExecucoes(), TestRenderRankingSemSuspeitosEscreveListaVaziaENaoNula(), rankingDocument
+
+### Community 102 - "Retenção apaga telemetria e preserva snapshots"
+Cohesion: 0.28
+Nodes (4): Retenção apaga telemetria e preserva snapshots, RetentionRepository, rollbackRetentionTransaction(), RetentionRepository
+
+### Community 103 - "Cenário: tempestade de retries"
+Cohesion: 0.22
+Nodes (9): Detector retry_storm, Critérios de aceite do MVP, Métricas de sucesso, Sistema de demonstração demo-shop, Primeira demonstração obrigatória, Roadmap de dez marcos, Defeito no checkout, não na dependência, Override retry-storm (PAYMENT_MAX_ATTEMPTS 4) (+1 more)
+
+### Community 104 - "RenderIncidentSummary"
+Cohesion: 0.47
+Nodes (8): RenderIncidentSummary(), summarySnapshot(), TestRenderIncidentSummaryNaoDuplicaRelatorioCompleto(), TestRenderIncidentSummaryProduzBytesIdenticosEmDuasExecucoes(), TestRenderIncidentSummaryResumeIdentificacaoJanelasEContagens(), TestRenderIncidentSummarySemMetadadosCompletosOmiteBaseline(), TestRenderIncidentSummarySemSuspeitosOmiteSuspeitoPrincipal(), summaryDocument
+
+### Community 105 - "Signal"
+Cohesion: 0.16
+Nodes (16): signalStoreFake, traceReaderFake, SignalType, math/rand.Rand, consultaDeBanco(), diagnosticar(), embaralhar(), requisição() (+8 more)
 
 ### Community 106 - "testSignal"
 Cohesion: 0.42
 Nodes (8): openSignalRepository(), testSignal(), TestSignalRepositoryListByServiceAndWindowUsesStableOrderAndLimit(), TestSignalRepositoryListByTraceIDFiltersOrdersAndLimits(), TestSignalRepositoryListByTraceIDRejectsInvalidInputBeforeDatabaseAccess(), TestSignalRepositoryListByTraceIDRespectsCanceledContext(), TestSignalRepositorySaveInsertsAndDeduplicatesByID(), SignalRepository
 
+### Community 107 - "Migrate"
+Cohesion: 0.39
+Nodes (6): applyMigration(), TestMigrateIntegracaoSuportaProcessosSimultaneos(), isMigrationApplied(), Migrate(), rollbackMigration(), migration
+
+### Community 108 - "RetentionRepository"
+Cohesion: 0.36
+Nodes (3): NewRetentionRepository(), rollbackRetentionTransaction(), RetentionRepository
+
+### Community 109 - "sqlite/change_repository.go"
+Cohesion: 0.29
+Nodes (7): preparedCommit, preparedDeployment, prepareChanges(), deploymentMetadata, preparedChanges, preparedCommit, preparedDeployment
+
+### Community 110 - "Snapshot"
+Cohesion: 0.43
+Nodes (4): changeSourceFake, Commit, ImportRequest, Snapshot
+
+### Community 111 - "testhelpers_test.go"
+Cohesion: 0.33
+Nodes (4): diagnosisReaderFake, diagnosisDatabaseSignal(), hasContribution(), hasFinding()
+
 ### Community 112 - "ADR 0016 — PostgreSQL é backend alternativo, provado por uma bateria compartilhada"
 Cohesion: 0.33
 Nodes (5): Adendo — a divergência de concorrência passou a ser coberta, ADR 0016 — PostgreSQL é backend alternativo, provado por uma bateria compartilhada, Consequências, Contexto, Decisão
 
+### Community 113 - "NewPolicy"
+Cohesion: 0.53
+Nodes (5): NewPolicy(), TestPolicyIgnoraDiferençaDeCaixaEEspaços(), TestPolicyRemoveAtributosBloqueados(), TestPolicySemLimiteNãoTrunca(), TestPolicyTruncaAtributosLongos()
+
 ### Community 114 - "Open"
-Cohesion: 0.24
-Nodes (8): SQLite (sinais + evidências + resultados), TestConformidadeSQLite(), closeAfterFailure(), Open(), TestOpenConfiguresSQLiteForFaultmap(), TestSaveSnapshotFalhaComBancoFechado(), TestSaveSnapshotFalhaComColetaAnteriorCorrompida(), NewSchemaRepository()
+Cohesion: 0.50
+Nodes (3): closeAfterFailure(), Open(), TestOpenConfiguresSQLiteForFaultmap()
+
+### Community 115 - "Pesos configuráveis do ranking"
+Cohesion: 0.40
+Nodes (5): Módulo platform, Mapeamento de regras para classes de peso, Pesos configuráveis do ranking, Configuração inicial faultmap.yaml, Configuração E2E com GitHub
+
+### Community 116 - "Render"
+Cohesion: 0.70
+Nodes (4): Render(), reportDiagnosis(), TestRenderProduzContratoVersionadoEDeterministico(), TestRenderRepresentaBaselineLegadaComoNull()
 
 ## Ambiguous Edges - Review These
 - `database-slow/generate-traffic.sh` → `Cenário: banco lento`  [AMBIGUOUS]
@@ -529,7 +590,7 @@ Nodes (8): SQLite (sinais + evidências + resultados), TestConformidadeSQLite(),
 ## Knowledge Gaps
 - **64 isolated node(s):** `uvx`, `postgres-mcp`, `DATABASE_URI`, `Request`, `results` (+59 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -542,9 +603,9 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
 - **What is the exact relationship between `Evidence Graph` and `PostgreSQL (DB signals / stats)`?**
   _Edge tagged AMBIGUOUS (relation: shares_data_with) - confidence is low._
-- **Why does `Signal` connect `Signal` to `Rank`, `graph.go`, `attributes.go`, `NewSignalRepository`, `DetectSchemaChangeProximity`, `detectors.go`, `detectors_test.go`, `context.Context`, `diagnose_scope.go`, `conformidade.go`, `otlp_json.go`, `DiagnoseIncidentInScope`, `DetectDatabaseError`, `DetectRetryStorm`, `diagnosticar`, `DetectVersionRegression`, `InvestigationWindow`, `ParseOTLPTraces`, `DetectLogCorrelation`, `DetectDatabaseLatencyDelta`, `carregarFixtureReal`, `otlp_logs_json.go`, `exigirSinaisCoerentes`, `ParseOTLPLogsJSON`, `postgres/signal_repository.go`, `scanSignal`, `testSignal`?**
-  _High betweenness centrality (0.101) - this node is a cross-community bridge._
-- **Why does `Finding` connect `Finding` to `Rank`, `Render`, `DetectSchemaChangeProximity`, `detectors.go`, `Signal`, `detectors_test.go`, `openDiagnosisRepository`, `diagnose_scope.go`, `IncidentHistoryReader`, `conformidade.go`, `PersistedDiagnosis`, `Suspect`, `DetectDatabaseError`, `DetectRetryStorm`, `DetectVersionRegression`, `Write`, `InvestigationWindow`, `timeline.go`, `DetectLogCorrelation`, `DetectDatabaseLatencyDelta`, `sqlite/diagnosis_repository.go`, `RenderSuspectExplanation`, `RenderDiagnosis`?**
-  _High betweenness centrality (0.049) - this node is a cross-community bridge._
-- **Why does `PersistedDiagnosis` connect `PersistedDiagnosis` to `Load`, `Finding`, `Render`, `io.Writer`, `Write`, `timeline.go`, `context.Context`, `IncidentHistoryReader`, `Suspect`?**
+- **Why does `Signal` connect `Signal` to `graph.go`, `attributes.go`, `NewSignalRepository`, `DetectSchemaChangeProximity`, `detectors.go`, `DetectTraceBreak`, `detectors_test.go`, `context.Context`, `diagnose_scope.go`, `conformidade.go`, `otlp_json.go`, `DiagnoseIncidentInScope`, `Input`, `DetectDatabaseError`, `DetectRetryStorm`, `DetectVersionRegression`, `otlp_protobuf.go`, `ParseOTLPJSON`, `IngestTelemetry`, `DetectLogCorrelation`, `DetectDatabaseLatencyDelta`, `filterDatabaseSignals`, `ParseOTLPLogsJSON`, `ParseOTLPTraces`, `postgres/signal_repository.go`, `testSignal`, `testhelpers_test.go`?**
+  _High betweenness centrality (0.107) - this node is a cross-community bridge._
+- **Why does `Finding` connect `Finding` to `Rank`, `DetectSchemaChangeProximity`, `detectors.go`, `DetectTraceBreak`, `detectors_test.go`, `openDiagnosisRepository`, `diagnose_scope.go`, `encoding/json.RawMessage`, `conformidade.go`, `database/sql.Tx`, `Input`, `DetectDatabaseError`, `DetectRetryStorm`, `DetectVersionRegression`, `json/report.go`, `timeline.go`, `DetectLogCorrelation`, `DetectDatabaseLatencyDelta`, `sqlite/diagnosis_repository.go`, `PersistedDiagnosis`, `testhelpers_test.go`?**
+  _High betweenness centrality (0.045) - this node is a cross-community bridge._
+- **Why does `DiagnoseIncidentInScope()` connect `DiagnoseIncidentInScope` to `Load`, `Rank`, `DetectSchemaChangeProximity`, `DetectTraceBreak`, `detectors_test.go`, `context.Context`, `diagnose_scope.go`, `conformidade.go`?**
   _High betweenness centrality (0.027) - this node is a cross-community bridge._

@@ -56,6 +56,22 @@
 
 ### Corrigido
 
+- **Proximidade de deploy acusava um commit em sistema saudável.** O cenário
+  `deploy-inofensivo` encontrou isto assim que passou a ser executado de verdade:
+  com o sistema sem sintoma algum, o **commit** aparecia em primeiro lugar no
+  ranking — acima de um serviço com regressão de latência medida.
+
+  A causa foi uma isenção que eu mesmo abri: o teto relativo pulava commits,
+  pelo raciocínio de que um commit só tem evidência de mudança por construção e
+  capá-lo contra a própria evidência o zeraria sempre. O mecanismo estava certo e
+  a conclusão errada. O teto do commit não é o dele, é o do **serviço onde ele
+  foi implantado** — a acusação do commit deriva da do serviço.
+
+  E as duas regras de proximidade passaram a ter a mesma corroboração. Só a de
+  schema exigia sintoma; a de deploy seguia emitindo o finding, e o relatório
+  saía com "Deployment próximo ao incidente, confiança alta" e **nenhum
+  suspeito** — quem lê conclui que algo aconteceu.
+
 - **O modo difícil passou a exercitar as duas regras de proximidade.** Nenhum dos
   cinco cenários originais coletava schema ou ingeria deployments, então
   `schema_change_proximity` e `deployment_proximity` atravessavam a suíte inteira
@@ -70,6 +86,20 @@
   provaria coisa alguma.
 
   As duas regras também entraram na lista de proibidas do `sem-culpado`.
+
+- **Migrations concorrentes contra o mesmo PostgreSQL abortavam.** `Migrate`
+  fazia verificar-e-aplicar sem serialização, e os comandos da CLI migram ao
+  iniciar. Num banco compartilhado — que é exatamente o cenário da ADR 0016 —
+  dois processos subindo juntos passavam ambos pela verificação e executavam o
+  mesmo DDL; um abortava com "relation already exists". Um lock consultivo em
+  torno do ciclo resolve. Sem ele, o teste de seis processos simultâneos falha
+  nas três tentativas.
+
+- **A guarda de linha de base liberada existia só no SQLite.** O backend
+  PostgreSQL caía num `unexpected end of JSON input` em vez da mensagem que
+  explica o que houve. A bateria de conformidade não pegou porque nenhum caso
+  recoletava depois de podar — a lacuna virou caso, e ele fica vermelho quando a
+  guarda é removida.
 
 - **Concorrência entre os backends passou a ser coberta.** A ADR 0016 registrava
   que o pool é de uma conexão no SQLite e de oito no PostgreSQL, e que a bateria

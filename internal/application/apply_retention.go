@@ -94,12 +94,15 @@ func ApplyRetention(
 	}
 
 	pruned, err := pruneSchemaCatalogs(ctx, request, result.Cutoff, pruner)
-	if err != nil {
-		// A telemetria já removida permanece removida, e o erro não a esconde:
-		// repetir o comando continua de onde parou, como na limpeza de sinais.
-		return RetentionResult{}, err
-	}
 	result.SchemaCatalogsPruned = pruned
+	if err != nil {
+		// O resultado parcial acompanha o erro em vez de ser descartado. A
+		// telemetria já removida permanece removida, e quem opera precisa saber
+		// disso: meio milhão de sinais apagados e a poda falhando contra uma
+		// réplica somente leitura não pode ser relatado como se nada tivesse
+		// acontecido.
+		return result, err
+	}
 	return result, nil
 }
 

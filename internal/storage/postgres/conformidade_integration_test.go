@@ -43,7 +43,17 @@ func TestConformidadeIntegracaoPostgres(t *testing.T) {
 			Mudancas:    postgres.NewChangeRepository(database),
 			Catalogo:    postgres.NewSchemaRepository(database),
 			Diagnostico: postgres.NewDiagnosisRepository(database),
-			Retencao:    postgres.NewRetentionRepository(database),
+			// Leva a base ao estado que a política impede, para exercitar a
+			// defesa em profundidade. É SQL direto porque não existe caminho
+			// legítimo até este estado, e abrir um método de produção só para o
+			// teste colocaria em produção código que só o teste usa.
+			LiberarTodosOsCatalogos: func(ctx context.Context, databaseName string) error {
+				_, err := database.ExecContext(ctx,
+					`UPDATE schema_snapshots SET objects_json = '' WHERE database_name = $1`,
+					databaseName)
+				return err
+			},
+			Retencao: postgres.NewRetentionRepository(database),
 		}
 	})
 }

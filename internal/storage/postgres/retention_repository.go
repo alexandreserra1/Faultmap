@@ -95,6 +95,11 @@ func rollbackRetentionTransaction(transaction *sql.Tx, cause error) error {
 // estrangeira de schema_changes aponta para a coleta com ON DELETE CASCADE:
 // remover a linha levaria junto a evidência que diagnósticos já gravados citam.
 //
+// A proteção casa a linha exata pelo id, e não o instante pelo MAX: duas
+// coletas da mesma base com captured_at idêntico — dois coletores, ou um
+// carimbo truncado ao segundo — comparariam ambas iguais ao máximo e ficariam
+// protegidas para sempre, quebrando a invariante de "exatamente uma íntegra".
+//
 // A coleta mais recente de cada base nunca é esvaziada, qualquer que seja a
 // idade. Ela é a linha de base da próxima comparação — esvaziá-la faria o diff
 // seguinte enxergar catálogo vazio e reportar todo objeto da base como
@@ -120,9 +125,11 @@ func (repository *RetentionRepository) PruneSchemaCatalogsBefore(
 			SELECT s.id FROM schema_snapshots s
 			WHERE s.captured_at < $1
 			  AND s.objects_json <> ''
-			  AND s.captured_at <> (
-				SELECT MAX(u.captured_at) FROM schema_snapshots u
+			  AND s.id <> (
+				SELECT u.id FROM schema_snapshots u
 				WHERE u.database_name = s.database_name
+				ORDER BY u.captured_at DESC, u.id DESC
+				LIMIT 1
 			  )
 			ORDER BY s.captured_at ASC, s.id ASC
 			LIMIT $2

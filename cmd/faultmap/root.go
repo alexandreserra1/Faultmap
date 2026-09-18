@@ -100,6 +100,7 @@ func newRetentionApplyCommand() *cobra.Command {
 				return fmt.Errorf("aplicar migrations: %w", err)
 			}
 
+			retencao := storage.NewRetentionRepository(database)
 			result, err := application.ApplyRetention(
 				command.Context(),
 				application.RetentionRequest{
@@ -107,11 +108,11 @@ func newRetentionApplyCommand() *cobra.Command {
 					Now:       time.Now().UTC(),
 					BatchSize: batchSize,
 				},
-				storage.NewRetentionRepository(database),
-				// O mesmo repositório cuida das duas frentes. Sempre ligado:
-				// quem nunca coletou catálogo simplesmente não tem o que
-				// liberar, e o comando relata zero.
-				storage.NewRetentionRepository(database),
+				// O mesmo repositório cuida das duas frentes da retenção, e é
+				// sempre ligado: quem nunca coletou catálogo simplesmente não
+				// tem o que liberar, e o comando relata zero.
+				retencao,
+				retencao,
 			)
 			if err != nil {
 				return err
@@ -670,6 +671,14 @@ func newInitCommand() *cobra.Command {
 					return err
 				}
 				projectDir = temporary
+				// Se a inicialização falhar — Ctrl+C, disco cheio — o diretório
+				// recém-criado some junto. Deixá-lo para trás sem nunca imprimir
+				// o caminho daria à pessoa lixo que ela não teria como achar.
+				defer func() {
+					if runErr != nil {
+						_ = os.RemoveAll(temporary)
+					}
+				}()
 			}
 			if err := application.InitializeProject(command.Context(), projectDir); err != nil {
 				return err

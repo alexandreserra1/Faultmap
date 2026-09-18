@@ -348,29 +348,6 @@ run_scenario() {
       printf 'Não acusou regressão de erro com ruído idêntico nas duas janelas: PASS\n'
       ;;
     deploy-inofensivo)
-      # Deploy real, recente, com o commit correspondendo à service.version dos
-      # spans — e nada quebrado. É o timeout-after-deploy sem o defeito.
-      #
-      # O que se verifica é a corroboração, não o silêncio absoluto: numa máquina
-      # ocupada o aquecimento aparece como regressão de latência legítima, e com
-      # sintoma presente apresentar o deploy é o comportamento certo. O que não
-      # pode acontecer é o deploy ser a única coisa apresentada sobre o serviço.
-      printf 'Deploy recente e correspondente à versão observada; nada quebrado.\n'
-      service="checkout-service"
-      HARD_OVERRIDE="${SCRIPT_DIRECTORY}/scenarios/deploy-inofensivo/compose.yaml"
-      export HARD_OVERRIDE
-      start_stack
-      deploy_ingerido="$(ingerir_deployment)" || return 1
-      printf 'Ingestão do deploy: %s\n' "${deploy_ingerido}"
-      generate_traffic aquecimento 16 deploy
-      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
-      baseline_start="$(date +%s)"
-      generate_traffic baseline 16 deploy
-      sleep "${OTEL_FLUSH_WAIT_SECONDS}"
-      incident_start="$(date +%s)"
-      generate_traffic incidente 16 deploy
-      ;;
-    deploy-inofensivo)
       # O deploy precisa ter sido ingerido, senão o cenário passaria por
       # vacuidade: sem deployment no banco, deployment_proximity não teria o que
       # disparar e o silêncio não provaria coisa alguma.

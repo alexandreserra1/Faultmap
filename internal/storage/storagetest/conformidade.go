@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -77,12 +78,17 @@ type RepositorioDeRetencao interface {
 
 // Backend agrupa os repositórios de uma implementação já migrada e vazia.
 type Backend struct {
-	Sinais      RepositorioDeSinais
-	Escopo      RepositorioDeEscopo
-	Mudancas    RepositorioDeMudancas
-	Catalogo    RepositorioDeCatalogo
-	Diagnostico RepositorioDeDiagnostico
-	Retencao    RepositorioDeRetencao
+	Sinais   RepositorioDeSinais
+	Escopo   RepositorioDeEscopo
+	Mudancas RepositorioDeMudancas
+	Catalogo RepositorioDeCatalogo
+	// LiberarTodosOsCatalogos leva a base ao estado que a política impede, para
+	// que a defesa em profundidade possa ser exercitada. Não existe caminho
+	// legítimo até ele, então cada backend o monta com SQL próprio em vez de
+	// abrir um método de produção que só o teste usaria.
+	LiberarTodosOsCatalogos func(ctx context.Context, databaseName string) error
+	Diagnostico             RepositorioDeDiagnostico
+	Retencao                RepositorioDeRetencao
 }
 
 // Fabrica devolve um backend recém-migrado e vazio, isolado dos demais testes.
@@ -950,6 +956,47 @@ func rodarRetencao(t *testing.T, novo Fabrica) {
 		}
 		if intactos != 1 {
 			t.Fatalf("catálogos íntegros = %d, esperado exatamente 1 (o mais recente)", intactos)
+		}
+	})
+
+	t.Run("RecoletaContraLinhaDeBaseLiberadaFalhaEmVezDeInventarMigracao", func(t *testing.T) {
+		// Este caso existe porque a bateria não o tinha, e a ausência deixou os
+		// dois backends divergirem em silêncio: o SQLite ganhou a guarda quando
+		// a poda foi escrita, o PostgreSQL não, e nada acusou.
+		//
+		// O cenário é a defesa em profundidade da ADR 0015. A política preserva
+		// a coleta mais recente justamente para ele não acontecer; se acontecer
+		// — banco editado à mão, defeito futuro —, comparar contra um catálogo
+		// vazio reportaria todo objeto da base como recém-criado. Falhar é a
+		// única saída honesta.
+		backend := novo(t)
+		ctx := context.Background()
+		gravarColeta(t, backend, coleta("base-1", t0,
+			objeto(changedomain.SchemaObjectColumn, "payments.amount", "payments", "integer"),
+		))
+		gravarColeta(t, backend, coleta("base-2", t1,
+			objeto(changedomain.SchemaObjectColumn, "payments.amount", "payments", "bigint"),
+		))
+		gravarColeta(t, backend, coleta("base-3", t2,
+			objeto(changedomain.SchemaObjectColumn, "payments.amount", "payments", "text"),
+		))
+		// Libera tudo menos a mais recente, e depois derruba a proteção da
+		// última à mão para chegar ao estado que a política impede.
+		if _, err := backend.Retencao.PruneSchemaCatalogsBefore(ctx, t3, 100); err != nil {
+			t.Fatalf("PruneSchemaCatalogsBefore() erro = %v", err)
+		}
+		if err := backend.LiberarTodosOsCatalogos(ctx, "payments"); err != nil {
+			t.Fatalf("LiberarTodosOsCatalogos() erro = %v", err)
+		}
+
+		_, err := backend.Catalogo.SaveSnapshot(ctx, coleta("base-4", t3,
+			objeto(changedomain.SchemaObjectColumn, "payments.amount", "payments", "text"),
+		))
+		if err == nil {
+			t.Fatal("recoleta contra linha de base liberada não falhou; inventaria migração em toda tabela")
+		}
+		if !strings.Contains(err.Error(), "liberado pela retenção") {
+			t.Fatalf("erro = %v, esperado explicar que o catálogo foi liberado", err)
 		}
 	})
 

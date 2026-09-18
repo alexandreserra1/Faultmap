@@ -227,7 +227,8 @@ func readPreviousSnapshot(
 	if strings.TrimSpace(objectsJSON) == "" {
 		return changedomain.SchemaSnapshot{}, fmt.Errorf(
 			"ler coleta anterior da base %q: a coleta %q teve o catálogo liberado pela retenção "+
-				"e não serve de linha de base; recolete antes de comparar",
+				"e não serve de linha de base; a próxima coleta com instante posterior ao da "+
+				"linha de base preservada volta a comparar normalmente",
 			databaseName, snapshot.ID,
 		)
 	}

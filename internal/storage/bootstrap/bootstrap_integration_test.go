@@ -61,7 +61,17 @@ func TestIntegracaoBootstrapEntregaBackendPostgresCompleto(t *testing.T) {
 			Mudancas:    bootstrap.NewChangeRepository(conexao),
 			Catalogo:    bootstrap.NewSchemaRepository(conexao),
 			Diagnostico: bootstrap.NewDiagnosisRepository(conexao),
-			Retencao:    bootstrap.NewRetentionRepository(conexao),
+			// Leva a base ao estado que a política impede, para exercitar a
+			// defesa em profundidade. É SQL direto porque não existe caminho
+			// legítimo até este estado, e abrir um método de produção só para o
+			// teste colocaria em produção código que só o teste usa.
+			LiberarTodosOsCatalogos: func(ctx context.Context, databaseName string) error {
+				_, err := conexao.DB().ExecContext(ctx,
+					placeholderDoDriver(conexao.Driver()),
+					databaseName)
+				return err
+			},
+			Retencao: bootstrap.NewRetentionRepository(conexao),
 		}
 	})
 }
@@ -101,4 +111,14 @@ func comSearchPath(dsn, schema string) string {
 		separador = "&"
 	}
 	return dsn + separador + "search_path=" + schema
+}
+
+// placeholderDoDriver devolve a consulta com o marcador de parâmetro que o
+// backend aberto entende. Os dois dialetos divergem aqui e em nenhum outro
+// ponto deste teste.
+func placeholderDoDriver(driver string) string {
+	if driver == bootstrap.DriverPostgres {
+		return `UPDATE schema_snapshots SET objects_json = '' WHERE database_name = $1`
+	}
+	return `UPDATE schema_snapshots SET objects_json = '' WHERE database_name = ?`
 }

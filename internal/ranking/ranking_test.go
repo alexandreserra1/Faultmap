@@ -617,6 +617,57 @@ func TestServicoSoComProximidadeNaoEhSuspeito(t *testing.T) {
 	}
 }
 
+// TestCommitNaoEhSuspeitoQuandoOServicoImplantadoEstaSaudavel é o falso positivo
+// que o cenário deploy-inofensivo pegou, e que a isenção dos commits ao teto
+// relativo tinha aberto.
+//
+// Num sistema saudável, com um deploy recente, o commit aparecia em PRIMEIRO
+// lugar — acima de um serviço com regressão de latência medida. A isenção
+// existia por um motivo certo (um commit só tem evidência de mudança por
+// construção, e capá-lo contra a própria evidência o zeraria sempre) e chegava à
+// conclusão errada: o teto do commit não é o dele, é o do serviço onde ele foi
+// implantado. A acusação do commit deriva da do serviço.
+func TestCommitNaoEhSuspeitoQuandoOServicoImplantadoEstaSaudavel(t *testing.T) {
+	t.Parallel()
+
+	suspects, err := ranking.Rank([]detection.Finding{
+		// O serviço que recebeu o deploy não tem sintoma nenhum.
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "checkout-service",
+			Score: 0.98, Confidence: detection.ConfidenceHigh,
+		},
+		{
+			Rule: detection.RuleDeploymentProximity, ServiceName: "checkout-service",
+			SubjectKind: detection.SubjectCommit, SubjectID: "abc123",
+			SubjectLabel: "commit abc123",
+			Score:        0.98, Confidence: detection.ConfidenceHigh,
+		},
+		// Outro serviço tem sintoma medido, e é ele que deve encabeçar a lista.
+		{
+			Rule: detection.RuleLatencyDelta, ServiceName: "payment-service",
+			Score: 0.60, Confidence: detection.ConfidenceHigh,
+		},
+	}, ranking.Config{
+		Weights: ranking.Weights{DeploymentProximity: 0.20, LatencyDelta: 0.10},
+		TopN:    5,
+	})
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+
+	for _, suspeito := range suspects {
+		if suspeito.Kind == detection.SubjectCommit {
+			t.Fatalf("commit acusado com o serviço implantado saudável: %#v", suspeito)
+		}
+		if suspeito.ID == "checkout-service" {
+			t.Fatalf("serviço sem sintoma virou suspeito: %#v", suspeito)
+		}
+	}
+	if len(suspects) != 1 || suspects[0].ID != "payment-service" {
+		t.Fatalf("suspeitos = %#v, esperado apenas payment-service", suspects)
+	}
+}
+
 // TestCommitContinuaSuspeitoMesmoSemSintomaProprio protege a decisão de acusar
 // o commit implantado, que é a informação mais acionável de um incidente
 // causado por deploy.
@@ -661,7 +712,9 @@ func TestCommitContinuaSuspeitoMesmoSemSintomaProprio(t *testing.T) {
 	if commit == nil {
 		t.Fatalf("o commit sumiu do ranking: %#v", suspects)
 	}
-	if math.Abs(commit.Score-0.27) > 1e-9 {
-		t.Fatalf("score do commit = %v, esperado 0.27 (0.90 × 0.30) sem teto relativo", commit.Score)
+	// O serviço mediu 0.80 × 0.25 = 0.20, que é o teto do commit; o deploy vale
+	// 0.90 × 0.30 = 0.27 e fica limitado a 0.20.
+	if math.Abs(commit.Score-0.20) > 1e-9 {
+		t.Fatalf("score do commit = %v, esperado 0.20 — o teto do commit é o sintoma do serviço", commit.Score)
 	}
 }

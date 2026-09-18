@@ -31,7 +31,35 @@ type migration struct {
 // Migrate aplica, em ordem, as migrations versionadas exigidas pelo Faultmap.
 // Cada migration é uma transação curta para impedir que o banco registre uma
 // versão que não chegou a ser aplicada por inteiro.
+// migrationLockID identifica o lock consultivo das migrations. O valor é
+// arbitrário e só precisa ser estável e exclusivo deste uso dentro do banco.
+const migrationLockID int64 = 8478124512035213
+
 func Migrate(ctx context.Context, database *sql.DB) error {
+	// Um lock consultivo em torno de todo o ciclo verificar-e-aplicar.
+	//
+	// O PostgreSQL é compartilhado por definição — é exatamente o cenário que a
+	// ADR 0016 existe para atender —, e os 17 comandos da CLI migram ao iniciar.
+	// Sem o lock, dois processos subindo juntos contra um banco sem a migration
+	// N passam os dois pela verificação e executam o mesmo DDL; um aborta com
+	// "relation already exists" ou com chave duplicada em schema_migrations,
+	// falhando um comando que deveria ter funcionado.
+	//
+	// No SQLite o escritor único tornava isso improvável e o problema não
+	// existia; aqui ele é o caso normal de qualquer instalação com mais de uma
+	// máquina.
+	conexao, err := database.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("obter conexão para o lock de migração: %w", err)
+	}
+	defer func() { _ = conexao.Close() }()
+	if _, err := conexao.ExecContext(ctx, `SELECT pg_advisory_lock($1)`, migrationLockID); err != nil {
+		return fmt.Errorf("adquirir lock de migração: %w", err)
+	}
+	defer func() {
+		_, _ = conexao.ExecContext(context.Background(), `SELECT pg_advisory_unlock($1)`, migrationLockID)
+	}()
+
 	if _, err := database.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version INTEGER PRIMARY KEY,
