@@ -25,6 +25,8 @@ DIRETORIO_DO_SCRIPT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RAIZ="$(cd -- "${DIRETORIO_DO_SCRIPT}/../../.." && pwd)"
 DEMO="${RAIZ}/examples/demo-shop"
 ENVELOPE="${ENVELOPE:-${RAIZ}/piloto-cego-envelope.txt}"
+# As janelas não são segredo: sem elas a investigação não tem o que consultar.
+JANELAS="${JANELAS:-${RAIZ}/piloto-cego-janelas.txt}"
 
 # "sem-culpado" está na urna de propósito. Sem ele o investigador sabe que
 # sempre há algo quebrado, e passa a procurar um culpado em vez de avaliar a
@@ -41,8 +43,48 @@ revelar() {
   printf '\n'
 }
 
+diagnosticar() {
+  if [[ ! -f "${JANELAS}" ]]; then
+    printf 'Nenhuma janela em %s. Rode o sorteio primeiro.\n' "${JANELAS}" >&2
+    exit 1
+  fi
+  # shellcheck disable=SC1090
+  source "${JANELAS}"
+
+  local incidente_s baseline_s
+  incidente_s=$(( $(date -u -j -f %Y-%m-%dT%H:%M:%SZ "${FIM}" +%s 2>/dev/null \
+    || date -u -d "${FIM}" +%s) - $(date -u -j -f %Y-%m-%dT%H:%M:%SZ "${INICIO_INCIDENTE}" +%s 2>/dev/null \
+    || date -u -d "${INICIO_INCIDENTE}" +%s) ))
+  baseline_s=$(( $(date -u -j -f %Y-%m-%dT%H:%M:%SZ "${INICIO_INCIDENTE}" +%s 2>/dev/null \
+    || date -u -d "${INICIO_INCIDENTE}" +%s) - $(date -u -j -f %Y-%m-%dT%H:%M:%SZ "${INICIO_BASELINE}" +%s 2>/dev/null \
+    || date -u -d "${INICIO_BASELINE}" +%s) ))
+
+  printf 'Aguardando a telemetria da janela do incidente...\n' >&2
+  local tentativa
+  for tentativa in $(seq 1 60); do
+    if base exec -T faultmap faultmap diagnose incident \
+      --config /etc/faultmap/faultmap.yaml --service checkout-service --environment demo \
+      --since "${incidente_s}s" --baseline "${baseline_s}s" --until "${FIM}" 2>&1 \
+      | grep -q "Incidente: [1-9]"; then
+      break
+    fi
+    sleep 5
+  done
+
+  base exec -T faultmap faultmap diagnose incident \
+    --config /etc/faultmap/faultmap.yaml --service checkout-service --environment demo \
+    --since "${incidente_s}s" --baseline "${baseline_s}s" --until "${FIM}"
+}
+
 if [[ "${1:-}" == "--revelar" ]]; then
   revelar
+  exit 0
+fi
+
+if [[ "${1:-}" == "--diagnosticar" ]]; then
+  sorteado=""   # o diagnóstico não precisa saber, e não deve
+  base() { docker compose --project-name faultmap-piloto-cego -f "${DEMO}/compose.yaml" "$@"; }
+  diagnosticar
   exit 0
 fi
 
@@ -160,6 +202,12 @@ printf 'Janela de incidente...\n'; carga "$(compose_do_incidente)" 120
 sleep 8
 fim="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+{
+  printf 'INICIO_BASELINE=%s\n' "${inicio_baseline}"
+  printf 'INICIO_INCIDENTE=%s\n' "${inicio_incidente}"
+  printf 'FIM=%s\n' "${fim}"
+} > "${JANELAS}"
+
 cat <<RESUMO
 
 === Investigação cega pronta ===
@@ -170,11 +218,10 @@ cat <<RESUMO
 
 Investigue com:
 
-  docker compose --project-name faultmap-piloto-cego -f ${DEMO}/compose.yaml \\
-    exec -T faultmap faultmap diagnose incident \\
-    --config /etc/faultmap/faultmap.yaml \\
-    --service checkout-service --environment demo \\
-    --since 4m --baseline 4m --until ${fim}
+  $0 --diagnosticar
+
+As janelas saem de ${JANELAS}, calculadas a partir dos carimbos acima. Digitá-las
+à mão foi a origem de várias investigações que consultaram a janela errada.
 
 Registre a hipótese ANTES de abrir o envelope. Depois:
 

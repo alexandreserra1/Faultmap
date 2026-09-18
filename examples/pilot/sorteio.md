@@ -62,6 +62,76 @@ milissegundos.
 Não está corrigido. Quatro observações são um padrão, não uma medição: mudar o
 piso sem medir trocaria um número arbitrário por outro.
 
+## Resultado de oito rodadas cegas
+
+Rodadas válidas, cada uma com a hipótese escrita antes de abrir o envelope.
+
+| # | Hipótese registrada | Sorteado | |
+|---|---|---|---|
+| 1 | retry-storm | retry-storm | ✅ |
+| 2 | payment-500 | payment-500 | ✅ |
+| 3 | database-slow | database-slow | ✅ |
+| 4 | database-slow | database-slow | ✅ |
+| 5 | sem-culpado | sem-culpado | ✅ |
+| 6 | small-pool | **table-lock** | ❌ |
+| 7 | database-slow | database-slow | ✅ |
+| 8 | database-slow | database-slow | ✅ |
+
+Sete de oito. O `sem-culpado` foi identificado como tal, que é o resultado que o
+modo difícil existe para medir.
+
+**O sorteio é com reposição, e `small-pool` não saiu nenhuma vez em oito.** O
+cenário continua sem passar pelo piloto; a tabela acima não diz nada sobre ele.
+
+## O que a rodada 6 mediu
+
+A hipótese errada não foi um palpite infeliz. Foi a leitura que o produto
+induz, e ela expõe um defeito.
+
+Sob `table-lock`, o produto **não emitiu `database_latency_delta`** — mostrou
+apenas 504 em 4,17% e latência HTTP de 4 ms para 21 ms. Li a ausência do sinal
+de banco como "o banco respondeu bem, logo a espera é antes dele", que é a
+assinatura de `small-pool`.
+
+Os spans crus da janela dizem outra coisa:
+
+| | |
+|---|---|
+| operações de banco | 120 |
+| marcadas como erro | **0** |
+| p50 | 0,5 ms |
+| p90 | 1,51 ms |
+| **p95** | **21,11 ms** |
+| p97 | 1.999,35 ms |
+| máximo | 1.999,60 ms |
+
+Cinco operações de 120 (4,2%) bateram no lock e esperaram dois segundos. Nenhuma
+falhou, então todas entraram na conta do detector. **O lock inteiro vive acima do
+p95** — por uma observação.
+
+O detector lê p95. Um lock bloqueia quem colide com ele enquanto ele é mantido,
+o que numa janela curta é sempre uma minoria: é a forma que essa falha tem por
+natureza. A rodada válida anterior pegou `table-lock` (p95 de 5 ms para 97 ms)
+porque ali a carga colidiu mais com o lock. **Detectar ou não vira uma questão de
+quanto da carga esbarrou no lock, não de o lock existir.**
+
+Isto não é calibragem de piso. O piso não foi alcançado porque a estatística
+escolhida não enxerga essa forma de falha. O comentário em
+`internal/detection/database_latency_delta.go` justifica descartar operações que
+falharam dizendo que `database_timeout` e `database_error` as explicam — mas aqui
+nada falhou, e nenhum dos dois tinha o que explicar.
+
+### Relação com o falso positivo registrado acima
+
+São defeitos distintos no mesmo detector, e não devem ser tratados como um só:
+
+- acima, p95 **dispara** com sistema saudável em valores baixos (1,64 → 5,20 ms);
+- aqui, p95 **se cala** diante de uma cauda real de dois segundos.
+
+Nenhum dos dois está corrigido. Trocar a estatística é decisão de projeto com
+custo em regra nova, peso, classe de ranking e ADR — e com risco próprio de falso
+positivo, já que p99 sobre amostra pequena é barulhento.
+
 ## Como repetir
 
 ```bash
