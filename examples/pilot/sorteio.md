@@ -136,9 +136,51 @@ seguiram normais." Antes o topo era 0,09, só com latência HTTP — que foi o q
 induziu a hipótese errada. Veja a
 [ADR 0017](../../docs/adr/0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md).
 
-**O primeiro continua aberto.** O p95 disparando com o sistema saudável em
-valores baixos é outro defeito, e corrigi-lo exige medir o ruído em vez de mexer
-no piso pelas quatro observações que já tenho.
+**O primeiro foi medido, e a medição não sustenta mexer no limiar.**
+
+Sete janelas saudáveis — seis rodadas de `sem-culpado` e uma de
+`deploy-inofensivo` — foram coletadas com
+`examples/pilot/scripts/medir-ruido-do-banco.sh`. Nenhuma disparou:
+
+| rodada | p95 baseline | p95 incidente | Δ | razão | dispara? |
+|---|---|---|---|---|---|
+| 1 | 4,54 | 5,84 | +1,30 | 0,29 | não |
+| 2 | 4,35 | 6,92 | +2,57 | 0,59 | não |
+| 3 | 5,94 | 1,75 | −4,19 | — | não |
+| 4 | 3,32 | 1,95 | −1,38 | — | não |
+| 5 | 3,81 | 7,00 | +3,19 | 0,84 | não |
+| 6 | 3,62 | 4,76 | +1,14 | 0,31 | não |
+| deploy inofensivo | 5,65 | 3,56 | −2,09 | — | não |
+
+O critério exige o dobro; a razão nunca passou de 0,84. **Zero falsos positivos
+em sete.** Mudar o piso com base nas quatro observações avulsas teria sido
+trocar um número arbitrário por outro — exatamente o que este registro dizia
+para não fazer.
+
+### O mecanismo existe, mas não foi confirmado como a causa
+
+A mesma coleta mostra o aquecimento de processo, em baldes de 8 s desde o
+primeiro span:
+
+| janela | operações | p95 |
+|---|---|---|
+| 0–8 s | 60 | **17,93 ms** |
+| 8–16 s | 120 | 4,54 ms |
+| 16–24 s | 120 | 5,84 ms |
+
+Os quatro falsos positivos históricos ficaram entre 5,20 e 17,04 ms — dentro
+dessa faixa. Isso sugere que o aquecimento vira acusação quando calha de cair na
+janela do incidente em vez da baseline.
+
+A previsão foi testada: um cenário que **reinicia** o `payment-service` sem tocar
+no banco deveria reproduzir o falso positivo. **Falhou.** No
+`deploy-inofensivo`, com a troca de versão confirmada na telemetria, o p95 do
+incidente *caiu* de 5,65 para 3,56 ms — a carga só começa depois do health
+check, e o aquecimento fica fora da janela.
+
+Então: o mecanismo é real e medido, a correlação de magnitude é boa, e a causa
+continua **não demonstrada**. As quatro observações permanecem sem explicação
+reproduzível, e o limiar fica como está até que alguém as reproduza.
 
 ## Como repetir
 
