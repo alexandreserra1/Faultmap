@@ -128,9 +128,17 @@ São defeitos distintos no mesmo detector, e não devem ser tratados como um só
 - acima, p95 **dispara** com sistema saudável em valores baixos (1,64 → 5,20 ms);
 - aqui, p95 **se cala** diante de uma cauda real de dois segundos.
 
-Nenhum dos dois está corrigido. Trocar a estatística é decisão de projeto com
-custo em regra nova, peso, classe de ranking e ADR — e com risco próprio de falso
-positivo, já que p99 sobre amostra pequena é barulhento.
+**O segundo está corrigido.** A regra `database_latency_tail` passou a fazer a
+pergunta que o p95 não faz, e a mesma condição reproduzida contra o sistema real
+agora devolve `payment-service` em primeiro: "5 de 120 operações PostgreSQL
+levaram 1737 ms ou mais, contra um pior caso normal de 2,62 ms; as demais
+seguiram normais." Antes o topo era 0,09, só com latência HTTP — que foi o que
+induziu a hipótese errada. Veja a
+[ADR 0017](../../docs/adr/0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md).
+
+**O primeiro continua aberto.** O p95 disparando com o sistema saudável em
+valores baixos é outro defeito, e corrigi-lo exige medir o ruído em vez de mexer
+no piso pelas quatro observações que já tenho.
 
 ## Como repetir
 

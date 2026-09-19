@@ -34,6 +34,9 @@ const (
 	RuleLogCorrelation = "log_correlation"
 	// RuleDatabaseLatencyDelta identifica banco que ficou mais lento sem falhar.
 	RuleDatabaseLatencyDelta = "database_latency_delta"
+	// RuleDatabaseLatencyTail identifica a minoria de operações que ficou
+	// drasticamente mais lenta enquanto a maioria seguiu normal.
+	RuleDatabaseLatencyTail = "database_latency_tail"
 	// RuleDatabaseError identifica crescimento de falhas de banco que não são timeout.
 	RuleDatabaseError = "database_error"
 	// RuleVersionRegression compara duas versões do mesmo serviço ativas na janela de incidente.
@@ -150,6 +153,9 @@ func Run(input Input) []Finding {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectDatabaseLatencyDelta(input); found {
+		findings = append(findings, finding)
+	}
+	if finding, found := DetectDatabaseLatencyTail(input); found {
 		findings = append(findings, finding)
 	}
 	if finding, found := DetectDatabaseError(input); found {

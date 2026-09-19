@@ -718,3 +718,46 @@ func TestCommitContinuaSuspeitoMesmoSemSintomaProprio(t *testing.T) {
 		t.Fatalf("score do commit = %v, esperado 0.20 — o teto do commit é o sintoma do serviço", commit.Score)
 	}
 }
+
+// TestCaudaDeBancoDivideAClasseComAsDemaisRegrasDeBanco fixa a decisão de
+// ranking da regra nova.
+//
+// Uma degradação uniforme dispara a cauda e o p95 ao mesmo tempo — as duas
+// afirmações são verdadeiras sobre o mesmo fato. Sem dividir a classe, o serviço
+// seria pago duas vezes pelo mesmo evento e passaria à frente de outro que está
+// de fato falhando.
+func TestCaudaDeBancoDivideAClasseComAsDemaisRegrasDeBanco(t *testing.T) {
+	t.Parallel()
+
+	const pesoDaClasse = 0.20
+	cauda := detection.Finding{
+		Rule:        detection.RuleDatabaseLatencyTail,
+		ServiceName: "payment-service",
+		Score:       1.00,
+		Confidence:  detection.ConfidenceHigh,
+	}
+	p95 := detection.Finding{
+		Rule:        detection.RuleDatabaseLatencyDelta,
+		ServiceName: "payment-service",
+		Score:       1.00,
+		Confidence:  detection.ConfidenceHigh,
+	}
+	configuração := ranking.Config{Weights: ranking.Weights{DatabaseEvidence: pesoDaClasse}, TopN: 1}
+
+	sozinha, err := ranking.Rank([]detection.Finding{cauda}, configuração)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if len(sozinha) == 0 || sozinha[0].Score == 0 {
+		t.Fatal("a cauda não pontuou: sem classe de peso o finding é descartado do ranking em silêncio")
+	}
+
+	juntas, err := ranking.Rank([]detection.Finding{cauda, p95}, configuração)
+	if err != nil {
+		t.Fatalf("Rank() erro = %v", err)
+	}
+	if juntas[0].Score > pesoDaClasse+1e-9 {
+		t.Fatalf("score = %.4f com as duas regras, acima do teto da classe (%.2f): o mesmo fato foi pago duas vezes",
+			juntas[0].Score, pesoDaClasse)
+	}
+}

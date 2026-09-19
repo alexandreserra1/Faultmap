@@ -21,3 +21,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0014](0014-schema-guarda-identificadores-nao-expressoes.md) | A coleta de schema guarda identificadores, não expressões |
 | [0015](0015-retencao-libera-catalogo-e-preserva-mudancas.md) | A retenção libera o catálogo e preserva as mudanças |
 | [0016](0016-postgres-como-backend-alternativo.md) | PostgreSQL é backend alternativo, provado por uma bateria compartilhada |
+| [0017](0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md) | A cauda do banco é uma pergunta própria, não outro percentil |

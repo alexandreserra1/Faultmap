@@ -58,6 +58,10 @@ var commonCauses = map[string]string{
 	RuleDatabaseLatencyDelta: "Costuma vir de lock retido por outra transação, saturação do pool de " +
 		"conexões, consulta sem índice adequado, crescimento do volume de dados, ou " +
 		"lentidão no armazenamento subjacente.",
+	RuleDatabaseLatencyTail: "Costuma vir de lock de tabela retido por uma migração ou por outra " +
+		"transação longa, de contenção em poucas linhas muito disputadas, de espera por " +
+		"conexão quando o pool esgota em rajadas, ou de uma consulta que só degrada para " +
+		"certos parâmetros.",
 	RuleDatabaseError: "Costuma vir de violação de restrição por dado inesperado, migração de " +
 		"schema incompatível com o código em execução, permissão alterada, ou " +
 		"transação abortada por conflito.",

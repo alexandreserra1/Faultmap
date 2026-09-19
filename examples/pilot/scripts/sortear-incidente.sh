@@ -94,7 +94,15 @@ if [[ -f "${ENVELOPE}" ]]; then
   exit 1
 fi
 
-sorteado="${URNA[$((RANDOM % ${#URNA[@]}))]}"
+# FAULTMAP_CENARIO existe só para verificar o produto contra um cenário
+# escolhido, nunca para o piloto: forçar a resposta desfaz a cegueira, que é a
+# única coisa que este script produz.
+if [[ -n "${FAULTMAP_CENARIO:-}" ]]; then
+  printf 'AVISO: cenário forçado por FAULTMAP_CENARIO — isto NÃO é um piloto cego.\n' >&2
+  sorteado="${FAULTMAP_CENARIO}"
+else
+  sorteado="${URNA[$((RANDOM % ${#URNA[@]}))]}"
+fi
 
 # A verdade é escrita em base64 para que um `cat` distraído, um `grep` no
 # diretório ou a rolagem do terminal não a entreguem antes da hora.

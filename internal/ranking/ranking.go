@@ -281,8 +281,11 @@ func weightClassForRule(rule string) (string, bool) {
 		return classErrorRate, true
 	case detection.RuleLatencyDelta:
 		return classLatency, true
+	// A cauda divide a classe com o p95 porque as duas descrevem o mesmo banco
+	// sob a mesma janela: uma degradação uniforme dispara as duas, e o teto por
+	// classe impede que o mesmo fato seja pago duas vezes.
 	case detection.RuleDatabaseTimeout, detection.RuleDatabaseError,
-		detection.RuleDatabaseLatencyDelta:
+		detection.RuleDatabaseLatencyDelta, detection.RuleDatabaseLatencyTail:
 		return classDatabaseEvidence, true
 	case detection.RuleTraceCorrelation, detection.RuleRetryStorm,
 		detection.RuleDependencyFailure, detection.RuleTraceBreak:

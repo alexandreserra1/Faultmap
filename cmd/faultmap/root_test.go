@@ -601,7 +601,12 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 		t.Fatalf("ler incidente persistido: %v", err)
 	}
 	assertTableCount(t, database, "incidents", 1)
-	assertTableCount(t, database, "findings", 5)
+	// Seis, e não cinco, desde que a cauda de banco virou regra própria: a
+	// degradação do fixture é uniforme, então o p95 e a cauda afirmam coisas
+	// verdadeiras sobre o mesmo banco. O teto da classe database_evidence
+	// impede que o mesmo fato seja pago duas vezes — veja o score no relatório
+	// exportado, que não mudou com o finding a mais.
+	assertTableCount(t, database, "findings", 6)
 	assertTableCount(t, database, "ranking_results", 1)
 
 	var retryOutput bytes.Buffer
@@ -624,7 +629,12 @@ func TestDiagnoseIncidentCommandExplicaAmostraRepresentativa(t *testing.T) {
 		t.Errorf("retry não explica idempotência:\n%s", retryOutput.String())
 	}
 	assertTableCount(t, database, "incidents", 1)
-	assertTableCount(t, database, "findings", 5)
+	// Seis, e não cinco, desde que a cauda de banco virou regra própria: a
+	// degradação do fixture é uniforme, então o p95 e a cauda afirmam coisas
+	// verdadeiras sobre o mesmo banco. O teto da classe database_evidence
+	// impede que o mesmo fato seja pago duas vezes — veja o score no relatório
+	// exportado, que não mudou com o finding a mais.
+	assertTableCount(t, database, "findings", 6)
 	assertTableCount(t, database, "ranking_results", 1)
 }
 
@@ -914,7 +924,12 @@ func TestExportReportCommandGeraJSONEMarkdownDoMesmoSnapshot(t *testing.T) {
 	if document.Baseline == nil || document.Baseline.SignalCount != 40 || document.IncidentWindow.SignalCount != 40 {
 		t.Fatalf("janelas JSON inesperadas: baseline=%#v incidente=%#v", document.Baseline, document.IncidentWindow)
 	}
-	if len(document.Findings) != 5 || len(document.Ranking) != 1 || document.Ranking[0].Score < 0.5435 || document.Ranking[0].Score > 0.5437 {
+	// O score continua 0.5436 com seis findings em vez de cinco. Isso não é
+	// coincidência e é o que se quer proteger: a regra de cauda entrou na mesma
+	// classe de peso do p95, e o teto por classe absorveu a contribuição extra
+	// em vez de somá-la. Se este número subir, o mesmo banco passou a ser pago
+	// duas vezes pelo mesmo fato.
+	if len(document.Findings) != 6 || len(document.Ranking) != 1 || document.Ranking[0].Score < 0.5435 || document.Ranking[0].Score > 0.5437 {
 		t.Fatalf("análise JSON inesperada: findings=%d ranking=%#v", len(document.Findings), document.Ranking)
 	}
 

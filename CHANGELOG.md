@@ -4,6 +4,26 @@
 
 ### Adicionado
 
+- **Cauda de latência de banco como regra própria (`database_latency_tail`).**
+  Um piloto cego mostrou que o produto ficava calado diante de um
+  `ACCESS EXCLUSIVE` real: das 120 operações da janela, cinco esperaram dois
+  segundos, nenhuma falhou — logo todas entraram na conta —, e o detector de p95
+  não se moveu, porque a cauda inteira vivia acima do percentil, por uma
+  observação. O p50 era 0,5 ms, o p95 21,11 ms e o p97 1.999 ms.
+
+  A regra nova pergunta "alguém esperou muito além do normal?" em vez de "a
+  janela inteira ficou mais lenta?". Acusa quando ao menos três operações passam
+  de `max(p95 da baseline × 20, 100 ms)` e a proporção do incidente é mais que o
+  dobro da da baseline. Divide a classe de peso `database_evidence` com as outras
+  regras de banco, então uma degradação uniforme dispara as duas sem que o mesmo
+  fato seja pago duas vezes.
+
+  Não é calibragem de piso: um lock bloqueia quem colide com ele enquanto é
+  mantido, o que numa janela curta é sempre uma minoria — qualquer percentil
+  estável o bastante deixaria passar. Veja a
+  [ADR 0017](docs/adr/0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md).
+
+
 - **Mudança de schema como sinal de incidente.** O produto já dizia, em duas
   regras, que migração de schema é uma explicação frequente — o texto de causas
   comuns de `deployment_proximity` cita "migração de schema que acompanhou o

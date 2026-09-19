@@ -19,6 +19,7 @@ var todasAsRegras = []string{
 	RuleTraceBreak,
 	RuleLogCorrelation,
 	RuleDatabaseLatencyDelta,
+	RuleDatabaseLatencyTail,
 	RuleDatabaseError,
 	RuleVersionRegression,
 }
