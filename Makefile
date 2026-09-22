@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check verify test test-race vet test-integration demo-up demo-down demo-logs demo-test-e2e demo-test-hard
+.PHONY: fmt fmt-check verify test test-race test-sorteio vet test-integration demo-up demo-down demo-logs demo-test-e2e demo-test-hard
 
 # fmt aplica a formatação padrão do Go em todos os pacotes do módulo.
 fmt:
@@ -20,7 +20,14 @@ fmt-check:
 # que falhar. Filtrar a saída de `go test` com grep para enxugar a leitura
 # descarta justamente esse código: o resultado passa a ser o do grep, que devolve
 # sucesso quando encontra linhas — ou seja, sucesso exatamente quando há falhas.
-verify: fmt-check vet test test-race
+verify: fmt-check vet test test-race test-sorteio
+
+# test-sorteio verifica o sorteio do piloto cego. Roda dentro do verify porque
+# o sorteio é a única coisa que torna o piloto possível com uma pessoa: se ele
+# enviesar, o piloto passa a medir outra coisa e ninguém percebe. Não sobe
+# contêiner — são sorteios puros, em segundos.
+test-sorteio:
+	./examples/pilot/scripts/sortear-incidente-test.sh
 
 # test executa a suíte de testes do projeto.
 test:

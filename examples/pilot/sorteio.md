@@ -80,8 +80,29 @@ Rodadas válidas, cada uma com a hipótese escrita antes de abrir o envelope.
 Sete de oito. O `sem-culpado` foi identificado como tal, que é o resultado que o
 modo difícil existe para medir.
 
-**O sorteio é com reposição, e `small-pool` não saiu nenhuma vez em oito.** O
-cenário continua sem passar pelo piloto; a tabela acima não diz nada sobre ele.
+**`small-pool` não saiu nenhuma vez em oito.** O cenário continua sem passar
+pelo piloto; a tabela acima não diz nada sobre ele.
+
+Não foi azar improvável: com sorteio uniforme, a chance de um cenário específico
+não sair em oito rodadas é 23%, e a de *algum* dos seis não sair é 80%. Cobrir os
+seis custa 13 rodadas medianas e 27 no p95 — medido por simulação, não estimado —
+e cada rodada leva minutos.
+
+### Por que o sorteio passou a ser ponderado
+
+Sortear **sem reposição** resolveria a cobertura e destruiria o piloto: na sexta
+rodada a resposta estaria determinada, e quem acompanhou as cinco anteriores
+acertaria por eliminação, sem investigar nada.
+
+O sorteio agora favorece o que ainda não saiu, com peso `1/(1 + vezes sorteado)`.
+A propriedade que importa é preservada: **nenhum cenário é jamais impossível.**
+Um já sorteado três vezes mantém 4,8% de chance, então nada pode ser descartado
+por eliminação. A cobertura cai para 9 rodadas medianas e 14 no p95.
+
+Três testes fixam isso (`sortear-incidente-test.sh`, dentro do `make verify`):
+todo cenário é alcançável, nenhum é excluído por já ter saído, e o que nunca saiu
+é favorecido. Mutação confirma que mordem — voltar ao uniforme, remover a
+reposição ou fixar o primeiro da urna são todos pegos.
 
 ## O que a rodada 6 mediu
 

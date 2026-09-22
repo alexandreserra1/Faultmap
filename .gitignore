@@ -26,3 +26,4 @@ graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 # Worktrees de agentes: repositórios git próprios, temporários e nunca versionados.
 .claude/worktrees/
 piloto-cego-janelas.txt
+piloto-cego-historico.txt

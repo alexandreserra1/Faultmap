@@ -11,6 +11,21 @@
 // O servidor não tem como revelar o que a ingestão barrou, porque nunca chegou
 // a guardar.
 //
+// Não há lista de permissões, e a ausência é deliberada. Este servidor fala
+// stdio: ele é iniciado por quem o executa e herda os privilégios desse
+// processo. Uma ACL aqui não teria fronteira de confiança para defender — quem
+// pudesse editá-la já poderia ler o banco diretamente, ou simplesmente rodar o
+// binário. Seria cerimônia com aparência de segurança, que é pior do que
+// nenhuma segurança, porque convida a confiar.
+//
+// A propriedade que de fato protege está imposta por teste, e não por
+// configuração: são exatamente três tools, todas de leitura, e nenhuma dispara
+// investigação (veja TestToolsListExpoeAsTresFerramentasDeLeitura e
+// TestNaoExisteToolQueDispareInvestigacao).
+//
+// ACL entra junto com o primeiro transporte de rede, quando passar a existir um
+// chamador que o processo não iniciou — e não antes.
+//
 // O protocolo é escrito à mão em vez de trazer um SDK. MCP sobre stdio é
 // pequeno — enquadramento por linha, `initialize`, `tools/list` e `tools/call` —
 // e o produto se distribui como binário estático único com um go.mod enxuto.

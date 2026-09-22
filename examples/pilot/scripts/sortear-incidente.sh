@@ -27,6 +27,9 @@ DEMO="${RAIZ}/examples/demo-shop"
 ENVELOPE="${ENVELOPE:-${RAIZ}/piloto-cego-envelope.txt}"
 # As janelas não são segredo: sem elas a investigação não tem o que consultar.
 JANELAS="${JANELAS:-${RAIZ}/piloto-cego-janelas.txt}"
+# O histórico registra o que já saiu, para que o sorteio favoreça o que ainda
+# não foi exercitado. Não é segredo: ele só contém rodadas já reveladas.
+HISTORICO="${HISTORICO:-${RAIZ}/piloto-cego-historico.txt}"
 
 # "sem-culpado" está na urna de propósito. Sem ele o investigador sabe que
 # sempre há algo quebrado, e passa a procurar um culpado em vez de avaliar a
@@ -76,8 +79,60 @@ diagnosticar() {
     --since "${incidente_s}s" --baseline "${baseline_s}s" --until "${FIM}"
 }
 
+# sortear escolhe um cenário favorecendo o que ainda não foi exercitado, com
+# peso 1/(1+vezes que já saiu).
+#
+# O sorteio uniforme é estatisticamente correto e caro: cobrir os seis cenários
+# custa 13 rodadas medianas e 27 no p95 — medido, não estimado — e uma rodada
+# leva minutos. Depois de oito rodadas reais, `small-pool` ainda não havia saído
+# nenhuma vez, com 23% de probabilidade disso acontecer.
+#
+# Sortear SEM reposição resolveria a cobertura e destruiria o piloto: na sexta
+# rodada a resposta estaria determinada, e quem acompanhou as cinco anteriores
+# acertaria por eliminação, sem investigar nada. O peso é o meio-termo que
+# preserva a única propriedade que importa — nenhum cenário é jamais impossível.
+# Um cenário já sorteado três vezes mantém 4,8% de chance; a cobertura cai para
+# 9 rodadas medianas e 14 no p95.
+sortear() {
+  local cenario vezes peso_total=0 pesos=() escala=1000
+  for cenario in "${URNA[@]}"; do
+    vezes=0
+    [[ -f "${HISTORICO}" ]] && vezes=$(grep -cx -- "${cenario}" "${HISTORICO}" 2>/dev/null || true)
+    # Inteiros porque o shell não faz aritmética de ponto flutuante.
+    pesos+=($(( escala / (1 + vezes) )))
+    peso_total=$(( peso_total + escala / (1 + vezes) ))
+  done
+  local alvo=$(( RANDOM * 32768 + RANDOM ))
+  alvo=$(( alvo % peso_total ))
+  local acumulado=0 indice=0
+  for indice in "${!URNA[@]}"; do
+    acumulado=$(( acumulado + pesos[indice] ))
+    if (( alvo < acumulado )); then printf '%s' "${URNA[$indice]}"; return; fi
+  done
+  printf '%s' "${URNA[-1]}"
+}
+
+# Uma flag desconhecida precisa doer. Sem isto, `--revelr` com um erro de
+# digitação caía no caminho de sorteio e subia a demo inteira — que é a mesma
+# família de defeito que já invalidou três rodadas deste piloto: erro suprimido
+# fazendo uma checagem passar por vacuidade.
+case "${1:-}" in
+  ""|--revelar|--diagnosticar|--sortear-apenas) ;;
+  *) printf 'Opção desconhecida: %s\n\nUso: %s [--revelar|--diagnosticar|--sortear-apenas]\n' "$1" "$0" >&2; exit 2 ;;
+esac
+
 if [[ "${1:-}" == "--revelar" ]]; then
   revelar
+  exit 0
+fi
+
+# --sortear-apenas sorteia e imprime, sem envelope e sem subir nada. Existe para
+# que o próprio sorteio seja testável: verificar a distribuição exige centenas de
+# sorteios, e subir a demo em cada um custaria horas. Ele NÃO grava no histórico,
+# para que o teste meça a função de peso e não o efeito acumulado dela.
+if [[ "${1:-}" == "--sortear-apenas" ]]; then
+  sortear
+  printf '\n'
   exit 0
 fi
 
@@ -94,6 +149,7 @@ if [[ -f "${ENVELOPE}" ]]; then
   exit 1
 fi
 
+
 # FAULTMAP_CENARIO existe só para verificar o produto contra um cenário
 # escolhido, nunca para o piloto: forçar a resposta desfaz a cegueira, que é a
 # única coisa que este script produz.
@@ -101,8 +157,9 @@ if [[ -n "${FAULTMAP_CENARIO:-}" ]]; then
   printf 'AVISO: cenário forçado por FAULTMAP_CENARIO — isto NÃO é um piloto cego.\n' >&2
   sorteado="${FAULTMAP_CENARIO}"
 else
-  sorteado="${URNA[$((RANDOM % ${#URNA[@]}))]}"
+  sorteado="$(sortear)"
 fi
+printf '%s\n' "${sorteado}" >> "${HISTORICO}"
 
 # A verdade é escrita em base64 para que um `cat` distraído, um `grep` no
 # diretório ou a rolagem do terminal não a entreguem antes da hora.
