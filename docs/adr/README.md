@@ -22,3 +22,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0015](0015-retencao-libera-catalogo-e-preserva-mudancas.md) | A retenção libera o catálogo e preserva as mudanças |
 | [0016](0016-postgres-como-backend-alternativo.md) | PostgreSQL é backend alternativo, provado por uma bateria compartilhada |
 | [0017](0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md) | A cauda do banco é uma pergunta própria, não outro percentil |
+| [0018](0018-retencao-reserva-o-lote-que-vai-apagar.md) | A retenção reserva o lote que vai apagar |

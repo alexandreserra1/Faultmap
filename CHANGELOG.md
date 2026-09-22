@@ -76,6 +76,39 @@
 
 ### Corrigido
 
+- **`retention apply` simultâneo no PostgreSQL deixava telemetria expirada para
+  trás e dizia que tinha terminado.** A ADR 0016 previa bloqueio quando duas
+  execuções se cruzassem. Medido, o efeito era outro e pior: ninguém bloqueava,
+  e as execuções desistiam.
+
+  A limpeza avança em lotes e tem um único sinal de parada — um lote menor que o
+  limite prova que a telemetria expirada acabou. No PostgreSQL duas execuções
+  escolhiam o mesmo lote, a primeira apagava tudo, e a segunda encontrava as
+  linhas já apagadas e devolvia um lote curto. Lote curto era lido como "acabou".
+  Com dez execuções simultâneas sobre 1.200 sinais expirados, dez de doze
+  repetições pararam com cerca de 87% da telemetria ainda no banco — sem erro,
+  sem truncamento, relatando sucesso.
+
+  O SQLite nunca teve o problema: com um escritor por vez, a segunda execução só
+  lê depois que a primeira confirma, e enxerga o lote seguinte. A divergência
+  entre os dois backends é que torna isto assunto da bateria compartilhada, que
+  passou a cobrar o caso.
+
+  As duas consultas de retenção passaram a reservar o lote com
+  `FOR UPDATE SKIP LOCKED`. Lotes simultâneos ficam disjuntos e cheios, e um lote
+  curto volta a significar "acabou". Ver
+  [ADR 0018](docs/adr/0018-retencao-reserva-o-lote-que-vai-apagar.md).
+
+- **A liberação de catálogo relatava o triplo do que havia liberado.** Pelo
+  mesmo motivo, com sinal trocado: a execução perdedora encontrava a linha
+  esvaziada em vez de apagada, reaplicava o `UPDATE` e contava de novo o trabalho
+  alheio. Quatro execuções simultâneas relataram 3.520 catálogos para 1.160
+  liberações reais. O estado final estava certo — nenhum catálogo a mais foi
+  liberado, e a coleta mais recente de cada base continuou protegida —, mas o
+  número impresso era a única medida que quem opera tinha de quanto disco a
+  limpeza recuperou. A ADR 0015 promete que repetir relata zero em vez de
+  recontar; a promessa agora vale também quando o "repetir" é simultâneo.
+
 - **Proximidade de deploy acusava um commit em sistema saudável.** O cenário
   `deploy-inofensivo` encontrou isto assim que passou a ser executado de verdade:
   com o sistema sem sintoma algum, o **commit** aparecia em primeiro lugar no

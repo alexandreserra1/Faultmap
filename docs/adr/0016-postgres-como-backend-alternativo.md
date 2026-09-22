@@ -98,3 +98,17 @@ A retenção segue sem `FOR UPDATE SKIP LOCKED`: duas execuções simultâneas d
 `retention apply` podem se bloquear no PostgreSQL. Continua deliberado — SKIP
 LOCKED faria os dois backends escolherem lotes diferentes — e continua a ser
 revisitado se a retenção virar automática.
+
+## Adendo — a retenção passou a reservar o lote
+
+O parágrafo acima, e o item equivalente nas consequências, estavam errados nos
+dois sentidos. Medida, a retenção simultânea no PostgreSQL não se bloqueava: as
+execuções encontravam o lote já apagado, liam o lote curto como "acabou" e
+encerravam relatando sucesso com a maior parte da telemetria expirada ainda no
+banco. E o SKIP LOCKED não afasta os dois backends — sem contenção ele escolhe
+exatamente as mesmas linhas, e com contenção é o que faz o PostgreSQL entregar o
+resultado que o SQLite já entregava ao serializar o escritor.
+
+A correção, a medição e o que se aceita em troca estão na
+[ADR 0018](0018-retencao-reserva-o-lote-que-vai-apagar.md). A bateria
+compartilhada passou a cobrar o caso, que é o que deveria tê-lo pegado antes.

@@ -1093,6 +1093,17 @@ func coleta(id string, capturadaEm time.Time, objetos ...changedomain.SchemaObje
 	}
 }
 
+// coletaDaBase é o mesmo que coleta com a base nomeada, para os casos que
+// precisam de várias bases ao mesmo tempo.
+func coletaDaBase(id, base string, capturadaEm time.Time, objetos ...changedomain.SchemaObject) changedomain.SchemaSnapshot {
+	return changedomain.SchemaSnapshot{
+		ID:           id,
+		DatabaseName: base,
+		CapturedAt:   capturadaEm,
+		Objects:      objetos,
+	}
+}
+
 func objeto(kind changedomain.SchemaObjectKind, nome, tabela, detalhe string) changedomain.SchemaObject {
 	return changedomain.SchemaObject{Kind: kind, Name: nome, TableName: tabela, Detail: detalhe}
 }
@@ -1336,4 +1347,178 @@ func rodarConcorrencia(t *testing.T, novo Fabrica) {
 				len(lidos), len(lote))
 		}
 	})
+
+	t.Run("RetencaoSimultaneaNaoDeixaTelemetriaExpiradaParaTras", func(t *testing.T) {
+		// Duas execuções de `retention apply` contra a mesma instância não são
+		// hipótese: a instância compartilhada é a razão de o backend PostgreSQL
+		// existir, e retenção é o tipo de comando que vira cron. Um cron com o
+		// lote padrão cruzando com uma execução manual de outro lote é o caso
+		// normal, não o excepcional.
+		//
+		// O que se cobra é o resultado observável, não o mecanismo: quando todas
+		// as execuções terminam sem erro e sem relatar truncamento, a telemetria
+		// expirada acabou. Um lote curto é o único sinal de parada que o caso de
+		// uso tem — se um lote pode voltar curto porque outra execução levou as
+		// linhas, e não porque elas acabaram, cada execução desiste achando que
+		// terminou e o banco fica com telemetria que a política mandava apagar,
+		// sem nada na saída dizendo isso.
+		//
+		// A corrida decide quem perde, e existe um arranjo de sorte em que uma
+		// execução sobrevive a todos os rounds e termina o trabalho sozinha:
+		// medido contra PostgreSQL antes da correção, ele aparecia em cerca de
+		// uma tentativa em seis. Repetir o cenário torna a falha confiável sem
+		// tornar o acerto casual — uma implementação correta passa em todas as
+		// rodadas, e nenhuma sorte cobre quatro seguidas.
+		const rodadas = 4
+		for rodada := range rodadas {
+			rodarRetencaoSimultanea(t, novo(t), rodada)
+		}
+	})
+
+	t.Run("PodaSimultaneaNaoContaDuasVezesOMesmoCatalogo", func(t *testing.T) {
+		// A ADR 0015 promete que a liberação é idempotente: "um catálogo já
+		// liberado não entra no lote seguinte, então repetir o comando relata
+		// zero em vez de contar de novo o mesmo trabalho". A promessa precisa
+		// valer também quando o "repetir" é simultâneo, senão o número que o
+		// comando imprime deixa de ser o trabalho feito, e quem opera perde a
+		// única medida que tem de quanto disco a limpeza recuperou.
+		backend := novo(t)
+		ctx := context.Background()
+
+		const bases = 12
+		const coletasPorBase = 10
+		for base := range bases {
+			nome := fmt.Sprintf("base-%02d", base)
+			for indice := range coletasPorBase {
+				gravarColeta(t, backend, coletaDaBase(
+					fmt.Sprintf("snap-%02d-%02d", base, indice), nome,
+					t0.Add(time.Duration(indice)*time.Second),
+					objeto(changedomain.SchemaObjectColumn, nome+".amount", nome, "integer"),
+				))
+			}
+		}
+		// Toda coleta é anterior ao corte. A mais recente de cada base fica de
+		// fora não pela idade, mas por ser a linha de base da comparação
+		// seguinte (ADR 0015).
+		const podaveis = bases * (coletasPorBase - 1)
+
+		const podadores = 4
+		resultados := make([]application.RetentionResult, podadores)
+		falhas := make([]error, podadores)
+		var grupo sync.WaitGroup
+		for indice := range podadores {
+			grupo.Add(1)
+			go func(indice int) {
+				defer grupo.Done()
+				resultados[indice], falhas[indice] = application.ApplyRetention(ctx,
+					application.RetentionRequest{Retention: time.Minute, Now: t4, BatchSize: 5},
+					backend.Retencao, backend.Retencao)
+			}(indice)
+		}
+		grupo.Wait()
+
+		for _, err := range falhas {
+			if err != nil {
+				t.Fatalf("ApplyRetention() simultâneo erro = %v", err)
+			}
+		}
+		relatados := 0
+		for _, resultado := range resultados {
+			relatados += resultado.SchemaCatalogsPruned
+		}
+		if relatados != podaveis {
+			t.Errorf("soma dos catálogos relatados = %d, esperado %d: o mesmo catálogo foi contado por mais de uma execução",
+				relatados, podaveis)
+		}
+		for base := range bases {
+			nome := fmt.Sprintf("base-%02d", base)
+			intactos, err := backend.Retencao.CountIntactCatalogs(ctx, nome)
+			if err != nil {
+				t.Fatalf("CountIntactCatalogs(%q) erro = %v", nome, err)
+			}
+			if intactos != 1 {
+				t.Errorf("catálogos íntegros de %q = %d, esperado exatamente 1", nome, intactos)
+			}
+		}
+	})
+}
+
+// rodarRetencaoSimultanea executa uma rodada do cenário de retenção simultânea
+// contra um backend recém-criado e cobra o resultado observável dela.
+func rodarRetencaoSimultanea(t *testing.T, backend Backend, rodada int) {
+	t.Helper()
+	ctx := context.Background()
+
+	const expirados = 1_200
+	const recentes = 20
+	sinais := make([]telemetrydomain.Signal, 0, expirados+recentes)
+	for indice := range expirados {
+		sinais = append(sinais, sinal(
+			fmt.Sprintf("velho-%05d", indice), "checkout",
+			t0.Add(time.Duration(indice)*time.Millisecond), "trace-a",
+		))
+	}
+	for indice := range recentes {
+		sinais = append(sinais, sinal(
+			fmt.Sprintf("novo-%05d", indice), "checkout",
+			t4.Add(time.Duration(indice)*time.Millisecond), "trace-b",
+		))
+	}
+	gravarSinais(t, backend, sinais)
+
+	// Lotes primos entre si impedem que as execuções se alinhem em fronteiras
+	// iguais, e é o alinhamento que esconderia a sobreposição parcial.
+	lotes := []int{89, 97, 101, 103, 107, 109, 113, 127, 131, 137}
+	resultados := make([]application.RetentionResult, len(lotes))
+	falhas := make([]error, len(lotes))
+	var grupo sync.WaitGroup
+	for indice, lote := range lotes {
+		grupo.Add(1)
+		go func(indice, lote int) {
+			defer grupo.Done()
+			resultados[indice], falhas[indice] = application.ApplyRetention(ctx,
+				application.RetentionRequest{Retention: time.Minute, Now: t4, BatchSize: lote},
+				backend.Retencao, nil)
+		}(indice, lote)
+	}
+	grupo.Wait()
+
+	relatados := 0
+	for indice, err := range falhas {
+		if err != nil {
+			t.Fatalf("rodada %d: ApplyRetention() simultâneo (lote %d) erro = %v", rodada, lotes[indice], err)
+		}
+		if resultados[indice].Truncated {
+			t.Fatalf("rodada %d: a execução de lote %d parou no teto de lotes; o caso não mede o que pretende",
+				rodada, lotes[indice])
+		}
+		relatados += resultados[indice].SignalsRemoved
+	}
+
+	restantes, err := backend.Sinais.ListByServiceAndWindow(ctx, "checkout", t0, t4.Add(time.Hour), 10_000)
+	if err != nil {
+		t.Fatalf("rodada %d: ListByServiceAndWindow() erro = %v", rodada, err)
+	}
+	corte := t4.Add(-time.Minute)
+	expiradosRestantes := 0
+	for _, lido := range restantes {
+		if lido.Timestamp.Before(corte) {
+			expiradosRestantes++
+		}
+	}
+	if expiradosRestantes != 0 {
+		t.Fatalf("rodada %d: %d de %d sinais expirados continuam no banco e toda execução relatou sucesso: "+
+			"a retenção não foi aplicada e ninguém foi avisado", rodada, expiradosRestantes, expirados)
+	}
+	if len(restantes) != recentes {
+		t.Fatalf("rodada %d: sinais preservados = %d, esperado %d: a limpeza simultânea passou do corte",
+			rodada, len(restantes), recentes)
+	}
+	// Cada linha é apagada por exatamente uma execução, então a soma do que elas
+	// relatam é o trabalho real. Somar mais é contar duas vezes a mesma remoção;
+	// somar menos é apagar sem relatar.
+	if relatados != expirados {
+		t.Fatalf("rodada %d: soma dos sinais relatados = %d, esperado %d: o relatório não corresponde ao que foi apagado",
+			rodada, relatados, expirados)
+	}
 }
