@@ -1477,3 +1477,144 @@ func TestIngestFileNãoPersisteSQLBrutoComListaPrópriaDeBloqueios(t *testing.T)
 		t.Fatalf("%d sinais gravaram SQL bruto apesar dos bloqueios padrão", leaked)
 	}
 }
+
+// TestFalhaDeExecucaoNaoImprimeOUsoNemRepeteOErro protege quem está com o
+// banco fora do ar de receber uma parede de documentação de flags.
+//
+// O cobra imprime o bloco Usage quando RunE devolve erro, e isso confunde duas
+// coisas distintas: "você digitou o comando errado" e "o comando estava certo e
+// o mundo falhou". Um arquivo inexistente ou um banco inacessível são a segunda,
+// e sugerir a primeira manda a pessoa revisar a sintaxe em vez do ambiente.
+//
+// O erro também saía duas vezes — uma pelo cobra e outra pelo main —, o que faz
+// a pessoa procurar duas falhas onde há uma.
+func TestFalhaDeExecucaoNaoImprimeOUsoNemRepeteOErro(t *testing.T) {
+	t.Parallel()
+
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	inicializar := newRootCommand()
+	inicializar.SetArgs([]string{"init", "--directory", projectDir})
+	inicializar.SetOut(io.Discard)
+	inicializar.SetErr(io.Discard)
+	if err := inicializar.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+
+	var saida, erros bytes.Buffer
+	comando := newRootCommand()
+	comando.SetArgs([]string{
+		"ingest", "file",
+		"--input", filepath.Join(projectDir, "nao-existe.json"),
+		"--config", configPath,
+	})
+	comando.SetOut(&saida)
+	comando.SetErr(&erros)
+
+	err := comando.Execute()
+	if err == nil {
+		t.Fatal("Execute() devolveu nil para um arquivo inexistente")
+	}
+
+	impresso := saida.String() + erros.String()
+	if strings.Contains(impresso, "Usage:") {
+		t.Fatalf("falha de execução imprimiu o bloco de uso:\n%s", impresso)
+	}
+	// O erro precisa chegar a quem chamou, para que o main o imprima uma vez só.
+	if ocorrencias := strings.Count(impresso, "nao-existe.json"); ocorrencias > 1 {
+		t.Fatalf("o erro apareceu %d vezes na saída do comando:\n%s", ocorrencias, impresso)
+	}
+}
+
+// TestUsoErradoDeFlagAindaMostraOUso é o contrapeso do teste acima: silenciar o
+// uso em falha de execução não pode silenciá-lo quando a pessoa de fato errou a
+// invocação, que é justamente quando a lista de flags ajuda.
+func TestUsoErradoDeFlagAindaMostraOUso(t *testing.T) {
+	t.Parallel()
+
+	var saida, erros bytes.Buffer
+	comando := newRootCommand()
+	comando.SetArgs([]string{"ingest", "file", "--flag-que-nao-existe"})
+	comando.SetOut(&saida)
+	comando.SetErr(&erros)
+
+	if err := comando.Execute(); err == nil {
+		t.Fatal("Execute() aceitou uma flag inexistente")
+	}
+	if impresso := saida.String() + erros.String(); !strings.Contains(impresso, "Usage:") {
+		t.Fatalf("erro de invocação não mostrou o uso, que é quando ele ajuda:\n%s", impresso)
+	}
+}
+
+// TestIngestSchemaDizQueFalaApenasPostgreSQL cobre o que um DSN de MySQL
+// produzia: "cannot parse ... failed to parse as keyword/value", que soa como
+// DSN malformado e manda a pessoa revisar a string em vez de descobrir que o
+// coletor não fala aquele banco.
+//
+// O driver é aberto de forma preguiçosa, então a falha aparecia lá adiante como
+// erro de "consultar colunas" — um sintoma três camadas abaixo da causa.
+func TestIngestSchemaDizQueFalaApenasPostgreSQL(t *testing.T) {
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	inicializar := newRootCommand()
+	inicializar.SetArgs([]string{"init", "--directory", projectDir})
+	inicializar.SetOut(io.Discard)
+	inicializar.SetErr(io.Discard)
+	if err := inicializar.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+
+	// DSN nativo do MySQL: sintaxe válida para aquele driver, impossível para este.
+	t.Setenv("FAULTMAP_PG_DSN", "root:senha@tcp(127.0.0.1:33307)/loja")
+	comando := newRootCommand()
+	comando.SetArgs([]string{"ingest", "schema", "--database", "loja", "--config", configPath})
+	comando.SetOut(io.Discard)
+	comando.SetErr(io.Discard)
+
+	err := comando.Execute()
+	if err == nil {
+		t.Fatal("Execute() aceitou um DSN que este driver não entende")
+	}
+	mensagem := err.Error()
+	if !strings.Contains(mensagem, "PostgreSQL") {
+		t.Fatalf("o erro não diz qual banco o coletor fala: %q", mensagem)
+	}
+	if strings.Contains(mensagem, "consultar colunas") {
+		t.Fatalf("a falha de conexão foi relatada como erro de consulta: %q", mensagem)
+	}
+	// A credencial não pode vazar para o terminal nem para um log de CI.
+	if strings.Contains(mensagem, "senha") {
+		t.Fatalf("a mensagem de erro expôs a credencial: %q", mensagem)
+	}
+}
+
+// TestIngestSchemaNaoAcusaBancoErradoQuandoEleSoEstaForaDoAr é o contrapeso: a
+// mensagem que nomeia o PostgreSQL só cabe quando o DSN não foi sequer
+// interpretado. Um PostgreSQL legítimo e indisponível precisa ser relatado como
+// o que é, senão a pessoa vai caçar um problema de driver que não existe.
+func TestIngestSchemaNaoAcusaBancoErradoQuandoEleSoEstaForaDoAr(t *testing.T) {
+	projectDir := t.TempDir()
+	configPath := filepath.Join(projectDir, "faultmap.yaml")
+	inicializar := newRootCommand()
+	inicializar.SetArgs([]string{"init", "--directory", projectDir})
+	inicializar.SetOut(io.Discard)
+	inicializar.SetErr(io.Discard)
+	if err := inicializar.Execute(); err != nil {
+		t.Fatalf("init erro = %v", err)
+	}
+
+	// DSN perfeitamente válido, apontando para uma porta onde não há ninguém.
+	t.Setenv("FAULTMAP_PG_DSN", "postgres://postgres:senha@127.0.0.1:59998/loja?sslmode=disable")
+	comando := newRootCommand()
+	comando.SetArgs([]string{"ingest", "schema", "--database", "loja", "--config", configPath})
+	comando.SetOut(io.Discard)
+	comando.SetErr(io.Discard)
+
+	err := comando.Execute()
+	if err == nil {
+		t.Fatal("Execute() concluiu com o banco inacessível")
+	}
+	if mensagem := err.Error(); strings.Contains(mensagem, "fala apenas PostgreSQL") {
+		t.Fatalf("PostgreSQL fora do ar foi acusado de ser outro banco: %q", mensagem)
+	}
+}

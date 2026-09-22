@@ -38,6 +38,24 @@ func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "faultmap",
 		Short: "Investigação determinística de incidentes",
+		// O cobra imprime o bloco de uso sempre que RunE devolve erro, e isso
+		// confunde duas coisas distintas: "você digitou o comando errado" e "o
+		// comando estava certo e o mundo falhou". Banco fora do ar, arquivo
+		// inexistente e credencial recusada são a segunda, e mostrar a lista de
+		// flags ali manda a pessoa revisar a sintaxe em vez do ambiente.
+		//
+		// O silêncio é ligado no PersistentPreRun, e não no campo do root, por
+		// um motivo que um teste pegou: SilenceUsage no root cala também o erro
+		// de flag desconhecida, que é exatamente onde a lista de flags ajuda. O
+		// hook roda depois de as flags serem interpretadas, então erro de
+		// invocação continua mostrando o uso e só a falha de execução o esconde.
+		//
+		// SilenceErrors porque o main já imprime o erro devolvido; sem isto ele
+		// sai duas vezes, e quem lê procura duas falhas onde há uma.
+		SilenceErrors: true,
+		PersistentPreRun: func(command *cobra.Command, _ []string) {
+			command.SilenceUsage = true
+		},
 	}
 	root.AddCommand(newInitCommand())
 	root.AddCommand(newServeCommand())
@@ -845,6 +863,25 @@ func newIngestSchemaCommand() *cobra.Command {
 					runErr = fmt.Errorf("fechar conexão PostgreSQL: %w", closeErr)
 				}
 			}()
+
+			// O driver abre de forma preguiçosa: sem este Ping, um DSN que ele não
+			// entende só falhava lá adiante, como erro de "consultar colunas" — um
+			// sintoma três camadas abaixo da causa.
+			//
+			// Só a falha de INTERPRETAÇÃO do DSN nomeia o banco. Um PostgreSQL
+			// legítimo e fora do ar também falha aqui, e acusá-lo de ser outro banco
+			// mandaria a pessoa caçar um problema de driver que não existe — foi o
+			// que a primeira versão desta mensagem fazia. O erro do driver vem junto
+			// nos dois casos, com a credencial já redigida por ele.
+			if err := source.PingContext(command.Context()); err != nil {
+				if strings.Contains(err.Error(), "cannot parse") {
+					return fmt.Errorf(
+						"ingerir catálogo: o coletor de catálogo fala apenas PostgreSQL, e FAULTMAP_PG_DSN não foi reconhecido como um DSN dele: %w",
+						err,
+					)
+				}
+				return fmt.Errorf("ingerir catálogo: conectar à base observada: %w", err)
+			}
 
 			client, err := postgresintegration.NewClient(source, databaseName, nil)
 			if err != nil {

@@ -2,6 +2,26 @@
 
 ## Não publicado
 
+### Corrigido
+
+- **Falha de execução não imprime mais o bloco de uso, nem repete o erro.** Toda
+  vez que um comando falhava por causa do mundo — banco fora do ar, arquivo
+  inexistente, credencial recusada — o terminal despejava a lista de flags, que
+  responde outra pergunta: "você digitou errado". A pessoa era mandada revisar a
+  sintaxe em vez do ambiente. O erro ainda saía duas vezes, uma pelo cobra e
+  outra pelo `main`, fazendo procurar duas falhas onde havia uma.
+
+  O silêncio é ligado depois de as flags serem interpretadas, e não no campo do
+  comando raiz: assim erro de invocação continua mostrando o uso, que é quando
+  ele ajuda. Um teste fixa cada um dos dois lados.
+
+- **DSN de outro banco diz o que é, em vez de parecer DSN malformado.** Apontar
+  `FAULTMAP_PG_DSN` para um MySQL devolvia `failed to parse as keyword/value`
+  três camadas abaixo, como erro de "consultar colunas", porque o driver abre de
+  forma preguiçosa. Agora a conexão é verificada antes da coleta, e só a falha de
+  interpretação do DSN nomeia o PostgreSQL — um PostgreSQL legítimo e fora do ar
+  é relatado como o que é.
+
 ### Adicionado
 
 - **Cauda de latência de banco como regra própria (`database_latency_tail`).**
