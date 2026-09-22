@@ -49,11 +49,20 @@ func (repository *RetentionRepository) DeleteSignalsBefore(
 	}
 
 	// A subconsulta ordenada torna o lote determinístico e garante que a
-	// telemetria mais antiga seja sempre a primeira a sair do banco. A consulta
-	// é a mesma do SQLite, sem SKIP LOCKED: `retention apply` é um comando
-	// explícito de operação, não uma rotina concorrente, e fazer os dois
-	// backends escolherem lotes por critérios diferentes tiraria o sentido de
-	// compará-los.
+	// telemetria mais antiga seja sempre a primeira a sair do banco.
+	//
+	// O SKIP LOCKED não é otimização: sem ele duas execuções simultâneas
+	// escolhem o mesmo lote, a perdedora encontra as linhas já apagadas e
+	// devolve um lote curto. Um lote curto é o único sinal de parada que o caso
+	// de uso tem, então ela encerra achando que a telemetria expirada acabou —
+	// e o banco fica com o que a política mandava apagar, sem nada na saída
+	// dizendo isso. Medido com dez execuções simultâneas, dez de doze tentativas
+	// pararam com cerca de 87% da telemetria expirada ainda no banco (ADR 0018).
+	//
+	// Isto não afasta o PostgreSQL do SQLite: com o lote reservado, um lote
+	// curto volta a significar "acabou", que é o que o SQLite já entregava ao
+	// serializar o escritor. Sem contenção a consulta escolhe exatamente as
+	// mesmas linhas, na mesma ordem.
 	result, err := transaction.ExecContext(ctx, `
 		DELETE FROM signals
 		WHERE id IN (
@@ -61,6 +70,7 @@ func (repository *RetentionRepository) DeleteSignalsBefore(
 			WHERE timestamp < $1
 			ORDER BY timestamp ASC, id ASC
 			LIMIT $2
+			FOR UPDATE SKIP LOCKED
 		)
 	`, cutoff.UTC(), limit)
 	if err != nil {
@@ -104,6 +114,13 @@ func rollbackRetentionTransaction(transaction *sql.Tx, cause error) error {
 // idade. Ela é a linha de base da próxima comparação — esvaziá-la faria o diff
 // seguinte enxergar catálogo vazio e reportar todo objeto da base como
 // recém-criado. Ver ADR 0015.
+//
+// O SKIP LOCKED reserva o lote pelo mesmo motivo da telemetria, com um efeito
+// diferente: aqui a perdedora não encontrava a linha apagada e sim esvaziada,
+// reaplicava o UPDATE e contava de novo o trabalho de outra. A ADR 0015 promete
+// que repetir relata zero em vez de recontar; sem a reserva a promessa valia só
+// em sequência, e quatro execuções simultâneas relatavam o triplo do que
+// haviam liberado (ADR 0018).
 func (repository *RetentionRepository) PruneSchemaCatalogsBefore(
 	ctx context.Context,
 	cutoff time.Time,
@@ -133,6 +150,7 @@ func (repository *RetentionRepository) PruneSchemaCatalogsBefore(
 			  )
 			ORDER BY s.captured_at ASC, s.id ASC
 			LIMIT $2
+			FOR UPDATE SKIP LOCKED
 		)
 	`, cutoff.UTC(), limit)
 	if err != nil {
