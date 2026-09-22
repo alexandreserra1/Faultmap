@@ -104,6 +104,27 @@ todo cenário é alcançável, nenhum é excluído por já ter saído, e o que n
 é favorecido. Mutação confirma que mordem — voltar ao uniforme, remover a
 reposição ou fixar o primeiro da urna são todos pegos.
 
+## small-pool, o cenário que faltava
+
+Rodado explicitamente (com `FAULTMAP_CENARIO`, portanto **verificação e não
+piloto**), já que oito rodadas cegas não o sortearam. O produto acertou:
+`payment-service` em primeiro, score 0,33.
+
+E a medição derrubou uma suposição minha. Na rodada 4 eu havia escrito que
+"small-pool inflaria o HTTP sem inflar o span de banco", porque a espera por
+conexão acontece *antes* da consulta. Está errado: a instrumentação inclui a
+aquisição da conexão dentro do span de banco, e o p95 foi de 6,27 ms para
+1.832,60 ms.
+
+Isso explica a outra metade do erro da rodada 6. Eu atribuí o engano só à
+cegueira do p95, mas havia uma segunda causa: **meu modelo da assinatura de
+`small-pool` estava errado**, então mesmo com o sinal correto na tela eu teria
+escolhido mal. Uma correção de produto não teria salvado aquela rodada sozinha.
+
+A rodada também exercitou, em telemetria real, a cláusula condicional da regra
+de cauda: com "96 de 96 operações", o relatório omitiu "as demais seguiram
+normais", que é o que o teste exige e não havia como verificar fora de produção.
+
 ## O que a rodada 6 mediu
 
 A hipótese errada não foi um palpite infeliz. Foi a leitura que o produto
