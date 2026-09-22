@@ -5,12 +5,12 @@ description: Use ANTES de alterar qualquer código deste repositório e antes de
 
 # Consultar o grafo antes de mudar
 
-O grafo em `graphify-out/graph.json` tem 1.770 nós e 5.100 arestas. São duas
+O grafo em `graphify-out/graph.json` tem 2.082 nós e 5.976 arestas. São duas
 camadas ligadas entre si:
 
-- **código** (1.565 nós), extraído por AST dos arquivos Go: funções, tipos,
+- **código** (1.834 nós), extraído por AST dos arquivos Go: funções, tipos,
   arquivos, chamadas, referências de tipo, implementações de interface;
-- **razão** (205 nós), extraída das 14 ADRs, do README, do CHANGELOG, da spec do
+- **razão** (248 nós: 119 conceitos, 66 de decisão, 62 documentos, 1 diagrama), extraída das 19 ADRs, do README, do CHANGELOG, da spec do
   MVP, dos cenários da demo e do diagrama de arquitetura — ligada ao código por
   cerca de 90 arestas `rationale_for` e `references`.
 
@@ -76,7 +76,7 @@ graphify update
    produto está sendo tocada — se a mudança atravessa fronteira de comunidade,
    ela é maior do que parece.
 4. **Que decisão governa isto?** `graphify path "<nó>" "<ADR>"`, ou procure na
-   saída do `affected` os nós de razão. Quatorze ADRs estão no grafo, cada uma
+   saída do `affected` os nós de razão. Dezenove ADRs estão no grafo, cada uma
    carregando o porquê, a troca aceita e o custo assumido. Mudar código sem ler a
    ADR que o governa é desfazer uma decisão sem saber que ela existiu.
 

@@ -2,9 +2,9 @@
 
 ## Antes de mudar código, consulte o grafo
 
-Este repositório tem um grafo de conhecimento em `graphify-out/`: 1.770 nós e
-5.100 arestas em duas camadas ligadas entre si — o código Go extraído por AST, e
-a razão por trás dele, vinda das 14 ADRs, do README, do CHANGELOG e da spec do
+Este repositório tem um grafo de conhecimento em `graphify-out/`: 2.082 nós e
+5.976 arestas em duas camadas ligadas entre si — o código Go extraído por AST, e
+a razão por trás dele, vinda das 19 ADRs, do README, do CHANGELOG e da spec do
 MVP.
 
 **Consulte-o antes de alterar assinatura ou comportamento de qualquer função ou
