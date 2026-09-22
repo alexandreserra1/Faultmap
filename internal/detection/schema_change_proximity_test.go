@@ -471,3 +471,239 @@ func TestResumoDeclaraALarguraDoIntervalo(t *testing.T) {
 		t.Fatalf("resumo = %q, esperado declarar as duas pontas do intervalo", resumo)
 	}
 }
+
+// mudancaQueAtravessaOInicio monta uma mudança cujo intervalo de observação
+// começa antes do incidente e termina depois: a coleta que a revelou já pegou o
+// incidente em curso.
+//
+// É a forma mais comum quando a coleta não é frequente. Com coleta diária, a
+// migração das 9h de um incidente das 14h só é vista na coleta do dia seguinte,
+// e o intervalo inteiro atravessa o começo do incidente.
+func mudancaQueAtravessaOInicio(
+	base string, antesDoInicio, depoisDoInicio time.Duration,
+) changedomain.SchemaChange {
+	change := mudancaDeSchema(base, 0, 0)
+	change.ObservedAfter = incidenteEm.Add(-antesDoInicio)
+	change.ObservedBefore = incidenteEm.Add(depoisDoInicio)
+	return change
+}
+
+// TestIntervaloQueAtravessaOInicioEApresentadoComRessalva corrige uma omissão
+// que contrariava a própria regra escrita no detector: a inclusão usa a ponta
+// otimista do intervalo, e o filtro usava a ponta otimista pelo avesso.
+//
+// Uma mudança cujo intervalo começa antes do incidente PODE ter ocorrido antes
+// dele — é exatamente o caso que a inclusão generosa existe para não perder. A
+// ponta que pontua continua sendo a anterior ao incidente, então nada é
+// afirmado além do que foi medido.
+//
+// O que se paga por isso é confiança: parte do intervalo cai dentro do
+// incidente, e uma migração aplicada para conter o incidente apareceria aqui do
+// mesmo jeito. Isso precisa estar escrito no finding, não na cabeça de quem o
+// lê.
+func TestIntervaloQueAtravessaOInicioEApresentadoComRessalva(t *testing.T) {
+	t.Parallel()
+
+	finding, found := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaQueAtravessaOInicio("payments", 6*time.Hour, 20*time.Minute)},
+		incidenteEm,
+	)
+
+	if !found {
+		t.Fatal("DetectSchemaChangeProximity() ficou calado com intervalo que pode preceder o incidente")
+	}
+	if finding.Confidence != ConfidenceLow {
+		t.Fatalf("confiança = %q, esperado baixa: o intervalo não separa causa de resposta ao incidente",
+			finding.Confidence)
+	}
+	if !containsLimitation(finding.Limitations, "durante o incidente") {
+		t.Fatalf("limitações = %#v, esperado dizer que a mudança pode ter ocorrido durante o incidente",
+			finding.Limitations)
+	}
+	if !containsLimitation(finding.Limitations, "resposta ao incidente") {
+		t.Fatalf("limitações = %#v, esperado admitir a hipótese de resposta ao incidente",
+			finding.Limitations)
+	}
+	// A ressalva de coleta espaçada afirma uma "proximidade" que aqui não é
+	// afirmada: a ponta otimista está dentro do incidente, não antes dele.
+	// Emitir as duas faria o finding declarar uma proximidade que o resumo nega.
+	if containsLimitation(finding.Limitations, "proximidade de") {
+		t.Fatalf("limitações = %#v, esperado não afirmar proximidade que o intervalo não sustenta",
+			finding.Limitations)
+	}
+	// Cada ponta do lado a que pertence: a pessimista precede o incidente, a
+	// otimista caiu dentro dele. Trocá-las de lado inverteria o sentido da
+	// evidência sem que o texto parecesse errado.
+	resumo := finding.Evidence[0].Summary
+	if !strings.Contains(resumo, "6h antes do início do incidente") {
+		t.Fatalf("resumo = %q, esperado situar a ponta pessimista antes do incidente", resumo)
+	}
+	if !strings.Contains(resumo, "20m depois dele") {
+		t.Fatalf("resumo = %q, esperado dizer o quanto a coleta caiu dentro do incidente", resumo)
+	}
+}
+
+// TestIntervaloQueAtravessaOInicioPontuaPelaPontaAnteriorAoIncidente mantém a
+// ponta pessimista da ADR 0014 como única fonte de score.
+//
+// A ponta otimista de uma mudança que atravessa o início está dentro do
+// incidente, e pontuar por ela daria score máximo justamente ao caso mais
+// ambíguo — quanto mais tarde a coleta, mais forte ficaria a acusação. O score
+// sai da ponta que precede o incidente, que é a única distância medida.
+func TestIntervaloQueAtravessaOInicioPontuaPelaPontaAnteriorAoIncidente(t *testing.T) {
+	t.Parallel()
+
+	proxima, achouProxima := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaQueAtravessaOInicio("payments", 6*time.Hour, 20*time.Minute)},
+		incidenteEm,
+	)
+	distante, achouDistante := DetectSchemaChangeProximity(
+		entradaComBanco("payment-service", "payments", 8),
+		[]changedomain.SchemaChange{mudancaQueAtravessaOInicio("payments", 20*time.Hour, 20*time.Minute)},
+		incidenteEm,
+	)
+
+	if !achouProxima || !achouDistante {
+		t.Fatal("as duas mudanças podem preceder o incidente e deveriam ser apresentadas")
+	}
+	// 6h de 24h decorridas deixam 0.75 do decaimento, medidos da ponta anterior
+	// ao incidente. Pela ponta otimista o score seria 1 nos dois casos.
+	if proxima.Score < 0.74 || proxima.Score > 0.76 {
+		t.Fatalf("score = %v, esperado aproximadamente 0.75 medido da ponta anterior ao incidente",
+			proxima.Score)
+	}
+	if distante.Score >= proxima.Score {
+		t.Fatalf("a mudança que pode ser 20h mais velha pontuou %v, não menos que %v",
+			distante.Score, proxima.Score)
+	}
+}
+
+// TestMudancaInteiramenteDentroDoIncidenteSeCala é uma recusa deliberada, e não
+// uma limitação por implementar.
+//
+// Quando o intervalo inteiro começa depois do início do incidente, todo instante
+// possível da mudança é posterior ao começo dele. Não há proximidade anterior a
+// afirmar, e as duas leituras — a migração piorou o incidente, ou a migração foi
+// a tentativa de contê-lo — são igualmente compatíveis com o que foi observado.
+//
+// A corroboração da ADR 0014, que protege contra a migração inofensiva, não
+// protege aqui: durante o incidente o serviço está sintomático por construção,
+// então a exigência de sintoma passa sempre. Acusar seria apontar, com o score
+// mais alto possível, quem correu para consertar. Ver ADR 0019.
+func TestMudancaInteiramenteDentroDoIncidenteSeCala(t *testing.T) {
+	t.Parallel()
+
+	for nome, change := range map[string]changedomain.SchemaChange{
+		"começa no instante do incidente": mudancaQueAtravessaOInicio("payments", 0, 20*time.Minute),
+		"começa depois do incidente":      mudancaQueAtravessaOInicio("payments", -10*time.Minute, 20*time.Minute),
+	} {
+		if finding, found := DetectSchemaChangeProximity(
+			entradaComBanco("payment-service", "payments", 8),
+			[]changedomain.SchemaChange{change},
+			incidenteEm,
+		); found {
+			t.Fatalf("%s: o detector acusou uma mudança que só pode ter ocorrido durante o incidente: %#v",
+				nome, finding)
+		}
+	}
+}
+
+// TestMudancaCertamenteAnteriorVenceAQueAtravessaOInicio impede que a inclusão
+// nova piore o que já funcionava.
+//
+// A ordenação escolhe uma mudança só, e a que atravessa o início tem a ponta
+// otimista mais próxima de todas — o começo do incidente. Se ela vencesse,
+// bastaria existir para rebaixar a confiança de um finding que hoje sai alto
+// com uma migração comprovadamente anterior. Evidência sem ambiguidade vem
+// primeiro; a ambígua só aparece quando é tudo o que há.
+func TestMudancaCertamenteAnteriorVenceAQueAtravessaOInicio(t *testing.T) {
+	t.Parallel()
+
+	atravessa := mudancaQueAtravessaOInicio("payments", 2*time.Hour, 20*time.Minute)
+	atravessa.ID = "schema:payments:atravessa"
+	anterior := mudancaDeSchema("payments", 3*time.Hour, 5*time.Minute)
+	anterior.ID = "schema:payments:anterior"
+
+	for _, ordem := range [][]changedomain.SchemaChange{
+		{atravessa, anterior},
+		{anterior, atravessa},
+	} {
+		finding, found := DetectSchemaChangeProximity(
+			entradaComBanco("payment-service", "payments", 8), ordem, incidenteEm,
+		)
+		if !found {
+			t.Fatal("DetectSchemaChangeProximity() found = false")
+		}
+		if finding.Evidence[0].ChangeIDs[0] != anterior.ID {
+			t.Fatalf("evidência apontou %q, esperado a mudança certamente anterior %q",
+				finding.Evidence[0].ChangeIDs[0], anterior.ID)
+		}
+		if finding.Confidence != ConfidenceHigh {
+			t.Fatalf("confiança = %q, esperado alta: a mudança escolhida precede o incidente",
+				finding.Confidence)
+		}
+	}
+}
+
+// TestRoundedDurationNaoEngoleAUnidade apareceu ao escrever o resumo de uma
+// mudança observada 20 minutos depois do início do incidente: o texto saía
+// "2 depois dele".
+//
+// A supressão dos zeros à direita removia "0m" de qualquer texto terminado em
+// "0m", e não só de "h0m": em "20m" o "0m" é o fim do número e a unidade, não um
+// zero à direita. O relatório passava a informar "2" onde havia 20 minutos, sem
+// unidade nenhuma e uma ordem de grandeza abaixo.
+func TestRoundedDurationNaoEngoleAUnidade(t *testing.T) {
+	t.Parallel()
+
+	for duracao, esperado := range map[time.Duration]string{
+		20 * time.Minute:              "20m",
+		10 * time.Minute:              "10m",
+		time.Minute:                   "1m",
+		2 * time.Hour:                 "2h",
+		time.Hour + 20*time.Minute:    "1h20m",
+		29 * time.Second:              "menos de um minuto",
+		24*time.Hour + 30*time.Minute: "24h30m",
+		3*time.Hour + 4*time.Minute:   "3h4m",
+	} {
+		if texto := roundedDuration(duracao); texto != esperado {
+			t.Errorf("roundedDuration(%s) = %q, esperado %q", duracao, texto, esperado)
+		}
+	}
+}
+
+// TestEntreAmbiguasVenceAQueInvadiuMenosOIncidente decide o desempate que sobra
+// quando todas as mudanças atravessam o começo do incidente.
+//
+// Quanto mais a coleta avançou para dentro do incidente, mais do intervalo é
+// compatível com uma migração aplicada em resposta a ele. Escolher a que invadiu
+// menos é escolher a que menos depende dessa hipótese. Sem este critério a
+// escolha cairia no ID, que ordena por acaso.
+func TestEntreAmbiguasVenceAQueInvadiuMenosOIncidente(t *testing.T) {
+	t.Parallel()
+
+	// O ID da que invadiu mais vem antes no alfabeto: se o desempate caísse no
+	// ID, seria ela a escolhida.
+	invadiuMuito := mudancaQueAtravessaOInicio("payments", 5*time.Hour, 3*time.Hour)
+	invadiuMuito.ID = "schema:payments:a-invadiu-muito"
+	invadiuPouco := mudancaQueAtravessaOInicio("payments", 2*time.Hour, 5*time.Minute)
+	invadiuPouco.ID = "schema:payments:b-invadiu-pouco"
+
+	for _, ordem := range [][]changedomain.SchemaChange{
+		{invadiuMuito, invadiuPouco},
+		{invadiuPouco, invadiuMuito},
+	} {
+		finding, found := DetectSchemaChangeProximity(
+			entradaComBanco("payment-service", "payments", 8), ordem, incidenteEm,
+		)
+		if !found {
+			t.Fatal("DetectSchemaChangeProximity() found = false")
+		}
+		if finding.Evidence[0].ChangeIDs[0] != invadiuPouco.ID {
+			t.Fatalf("evidência apontou %q, esperado a que invadiu menos o incidente %q",
+				finding.Evidence[0].ChangeIDs[0], invadiuPouco.ID)
+		}
+	}
+}

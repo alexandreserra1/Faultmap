@@ -654,6 +654,21 @@ sem saber em qual das 24 horas anteriores a migração rodou, não há proximida
 afirmar. A evidência diz "entre 1h e 25h antes do incidente" em vez de escolher a
 ponta mais favorável.
 
+A coleta espaçada tem um segundo efeito: quanto mais rara, maior a chance de a
+coleta seguinte cair já com o incidente em curso. O intervalo então **atravessa o
+começo do incidente**, e a migração pode ter precedido o incidente ou ter sido
+aplicada como resposta a ele. O produto apresenta esse caso — a alternativa era
+esconder a migração que de fato o causou — com confiança baixa, com o resumo
+dizendo "entre 6h antes do início do incidente e 20m depois dele", e com a
+ressalva de que uma migração aplicada para conter o incidente apareceria ali do
+mesmo jeito.
+
+O que ele **não** apresenta é a mudança cujo intervalo inteiro começa depois do
+início do incidente: ali todo instante possível é posterior ao começo dele, não
+há proximidade a medir, e acusar seria apontar quem correu para consertar. Uma
+migração que piorou o incidente continua aparecendo pelos detectores de medida.
+Ver [ADR 0019](docs/adr/0019-mudanca-dentro-do-incidente-nao-e-acusada.md).
+
 Sobre o que é guardado, ver [ADR 0014](docs/adr/0014-schema-guarda-identificadores-nao-expressoes.md): entram nome de tabela, coluna, índice, restrição e tipo de dado; **não** entram as expressões de `DEFAULT` e de `CHECK`, que carregam valor e regra de negócio. Uma mudança de expressão é registrada como "a expressão associada mudou", sem os dois valores.
 
 ## Servidor MCP

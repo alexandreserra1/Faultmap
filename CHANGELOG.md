@@ -76,6 +76,52 @@
 
 ### Corrigido
 
+- **A migração que a coleta só revelou com o incidente em curso ficava
+  invisível.** `schema_change_proximity` cortava pela coleta que revelou a
+  mudança: se ela caiu depois do início do incidente, a mudança era descartada
+  inteira. Só que essa coleta não é o instante da migração — a mudança ocorreu em
+  algum ponto entre as duas coletas, e o intervalo podia começar horas antes do
+  incidente.
+
+  O caso não é de borda; é o comum de quem coleta de raro em raro. Com coleta
+  diária, a migração das 9h de um incidente das 14h só aparece na coleta do dia
+  seguinte, e o intervalo inteiro atravessa o começo do incidente. A ADR 0014
+  prometia que a coleta rala custaria score e a mudança ainda assim apareceria no
+  relatório; ela não aparecia, sumia — sem erro, sem ressalva, só "nenhuma
+  anomalia encontrada".
+
+  Agora a mudança entra quando algum instante possível dela precede o incidente,
+  que é a inclusão otimista que a ADR 0014 já mandava usar. O score continua
+  saindo da ponta pessimista do intervalo, que nesses casos é a anterior ao
+  incidente: nada é pontuado a partir de instante que caia dentro dele.
+
+  O que é ambíguo vai escrito no finding. A confiança cai para baixa, a limitação
+  diz que a mudança pode ter ocorrido durante o incidente e que **uma migração
+  aplicada como resposta ao incidente apareceria ali do mesmo jeito**, e o resumo
+  situa cada ponta do seu lado — "entre 6h antes do início do incidente e 20m
+  depois dele", em vez de um "antes do incidente" que seria falso para metade do
+  intervalo. Entre duas mudanças, a que certamente precede o incidente vence a
+  ambígua, para que a ambígua não rebaixe a confiança de um finding que hoje sai
+  alto.
+
+  **A migração cujo intervalo inteiro começa depois do início do incidente
+  continua não sendo apresentada, e isso é decisão, não pendência.** Ali todo
+  instante possível é posterior ao começo do incidente: não há proximidade a
+  medir, o score premiaria o caso mais ambíguo com a nota máxima, e a
+  corroboração da ADR 0014 não protege — durante o incidente o serviço está
+  sintomático por construção. Apresentar seria apontar, com pontuação máxima,
+  quem correu para consertar. A migração que de fato piorou o incidente continua
+  aparecendo pelos detectores de medida, como qualquer outra causa. Ver
+  [ADR 0019](docs/adr/0019-mudanca-dentro-do-incidente-nao-e-acusada.md).
+
+- **Duração de 20 minutos aparecia como "2" no relatório.** A supressão dos zeros
+  à direita de `1m0s` e `2h0m0s` cortava `0m` de qualquer texto terminado em
+  `0m` — e em `20m` esse `0m` é o fim do número e a unidade, não um zero à
+  direita. `20m` virava `2`, `10m` virava `1`, `1h20m` virava `1h2`: uma ordem de
+  grandeza a menos, sem unidade. Apareceu no resumo de uma mudança observada 20
+  minutos depois do início do incidente, e valia para qualquer evidência de
+  schema com duração múltipla de dez minutos.
+
 - **Proximidade de deploy acusava um commit em sistema saudável.** O cenário
   `deploy-inofensivo` encontrou isto assim que passou a ser executado de verdade:
   com o sistema sem sintoma algum, o **commit** aparecia em primeiro lugar no
