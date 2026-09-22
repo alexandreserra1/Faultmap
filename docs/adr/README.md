@@ -23,3 +23,4 @@ descreve o contexto, a decisão e as consequências — inclusive as ruins.
 | [0016](0016-postgres-como-backend-alternativo.md) | PostgreSQL é backend alternativo, provado por uma bateria compartilhada |
 | [0017](0017-cauda-de-banco-e-pergunta-propria-nao-outro-percentil.md) | A cauda do banco é uma pergunta própria, não outro percentil |
 | [0018](0018-retencao-reserva-o-lote-que-vai-apagar.md) | A retenção reserva o lote que vai apagar |
+| [0019](0019-mudanca-dentro-do-incidente-nao-e-acusada.md) | Mudança de catálogo dentro do incidente não é acusada |

@@ -26,13 +26,21 @@ const SchemaChangeLookback = 24 * time.Hour
 type schemaChangeCandidate struct {
 	change changedomain.SchemaChange
 	// age é a distância até a coleta que revelou a mudança: a hipótese mais
-	// favorável, em que ela ocorreu no último instante possível.
+	// favorável, em que ela ocorreu no último instante possível. É negativa
+	// quando essa coleta caiu depois do início do incidente, e aí quem descreve o
+	// intervalo é insideIncident — a distância deixa de ser a leitura certa.
 	age time.Duration
 	// oldestAge é a distância até a coleta anterior: a hipótese mais
 	// desfavorável, em que ela ocorreu no primeiro instante possível. É esta
 	// que pontua.
 	oldestAge  time.Duration
 	captureGap time.Duration
+	// insideIncident é o quanto a coleta que revelou a mudança avançou para
+	// dentro do incidente. Zero quando o intervalo inteiro precede o incidente,
+	// que é o caso sem ambiguidade. Maior que zero significa que parte dos
+	// instantes possíveis da mudança está dentro do incidente, e aí ela tanto
+	// pode tê-lo causado quanto ser resposta a ele.
+	insideIncident time.Duration
 }
 
 // DetectSchemaChangeProximity acusa o serviço quando uma mudança recente de
@@ -43,6 +51,14 @@ type schemaChangeCandidate struct {
 // migração em qualquer banco acusaria qualquer serviço que estivesse com
 // problema no mesmo horário. A telemetria já carrega o nome da base, e é ela
 // quem responde de quem é a dependência — não uma configuração declarada.
+//
+// A mudança entra quando algum instante possível dela precede o incidente,
+// ainda que a coleta que a revelou tenha caído depois do começo dele — e sai com
+// confiança baixa e a ambiguidade escrita, porque uma migração aplicada para
+// conter o incidente apareceria do mesmo jeito. Quando o intervalo inteiro
+// começa depois do início do incidente, o produto se cala: ali causa e resposta
+// são indistinguíveis e o score premiaria a ambiguidade. A ADR 0019 registra o
+// argumento e o que seria preciso para reabri-lo.
 //
 // O sujeito acusado é o serviço, e não a mudança de schema. O commit ganhou
 // tipo próprio porque já tinha identidade estável e legível; uma mudança de
@@ -68,25 +84,59 @@ func DetectSchemaChangeProximity(
 		// dentro da janela. A pontuação, mais abaixo, usa a pessimista. Incluir
 		// com generosidade e pontuar com cautela evita perder uma migração real
 		// por causa de uma coleta espaçada, sem pagar por isso em confiança.
-		age := incidentStart.Sub(change.ObservedBefore)
-		if age < 0 || age > SchemaChangeLookback {
+		//
+		// O corte é pela ponta pessimista ser anterior ao incidente, e não pela
+		// otimista. Uma coleta que só revelou a mudança depois de o incidente
+		// começar não diz que a mudança é posterior a ele: diz que ela ocorreu em
+		// algum ponto de um intervalo que começa antes. Cortar por `ObservedBefore`
+		// descartava esse caso inteiro — e com coleta espaçada ele é o caso comum,
+		// porque a coleta seguinte quase sempre cai depois do começo do incidente.
+		//
+		// O outro lado do corte é uma recusa, não uma pendência: quando o intervalo
+		// inteiro começa depois do incidente, todo instante possível da mudança é
+		// posterior ao começo dele, e causa e resposta ao incidente ficam
+		// indistinguíveis. A ADR 0019 registra por que o produto se cala ali.
+		oldestAge := incidentStart.Sub(change.ObservedAfter)
+		if oldestAge <= 0 {
 			continue
 		}
+		age := incidentStart.Sub(change.ObservedBefore)
+		if age > SchemaChangeLookback {
+			continue
+		}
+		// O que passa do início do incidente não é proximidade, é sobreposição, e
+		// fica guardado como tal em vez de continuar sendo lido como distância.
+		insideIncident := time.Duration(0)
+		if age < 0 {
+			insideIncident = -age
+		}
 		candidates = append(candidates, schemaChangeCandidate{
-			change:     change,
-			age:        age,
-			oldestAge:  incidentStart.Sub(change.ObservedAfter),
-			captureGap: change.ObservedBefore.Sub(change.ObservedAfter),
+			change:         change,
+			age:            age,
+			oldestAge:      oldestAge,
+			captureGap:     change.ObservedBefore.Sub(change.ObservedAfter),
+			insideIncident: insideIncident,
 		})
 	}
 	if len(candidates) == 0 {
 		return Finding{}, false
 	}
 
-	// A mais próxima do incidente vence; o ID desempata para que a mesma
-	// investigação produza sempre a mesma evidência, independentemente da ordem
-	// em que a consulta devolveu as mudanças.
+	// Menos sobreposição com o incidente vence primeiro, depois a mais próxima
+	// dele; o ID desempata para que a mesma investigação produza sempre a mesma
+	// evidência, independentemente da ordem em que a consulta devolveu as
+	// mudanças.
+	//
+	// A sobreposição decide antes da distância porque a ponta otimista de uma
+	// mudança que atravessa o começo do incidente está dentro dele: pela distância
+	// ela seria sempre a mais próxima de todas, e bastaria existir para rebaixar a
+	// confiança de um finding que hoje sai alto sobre uma migração comprovadamente
+	// anterior. Entre duas ambíguas, ganha a que invadiu menos o incidente, que é a
+	// que menos depende da hipótese de ter sido resposta a ele.
 	sort.Slice(candidates, func(first, second int) bool {
+		if candidates[first].insideIncident != candidates[second].insideIncident {
+			return candidates[first].insideIncident < candidates[second].insideIncident
+		}
 		if candidates[first].age != candidates[second].age {
 			return candidates[first].age < candidates[second].age
 		}
@@ -109,13 +159,32 @@ func DetectSchemaChangeProximity(
 		"Proximidade temporal não prova causalidade.",
 		"A mudança foi observada entre duas coletas do catálogo; o instante exato não é conhecido.",
 	}
+	// Quando o intervalo atravessa o começo do incidente, a ressalva é outra e
+	// mais grave que a da coleta espaçada, e substitui aquela: não há proximidade
+	// afirmada a comparar com o intervalo, porque a ponta otimista caiu dentro do
+	// incidente. Dizer aqui "a proximidade afirmada é de menos de um minuto"
+	// afirmaria justamente o que o resumo nega.
+	//
+	// A hipótese da resposta ao incidente vai escrita por inteiro porque é a que
+	// custa caro errar: alguém aplicou uma migração para conter o que já estava
+	// quebrado, e o produto apresentaria essa pessoa como suspeita. A corroboração
+	// da ADR 0014 não protege contra isso — durante o incidente o serviço está
+	// sintomático por construção, então a exigência de sintoma passa sempre. O que
+	// protege é a evidência dizer o que ela não sabe.
+	switch {
+	case selected.insideIncident > 0:
+		confidence = ConfidenceLow
+		limitations = append(limitations, fmt.Sprintf(
+			"A coleta que revelou a mudança ocorreu %s depois do início do incidente: a mudança pode ter ocorrido antes dele, e também durante o incidente. Uma migração aplicada como resposta ao incidente apareceria aqui do mesmo jeito; colete o catálogo com mais frequência para separar os dois casos.",
+			roundedDuration(selected.insideIncident),
+		))
 	// O que importa não é o intervalo contra a janela de busca, é o intervalo
 	// contra a proximidade que se está afirmando. Uma coleta diária afirmando
 	// "ocorreu 1 hora antes" não sabe em qual das 23 horas anteriores a mudança
 	// de fato ocorreu, e chamar isso de confiança alta seria mentir sobre a
 	// precisão. O finding continua sendo emitido: silenciar esconderia uma
 	// migração real de quem investiga.
-	if selected.captureGap > selected.age {
+	case selected.captureGap > selected.age:
 		confidence = ConfidenceLow
 		limitations = append(limitations, fmt.Sprintf(
 			"O intervalo entre as coletas foi de %s, maior que a proximidade de %s afirmada: colete o catálogo com mais frequência para estreitar a evidência.",
@@ -239,6 +308,21 @@ func schemaChangeSummary(candidate schemaChangeCandidate) string {
 		roundedDuration(candidate.age),
 		roundedDuration(candidate.oldestAge),
 	)
+	// Quando a coleta que revelou a mudança caiu depois do começo do incidente, a
+	// frase "antes do incidente" seria falsa para metade do intervalo. O texto
+	// passa a declarar as duas pontas pelo lado a que cada uma pertence, para que
+	// a sobreposição com o incidente esteja no resumo e não só nas limitações.
+	if candidate.insideIncident > 0 {
+		summary = fmt.Sprintf(
+			"O %s %s %s foi %s, entre %s antes do início do incidente e %s depois dele.",
+			schemaObjectLabel(change.ObjectKind),
+			change.ObjectName,
+			alvo,
+			schemaChangeLabel(change.ChangeKind),
+			roundedDuration(candidate.oldestAge),
+			roundedDuration(candidate.insideIncident),
+		)
+	}
 	if detail := strings.TrimSpace(change.Detail); detail != "" {
 		summary += " " + strings.ToUpper(detail[:1]) + detail[1:] + "."
 	}
@@ -287,9 +371,16 @@ func roundedDuration(duration time.Duration) string {
 	// O formato do Go escreve "1m0s" e "2h0m0s"; os zeros à direita só existem
 	// porque a unidade menor não foi suprimida, e arrastá-los para o relatório
 	// sugere uma precisão de segundos que o arredondamento acabou de descartar.
+	//
+	// A unidade anterior precisa entrar na comparação. Cortar "0m" de qualquer
+	// texto terminado em "0m" engolia o fim do próprio número: "20m" virava "2",
+	// e o relatório informava uma ordem de grandeza a menos, sem unidade — visto
+	// no resumo de uma mudança observada 20 minutos depois do início do incidente.
 	texto := rounded.String()
 	for _, sufixo := range []string{"m0s", "h0m"} {
-		texto = strings.TrimSuffix(texto, sufixo[1:])
+		if strings.HasSuffix(texto, sufixo) {
+			texto = strings.TrimSuffix(texto, sufixo[1:])
+		}
 	}
 	return texto
 }
