@@ -62,5 +62,44 @@ novos=$(grep -cx "small-pool" <<<"${saida}" || true)
   && reportar ok "o único cenario nunca sorteado saiu ${novos}x em 300 (uniforme daria ~50)" \
   || reportar falha "o cenario nunca sorteado saiu só ${novos}x: a cobertura não acelera"
 
+echo "== a guarda exige o cenario sorteado, nao apenas 'algo diferente da base' =="
+# Uma rodada foi invalidada exatamente aqui: o envelope dizia payment-500 e a
+# telemetria era de retry-storm — 504 e 3,92 tentativas por trace, quando
+# payment-500 produz 500 e 502 sem retentativa. A guarda aprovou porque só
+# perguntava se a versão era diferente de 1.0.0.
+guarda() { "${SORTEIO}" --conferir-injecao "$1" "$2" "$3"; }
+
+casos_aprovar=(
+  "table-lock|1.0.0|1.1.0-table-lock"
+  "retry-storm|1.1.0-retry-storm|1.1.0-retry-storm"
+  "small-pool|1.0.0|1.1.0-small-pool"
+)
+casos_recusar=(
+  "payment-500|1.1.0-retry-storm|1.1.0-retry-storm"
+  "payment-500|1.0.0|1.0.0"
+  "table-lock||"
+  "database-slow|1.0.0|"
+  "|1.0.0|1.0.0"
+  "|1.1.0-retry-storm|1.1.0-retry-storm"
+)
+
+for caso in "${casos_aprovar[@]}"; do
+  IFS='|' read -r c v1 v2 <<< "${caso}"
+  if guarda "${c}" "${v1}" "${v2}"; then
+    reportar ok "aprova ${c} com versoes ${v1:-<vazio>}/${v2:-<vazio>}"
+  else
+    reportar falha "recusou injecao correta de ${c} (${v1:-<vazio>}/${v2:-<vazio>})"
+  fi
+done
+
+for caso in "${casos_recusar[@]}"; do
+  IFS='|' read -r c v1 v2 <<< "${caso}"
+  if guarda "${c}" "${v1}" "${v2}"; then
+    reportar falha "aprovou ${c} com versoes ${v1:-<vazio>}/${v2:-<vazio>}: o piloto mediria outro sistema"
+  else
+    reportar ok "recusa ${c} com versoes ${v1:-<vazio>}/${v2:-<vazio>}"
+  fi
+done
+
 echo
 if [[ "${falhas}" -eq 0 ]]; then echo "sorteio: PASS"; else echo "sorteio: ${falhas} FALHA(S)"; exit 1; fi

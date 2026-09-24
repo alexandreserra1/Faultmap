@@ -224,6 +224,49 @@ Então: o mecanismo é real e medido, a correlação de magnitude é boa, e a ca
 continua **não demonstrada**. As quatro observações permanecem sem explicação
 reproduzível, e o limiar fica como está até que alguém as reproduza.
 
+## A rodada inválida que fechou o buraco da guarda
+
+Numa bateria posterior, uma rodada registrou hipótese `retry-storm` e o envelope
+disse `payment-500`. Antes de contar como erro, medi a assinatura crua de
+`payment-500` com carga controlada:
+
+| serviço | status | n |
+|---|---|---|
+| payment-service | 500 | 120 |
+| checkout-service | 500 / 502 | 120 / 120 |
+| load-generator | 502 | 120 |
+
+**Zero 504, zero retentativa** — uma requisição por serviço. A rodada mostrava 504
+e 3,92 tentativas por trace. Não era `payment-500`: a rodada foi inválida, a
+quarta desta história, sempre por estado que não correspondia ao envelope.
+
+A guarda de injeção existia e aprovou. Ela perguntava se a versão era diferente
+de `1.0.0` — ou seja, "algo foi injetado?" em vez de "foi injetado **isto**?". É
+aprovação por vacuidade uma camada acima da que já havia invalidado três rodadas.
+Agora ela confronta o carimbo `1.1.0-<cenário>` com o cenário sorteado, e sete
+casos de teste fixam isso.
+
+## A otimização que quase virou um gerador de falso positivo
+
+Reaproveitar a pilha entre rodadas derrubou o custo de 164 s para 48–84 s. A
+primeira versão estava errada de um jeito que só a medição pegou.
+
+Reaproveitar mantém o volume do PostgreSQL. A carga insere 300 linhas por rodada,
+então após três rodadas a tabela `payments` tinha 900 — e, **dentro de cada
+rodada**, a janela de incidente passou a consultar uma tabela maior que a da
+baseline. Uma rodada de `sem-culpado` acusou o banco com p95 de 1,86 ms para
+7,29 ms, razão de 2,92× — acima de qualquer coisa nas sete janelas saudáveis
+medidas, cujo máximo foi 0,84×.
+
+O piloto teria medido o próprio harness, e o resultado pareceria a quinta
+observação daquele falso positivo do p95 — quando a causa era minha.
+
+Corrigido com `TRUNCATE` no início de cada rodada reaproveitada. A contagem
+voltou a 300 por rodada e duas rodadas saudáveis seguidas voltaram ao silêncio.
+A reversão da injeção é igualmente explícita e **conferida**: se sobrou carimbo
+de cenário anterior, o script sobe a pilha do zero em vez de confiar na rodada
+que passou.
+
 ## Como repetir
 
 ```bash

@@ -93,6 +93,31 @@ diagnosticar() {
 # preserva a única propriedade que importa — nenhum cenário é jamais impossível.
 # Um cenário já sorteado três vezes mantém 4,8% de chance; a cobertura cai para
 # 9 rodadas medianas e 14 no p95.
+# injecao_confere responde se as versões lidas dos contêineres correspondem ao
+# cenário sorteado.
+#
+# A pergunta certa não é "algo foi injetado?", é "foi injetado ISTO?". Uma rodada
+# deste piloto foi invalidada por essa diferença: o envelope dizia payment-500 e
+# a telemetria era de retry-storm — 504 e 3,92 tentativas por trace, quando
+# payment-500 produz 500 e 502 sem retentativa nenhuma. A guarda anterior só
+# perguntava se a versão era diferente de "1.0.0", então aprovou o cenário
+# errado. É aprovação por vacuidade uma camada acima da que já havia invalidado
+# outras três rodadas.
+#
+# Cada cenário da urna carimba SERVICE_VERSION como "1.1.0-<cenário>", e é esse
+# carimbo que a guarda confronta.
+injecao_confere() {
+  local esperado="$1" versao_checkout="$2" versao_pagamento="$3"
+  # Falha fechada no que de fato pode aprovar por vacuidade: com o cenário
+  # vazio, o casamento por substring aceitaria QUALQUER versão, inclusive a base.
+  # Conferir as versões lidas seria redundante — uma string vazia nunca contém o
+  # nome do cenário, então a leitura falha já reprova sozinha.
+  [[ -n "${esperado}" ]] || return 1
+  # Basta um dos dois carregar o carimbo: nem todo cenário recria os dois
+  # serviços — table-lock e small-pool tocam só o pagamento.
+  [[ "${versao_checkout}" == *"${esperado}"* || "${versao_pagamento}" == *"${esperado}"* ]]
+}
+
 sortear() {
   local cenario vezes peso_total=0 pesos=() escala=1000
   for cenario in "${URNA[@]}"; do
@@ -117,7 +142,7 @@ sortear() {
 # família de defeito que já invalidou três rodadas deste piloto: erro suprimido
 # fazendo uma checagem passar por vacuidade.
 case "${1:-}" in
-  ""|--revelar|--diagnosticar|--sortear-apenas) ;;
+  ""|--revelar|--diagnosticar|--sortear-apenas|--conferir-injecao) ;;
   *) printf 'Opção desconhecida: %s\n\nUso: %s [--revelar|--diagnosticar|--sortear-apenas]\n' "$1" "$0" >&2; exit 2 ;;
 esac
 
@@ -130,6 +155,12 @@ fi
 # que o próprio sorteio seja testável: verificar a distribuição exige centenas de
 # sorteios, e subir a demo em cada um custaria horas. Ele NÃO grava no histórico,
 # para que o teste meça a função de peso e não o efeito acumulado dela.
+# --conferir-injecao existe para que a guarda seja testável sem subir contêiner.
+if [[ "${1:-}" == "--conferir-injecao" ]]; then
+  injecao_confere "${2:-}" "${3:-}" "${4:-}"
+  exit $?
+fi
+
 if [[ "${1:-}" == "--sortear-apenas" ]]; then
   sortear
   printf '\n'
@@ -194,8 +225,52 @@ falha() {
 }
 
 printf 'Preparando o ambiente (a saída não revela o sorteio)...\n'
-base down --volumes --remove-orphans >/dev/null 2>&1 || true
-base up --build -d --wait >/dev/null 2>&1
+# Reaproveitar a pilha entre rodadas é a diferença entre cinco minutos e dois.
+# Medido: `up --build --wait` custa 159s com cache frio e 24s com cache quente;
+# recriar só os dois serviços de aplicação custa 14s.
+#
+# O reaproveitamento seria perigoso se dependesse de a rodada anterior ter
+# limpado o que injetou — foi assim que uma rodada mediu um cenário e o envelope
+# afirmou outro. Por isso a reversão é explícita e incondicional: os dois
+# serviços são recriados PELO COMPOSE BASE, o que desfaz qualquer injeção
+# anterior, e o lock-holder de uma rodada passada é removido. Quem garante o
+# estado é esta linha, não a boa vontade da rodada anterior.
+#
+# FAULTMAP_PILOTO_LIMPO=1 força o caminho longo, para quando a suspeita for da
+# própria pilha.
+if [[ "${FAULTMAP_PILOTO_LIMPO:-}" == "1" ]] || ! base ps --status running --quiet faultmap 2>/dev/null | grep -q .; then
+  base down --volumes --remove-orphans >/dev/null 2>&1 || true
+  base up --build -d --wait >/dev/null 2>&1
+else
+  printf 'Reaproveitando a pilha de pé; revertendo ao estado base...\n'
+  base rm -sf lock-holder >/dev/null 2>&1 || true
+  # Os dados da demo precisam voltar ao ponto de partida, e isto NÃO é higiene
+  # opcional: reaproveitar a pilha mantém o volume do PostgreSQL, a carga insere
+  # 300 linhas por rodada, e a janela de incidente passa a consultar uma tabela
+  # maior que a da baseline. A primeira versão desta otimização fez exatamente
+  # isso — três rodadas depois havia 900 linhas acumuladas e uma rodada de
+  # `sem-culpado` acusou o banco com p95 de 1,86 ms para 7,29 ms. O piloto teria
+  # medido o próprio harness.
+  if ! base exec -T postgres sh -c \
+      'psql -q -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "TRUNCATE payments;"' >/dev/null 2>&1; then
+    printf 'Não consegui limpar os dados da demo; subindo a pilha do zero.\n' >&2
+    base down --volumes --remove-orphans >/dev/null 2>&1 || true
+    base up --build -d --wait >/dev/null 2>&1
+  fi
+  base up -d --force-recreate --wait payment-service checkout-service >/dev/null 2>&1
+  # A reversão é conferida, não deduzida: se sobrou carimbo de cenário, a rodada
+  # mediria a falha anterior. Nesse caso o caminho longo resolve.
+  for servico in checkout-service payment-service; do
+    versao_base="$(base exec -T "${servico}" printenv SERVICE_VERSION 2>/dev/null)" || versao_base=""
+    if [[ "${versao_base}" != "1.0.0" ]]; then
+      printf 'A reversão não deixou %s na versão base (leu %s); subindo a pilha do zero.\n' \
+        "${servico}" "${versao_base:-<não lido>}" >&2
+      base down --volumes --remove-orphans >/dev/null 2>&1 || true
+      base up --build -d --wait >/dev/null 2>&1
+      break
+    fi
+  done
+fi
 
 # carga roda o gerador pelo MESMO conjunto de arquivos compose do estado atual.
 #
@@ -250,13 +325,12 @@ if [[ "${sorteado}" != "sem-culpado" ]]; then
   # defeito.
   versao_aplicada="$(base exec -T checkout-service printenv SERVICE_VERSION 2>/dev/null)" || versao_aplicada=""
   versao_pagamento="$(base exec -T payment-service printenv SERVICE_VERSION 2>/dev/null)" || versao_pagamento=""
-  if [[ -z "${versao_aplicada}" || -z "${versao_pagamento}" ]]; then
-    printf 'Não consegui ler a versão dos serviços; o estado da injeção é desconhecido.\n' >&2
-    exit 1
-  fi
-  if [[ "${versao_aplicada}" == "1.0.0" && "${versao_pagamento}" == "1.0.0" ]]; then
-    printf 'A injeção da falha não pegou: os serviços seguem na versão base.\n' >&2
-    printf 'O piloto mediria um sistema saudável achando que mede um quebrado.\n' >&2
+  if ! injecao_confere "${sorteado}" "${versao_aplicada}" "${versao_pagamento}"; then
+    printf 'A injeção não corresponde ao cenário sorteado.\n' >&2
+    printf '  esperado o carimbo: %s\n' "${sorteado}" >&2
+    printf '  checkout-service:   %s\n' "${versao_aplicada:-<não lido>}" >&2
+    printf '  payment-service:    %s\n' "${versao_pagamento:-<não lido>}" >&2
+    printf 'O piloto mediria um sistema diferente do que o envelope afirma.\n' >&2
     printf 'Envelope preservado em %s para diagnóstico.\n' "${ENVELOPE}" >&2
     exit 1
   fi
