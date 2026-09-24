@@ -307,6 +307,24 @@ pequena. Assim que a confiança passou a cair por outro motivo, uma janela com
 120 sinais passou a ser descrita como "amostra pequena, mínimo recomendado de 5"
 — mandando quem investiga coletar mais dados para um problema que não era esse.
 
+## Bateria de fechamento
+
+Três rodadas cegas depois de todas as correções desta leva — regra de cauda,
+guarda de injeção, reaproveitamento da pilha, confiança calibrada:
+
+| # | hipótese | sorteado | tempo | |
+|---|---|---|---|---|
+| 1 | retry-storm | retry-storm | 165 s | ✅ |
+| 2 | small-pool | small-pool | 96 s | ✅ |
+| 3 | sem-culpado | sem-culpado | 49 s | ✅ |
+
+Três de três. `small-pool` saiu por sorteio, sem forçar — era o cenário que oito
+rodadas uniformes não haviam entregado, e o peso `1/(1+vezes)` o trouxe na
+segunda. A rodada de `sem-culpado` ficou em silêncio, confirmando que o
+`TRUNCATE` por rodada removeu o viés que a otimização havia introduzido.
+
+O custo caiu de 165 s na primeira (pilha fria) para 49 s na terceira.
+
 ## Como repetir
 
 ```bash
