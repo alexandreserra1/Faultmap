@@ -267,6 +267,46 @@ A reversão da injeção é igualmente explícita e **conferida**: se sobrou car
 de cenário anterior, o script sobe a pilha do zero em vez de confiar na rodada
 que passou.
 
+## As quatro observações, finalmente explicadas
+
+O padrão estava registrado quatro vezes: com o sistema comprovadamente saudável,
+o detector acusava o banco com **confiança alta** em aumentos de poucos
+milissegundos — 1,64 → 5,20 ms, 4 → 12, 3,9 → 12,3 e 6,66 → 17,04.
+
+Duas hipóteses foram testadas e **refutadas**:
+
+- **Aquecimento de processo.** Um deploy que reinicia o `payment-service` sem
+  tocar no banco deveria reproduzir o efeito. Não reproduziu: o p95 do incidente
+  *caiu* de 5,65 para 3,56 ms, porque a carga só começa depois do health check.
+- **Crescimento da tabela.** A carga insere 300 linhas por rodada, então a janela
+  de incidente consulta uma tabela maior. Medido em três execuções, o p95 não
+  acompanha o número de linhas — numa delas caiu de 1,40 para 1,16 ms enquanto as
+  linhas iam de 0 para 120, e noutra caiu de 9,87 para 7,43 com as linhas
+  dobrando. Mecanismo monotônico não produz queda.
+
+A causa não era nenhuma das duas, e também não era o piso. Era a **confiança não
+olhar a magnitude**: ela vinha só do tamanho da amostra, então 120 operações
+bastavam para "alta" ainda que o efeito medisse três milissegundos. O produto
+afirmava com força o que mediu fraco.
+
+Isso explica por que as quatro observações resistiram: nenhuma delas era um
+disparo indevido do *detector* — o aumento era real, apenas minúsculo. O que
+estava errado era o **grau de certeza declarado**.
+
+A correção calibra a confiança pela magnitude, com o piso vindo de medição: dez
+janelas comprovadamente saudáveis deste projeto produziram p95 de incidente de
+até 17 ms sem que nada tivesse sido injetado, enquanto as degradações reais já
+medidas ficaram em 630 ms ou mais — duas ordens de grandeza acima. O finding
+continua sendo emitido, porque silenciar esconderia uma degradação real e
+pequena; o que muda é que ele deixa de se apresentar como medida e passa a se
+apresentar como indício.
+
+Um defeito latente veio junto: `newFinding` atrelava a ressalva de amostra à
+confiança baixa, presumindo que baixa confiança sempre significa amostra
+pequena. Assim que a confiança passou a cair por outro motivo, uma janela com
+120 sinais passou a ser descrita como "amostra pequena, mínimo recomendado de 5"
+— mandando quem investiga coletar mais dados para um problema que não era esse.
+
 ## Como repetir
 
 ```bash

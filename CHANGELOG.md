@@ -4,6 +4,26 @@
 
 ### Corrigido
 
+- **A confiança de `database_latency_delta` passou a olhar a magnitude, e não só
+  o tamanho da amostra.** Um padrão registrado quatro vezes neste projeto: com o
+  sistema comprovadamente saudável, o detector acusava o banco com confiança alta
+  em aumentos de poucos milissegundos. O aumento era real; o grau de certeza é
+  que estava errado, porque 120 operações bastavam para "alta" ainda que o efeito
+  medisse três milissegundos.
+
+  O piso vem de medição: dez janelas saudáveis produziram p95 de incidente de até
+  17 ms sem nada injetado, enquanto as degradações reais medidas ficaram em 630 ms
+  ou mais. O finding segue sendo emitido — silenciar esconderia degradação real e
+  pequena — mas se apresenta como indício, não como medida.
+
+  Duas hipóteses anteriores foram testadas e refutadas antes desta: aquecimento
+  de processo e crescimento da tabela.
+
+- **`newFinding` culpava a amostra por qualquer confiança baixa.** A ressalva
+  vinha do valor da confiança, não da contagem, então uma janela com 120 sinais
+  era descrita como "amostra pequena, mínimo recomendado de 5" assim que a
+  confiança caía por outro motivo.
+
 - **Falha de execução não imprime mais o bloco de uso, nem repete o erro.** Toda
   vez que um comando falhava por causa do mundo — banco fora do ar, arquivo
   inexistente, credencial recusada — o terminal despejava a lista de flags, que

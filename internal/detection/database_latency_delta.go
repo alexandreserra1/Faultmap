@@ -18,6 +18,20 @@ const (
 	// trabalha na casa de frações de milissegundo; exigir o dobro torna o
 	// aumento inequívoco.
 	minimumDatabaseLatencyRatio = 1.0
+	// confiableDatabaseLatencyMilliseconds é a partir de quanto o p95 do
+	// incidente sustenta uma afirmação de confiança alta.
+	//
+	// O número vem de medição, não de gosto. Em janelas comprovadamente
+	// saudáveis deste projeto — sete do medidor de ruído e três de um
+	// experimento de fases — o p95 do incidente chegou a 17 ms sem que nada
+	// tivesse sido injetado. Quatro acusações registradas com "confiança alta"
+	// caíram todas abaixo disso: 5,20, 12, 12,3 e 17,04 ms.
+	//
+	// Acima do piso, o detector segue afirmando alta: as degradações reais já
+	// medidas ficaram em 630 ms ou mais, duas ordens de grandeza acima. O número
+	// é da demo e do piloto, e deve ser revisto quando houver medição de ruído de
+	// um banco que não seja o nosso.
+	confiableDatabaseLatencyMilliseconds = 20
 )
 
 // DetectDatabaseLatencyDelta compara a duração p95 das operações de banco entre
@@ -55,11 +69,24 @@ func DetectDatabaseLatencyDelta(input Input) (Finding, bool) {
 	if systems == "" {
 		systems = "banco de dados"
 	}
-	return newFinding(
+
+	// A confiança olhava só o tamanho da amostra, então 120 operações bastavam
+	// para "alta" ainda que o efeito medisse três milissegundos. Foi assim que
+	// este detector acusou quatro vezes, com confiança alta, um sistema que
+	// ninguém havia quebrado. Amostra e magnitude são fraquezas independentes, e
+	// a ressalva precisa dizer qual delas é — mandar coletar mais dados quando já
+	// há 120 sinais por janela desperdiça o tempo de quem investiga.
+	confidence := sampleConfidence(len(baseline), len(incident))
+	magnitudeDuvidosa := incidentP95 < confiableDatabaseLatencyMilliseconds
+	if magnitudeDuvidosa {
+		confidence = ConfidenceLow
+	}
+
+	finding := newFinding(
 		RuleDatabaseLatencyDelta,
 		input.ServiceName,
 		(incidentP95-baselineP95)/incidentP95,
-		sampleConfidence(len(baseline), len(incident)),
+		confidence,
 		[]Evidence{{
 			Summary: fmt.Sprintf(
 				"A duração p95 das operações %s aumentou de %.2f ms para %.2f ms, sem timeout nem erro observados.",
@@ -71,7 +98,14 @@ func DetectDatabaseLatencyDelta(input Input) (Finding, bool) {
 		}},
 		len(baseline),
 		len(incident),
-	), true
+	)
+	if magnitudeDuvidosa {
+		finding.Limitations = append(finding.Limitations, fmt.Sprintf(
+			"Magnitude pequena: o p95 do incidente ficou em %.2f ms, abaixo dos %d ms a partir dos quais um aumento se distingue do que um sistema saudável produz nesta demo; trate como indício, não como medida.",
+			incidentP95, confiableDatabaseLatencyMilliseconds,
+		))
+	}
+	return finding, true
 }
 
 // exceedsDatabaseLatencyNoise decide se o aumento é relevante nas duas escalas,

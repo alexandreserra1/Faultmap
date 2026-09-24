@@ -326,7 +326,13 @@ func DetectTraceCorrelation(input Input) (Finding, bool) {
 // newFinding centraliza as garantias comuns de score, cautela estatística e ausência de afirmação causal.
 func newFinding(rule, serviceName string, score float64, confidence Confidence, evidence []Evidence, baselineCount, incidentCount int) Finding {
 	limitations := []string{"Correlação entre sinais não comprova causalidade."}
-	if confidence == ConfidenceLow {
+	// A ressalva sai da contagem, e não da confiança. Atrelá-la à confiança
+	// presumia que baixa confiança sempre significa amostra pequena, e passou a
+	// mentir assim que um detector rebaixou a confiança por outro motivo: uma
+	// janela com 120 sinais era descrita como "amostra pequena, mínimo
+	// recomendado de 5", mandando a pessoa coletar mais dados para um problema
+	// que não era esse.
+	if baselineCount < minimumSampleSize || incidentCount < minimumSampleSize {
 		limitations = append(limitations, fmt.Sprintf("Amostra pequena: baseline com %d e incidente com %d sinais relevantes; mínimo recomendado de %d por janela.", baselineCount, incidentCount, minimumSampleSize))
 	}
 	return Finding{
